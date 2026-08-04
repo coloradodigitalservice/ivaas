@@ -1,0 +1,27 @@
+name: Lint PR Title
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+#     - synchronize (once this becomes a required action for merge)
+    branches:
+      - main
+
+# Read-only: the action reads the title from the event payload.
+# Write access would be required for an improvement that includes posting an explanatory comment on the PR
+permissions:
+  pull-requests: read
+
+jobs:
+  # Lint the pull request title against the Conventional Commits spec.
+  # See docs/adr/2026-08-04-squash-and-merge-with-conventional-commits-for-PR-titles.md
+  lint-pr-title:
+    name: Pull Request Title is conventional commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
