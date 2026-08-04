@@ -1,0 +1,36 @@
+## MacOS
+**/.DS_Store
+
+## JetBrains
+.idea/
+
+## Visual Studio Code
+.vscode/
+
+# TODO: Move python specifics to nested .gitignore in Django app directory
+## Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+## Distribution / packaging
+dist/
+
+## Unit test / coverage reports
+htmlcov/
+**/.coverage
+**/coverage.xml
+.pytest_cache/
+
+## Environments
+.venv
+
+## mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+## Ruff
+.ruff_cache/
+
+## PyPI configuration file
+.pypirc
