@@ -5,7 +5,8 @@
 .idea/
 
 ## Visual Studio Code
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # TODO: Move python specifics to nested .gitignore in Django app directory
 ## Byte-compiled / optimized / DLL files
@@ -23,6 +24,7 @@ htmlcov/
 
 ## Environments
 .venv
+.env
 
 ## mypy
 .mypy_cache/

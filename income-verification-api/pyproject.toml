@@ -1,0 +1,82 @@
+[project]
+name = "income-verification-api"
+version = "0.1.0"
+description = "Income Verification as a Service"
+readme = "README.md"
+requires-python = ">=3.14.6"
+dependencies = [
+    "django==6.0.8",
+    "django-ninja>=1.6.2",
+    "psycopg[binary]==3.3.4",
+]
+
+[dependency-groups]
+dev = [
+    {include-group = "quality"},
+    {include-group = "test"},
+    "django-stubs>=6.0.7",
+]
+quality = [
+    "pre-commit>=4.6.0",
+    "mypy>=2.1.0",
+    "ruff>=0.15.20",
+]
+test = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.12.0",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # Pyflakes
+    "UP",   # Modern Python syntax
+    "B",    # Common bugs
+    "SIM",  # Simplification rules
+    "I",    # Import rules
+
+    # Extended rules
+    "PT",   # Pytest conventions
+    "LOG",  # Logging
+    "C4",   # Comprehensions
+    "S",    # Bandit-derived security checks
+    "A",    # Prevent shadowing Python builtins
+    "PERF", # Common performance issues
+    "RUF",  # Ruff
+    "INP001", # Check for missing __init__.py files
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["INP001", "S101"]
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+pretty = true
+show_error_context = true
+
+[tool.pytest]
+DJANGO_SETTINGS_MODULE = "config.settings"
+addopts = [
+    "--cov",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-fail-under=80",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["api"] # This allows us to pass in multiple pytest coverage options for the additional options above ^
+omit = ["*/migrations/*"]
+branch = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"

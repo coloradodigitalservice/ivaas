@@ -6,7 +6,7 @@ on:
       - opened
       - reopened
       - edited
-#     - synchronize (once this becomes a required action for merge)
+    #     - synchronize (once this becomes a required action for merge)
     branches:
       - main
 
