@@ -38,7 +38,7 @@ This ADR decides the convention only. It does not select tooling to aid with enf
 
 All the [pros and cons of this option from the `income-verification-core` adr](https://github.com/coloradodigitalservice/income-verification-core/blob/main/docs/adr/2026-07-22-squash-and-merge-with-conventional-commits-for-PR-titles.md#adopt-the-conventional-commits-specification-for-merge-commits), plus:
 
-* `++` Unifies the contributor experience across modules that the team is already accutomed to. 
+* `++` Unifies the contributor experience across modules that the team is already accutomed to.
 * `±` Adds process where there currently is none.
 
 ### No commit convention
