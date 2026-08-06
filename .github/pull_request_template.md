@@ -8,6 +8,6 @@
 
 ## Review checklist
 
-Until we have equivalent automated checks in CI, the following must be manually verified:
-- [ ] Pre-commit checks pass (`make pre-commit`)
-- [ ] Quality checks pass (`make quality-check`)
+- [ ] Tests cover the expected behavior and important failure cases.
+- [ ] The PR references the Monday ticket number.
+- [ ] The documentation has been updated if needed.
