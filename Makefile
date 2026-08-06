@@ -17,6 +17,10 @@ setup: sync install-hooks ## set up the local development environment
 install-hooks: ## install pre-commit hooks
 	$(RUN) pre-commit install --install-hooks
 
+.PHONY: pre-commit
+pre-commit: ## run pre-commit hooks on all files
+	$(RUN) pre-commit run --all-files
+
 .PHONY: sync
 sync: ## set up .venv and dependencies
 	$(SYNC)
