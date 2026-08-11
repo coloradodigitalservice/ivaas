@@ -1,0 +1,486 @@
+openapi: 3.1.1
+
+info:
+  title: IVaaS API
+  version: 0.0.1-draft
+  summary: Colorado's program-facing income verification as a service (IVaaS) API.
+  description: |
+    **STATUS: SKELETON / DRAFT / PRE-DECISIONAL**: Details needing refinement marked with "TBD"
+    
+    This specification describes *Colorado's* deployment of the Income Verification
+    service.
+
+    The portable parts map to **schemas** under `components/schemas`, which are owned by
+    `income-verification-core`. Another state adopting the core is expected to reuse those
+    schemas while defining its own paths, servers, and (notably) its own authentication
+    scheme. Nothing in `components/securitySchemes` should be assumed portable.
+
+servers:
+  - url: https://test.income-verification.colorado.gov/
+    description: 'TBD: Test environment'
+  - url: https://income-verification.colorado.gov/
+    description: 'TBD: Production'
+
+security:
+  - agencyAssertion: []
+
+paths:
+  /v1/income-verification:
+    post:
+      summary: Request income details
+      description: |
+        Creates a verification, returning its result in the same exchange. (TBD: Webhook option for asynchronous response.)
+
+        This is modelled as a creation (POST) rather than a retrieval (GET) deliberately. The operation
+        is not safe or cacheable: it produces an attempt record for audit, it may
+        be metered, and it may contact third-party sources. Repeated a requests are not guaranteed free of side effects.
+
+        A `200` response carries a completed `VerificationResponse`.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationRequest'
+            examples:
+              minimum:
+                summary: Minimum set of required fields
+                value:
+                  firstName: "John"
+                  lastName: "Doe"
+                  last4Ssn: "1234"
+                  lookbackPeriod:
+                    startDate: "2026-01-01"
+              strict:
+                summary: Complete set of fields for data sources with more strict requirements
+                value:
+                  applicationId: "APP-2026-004471"
+                  firstName: "John"
+                  middleName: "Middleton"
+                  lastName: "Doe"
+                  ssn: "123001234"
+                  lookbackPeriod:
+                    startDate: "2026-01-01"
+                    endDate: "2026-06-30"
+      responses:
+        '200':
+          description: Verification completed.
+          headers:
+            Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+
+  /v1/test-connection:
+    get:
+      summary: Verify authenticated connectivity
+      description: |
+        An authenticated no-op for onboarding and triage. Lets an agency confirm that its credentials are accepted and
+        that it is reaching the intended environment without submitting any claimant data or creating a verification attempt.
+
+        Modelled as a GET because it is safe and side-effect-free: it reads nothing and writes
+        nothing, so an agency can call it freely while wiring up an integration.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Assertion accepted. Connectivity and credentials are good.
+          headers:
+            Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestConnectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+
+components:
+
+  securitySchemes:
+    agencyAssertion:
+      type: oauth2
+      description: |
+        TBD: Auth ADR, likely Cognito client credentials flow.
+
+        Machine-to-machine access using an Amazon Cognito access token, obtained through the
+        `client_credentials` grant. An agency is issued an app client id and secret at onboarding,
+        exchanges them at the Cognito token endpoint, and sends the result as
+        `Authorization: Bearer {token}`.
+
+        ## Expected claims
+
+        | Claim | Expectation |
+        |---|---|
+        | `iss` | `https://cognito-idp.{region}.amazonaws.com/{userPoolId}` for the destination environment |
+        | `sub` | The agency's app client id |
+        | `client_id` | The agency's app client id. Equal to `sub` on a client-credentials token |
+        | `token_use` | `access` |
+        | `scope` | TBD: the scopes granted to an agency at onboarding, a cognito configuration |
+        | `iat` / `exp` | Issued-at and expiry. Lifetime is configured on the app client in cognito|
+        | `jti` | Unique per token |
+
+        ## Signature
+
+        `RS256`, verified against the JWKS published at `{iss}/.well-known/jwks.json`.
+
+        ## Identity
+
+        `client_id` is the agency identity for this API. It selects the data sources configured for
+        that agency, which in turn determines which request fields that agency must send.
+      flows:
+        clientCredentials: # TBD: We can document the token endpoint here too
+          tokenUrl: 'https://TBD.auth.us-west-2.amazoncognito.com/oauth2/token'
+          scopes: {}
+
+  parameters:
+    CorrelationId:
+      name: Correlation-Id
+      in: header
+      required: true
+      description: |
+        Correlation identifier echoed on every response and recorded on every log line for
+        the request. Two accepted forms:
+
+        - `{uuidv4}`: version-4 UUID on its own.
+        - `{uuidv4}:{reference}`: version-4 UUID, a colon, then an agency's own reference or identifier string
+
+        Distinct from the token's `jti`: correlation identifiers
+        are deliberately reusable across retries, must exist even when authentication fails,
+        and must never carry credential material.
+
+        The reference segment permits any character except C0 control bytes and DEL, so
+        that a value cannot forge a log line or split a response header.
+      schema:
+        type: string
+        maxLength: 128
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[^\x00-\x1F\x7F]+)?$'
+
+  headers:
+    CorrelationId:
+      description: |
+        Echo of the request's `Correlation-Id` header.
+      required: true
+      schema:
+        type: string
+        maxLength: 128
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[^\x00-\x1F\x7F]+)?$'
+
+  responses:
+    Error:
+      description: Error. Body carries a machine-readable `code` and a human-readable `message`.
+      headers:
+        Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: |
+        The assertion was absent, malformed, expired, signed by an unregistered key,
+        addressed to a different audience, replayed, etc.
+
+        The response body does not distinguish between these cases.
+        The specific reason is logged server-side against the Correlation-Id to with support.
+      headers:
+        Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # Request
+    VerificationRequest:
+      type: object
+      description: |
+        TBD: Deliberately barebones, as this requires further discovery. Encryption mechanism and decision pending.
+        Additionally, will likely need to reflect a lookback period, etc. All TBD at the time of drafting.
+
+        Data sources differ in what they require, and the sources configured for a program determine which fields are required.
+        If a specific program's requested datasource requires an argument that is not sent, it will result in an error.
+
+        Domain rules: (TBD: enumerate the sourceIds that each field is required by)
+        * Exactly one of `ssn` or `last4Ssn` must be present, depending on the needs of the intended downstream data source.
+        * `middleName` is required for {TBD SourceIds} data sources
+      required: [applicationId, firstName, lastName, lookbackPeriod]
+      properties:
+        applicationId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[^\x00-\x1F\x7F]+$'
+          description: |
+            The program's own identifier for the claimant's benefits application this verification supports.
+            Optional. Recorded for audit purposes and not echoed on the response.
+
+            Opaque to this service. One application may have many verifications over time, so this
+            is not an identifier for a single request.
+            
+            Must not carry claimant PII, as it appears in logs.
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^[^\x00-\x1F\x7F]+$'
+          description: Claimant's legal first name.
+        middleName:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^[^\x00-\x1F\x7F]+$'
+          description: |
+            Claimant's legal middle name.
+
+            TBD: not required by Equifax after all. Confirm whether any source needs it, and remove
+            this field if none does.
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^[^\x00-\x1F\x7F]+$'
+          description: Claimant's legal last name.
+        ssn:
+          type: string
+          pattern: '^[0-9]{9}$'
+          description: |
+            The claimant's full SSN, nine digits, no separators.
+
+            Mutually exclusive with `last4Ssn`.
+        last4Ssn:
+          type: string
+          pattern: '^[0-9]{4}$'
+          description: |
+            Last four digits of the claimant's SSN.
+
+            Mutually exclusive with `ssn`. Required by {TBD SourceIds}
+        lookbackPeriod:
+          $ref: '#/components/schemas/LookbackPeriod'
+      oneOf:
+        - required: [ssn]
+        - required: [last4Ssn]
+
+    LookbackPeriod:
+      type: object
+      description: |
+        The window of time to return income for.
+
+        A source that cannot reach back to `startDate` returns an error rather than a shortened
+        window, so a caller never has to infer that it received less than it asked for.
+      required: [startDate]
+      properties:
+        startDate:
+          description: First day of the window, inclusive.
+          $ref: '#/components/schemas/Date'
+        endDate:
+          description: |
+            Last day of the window, inclusive. Optional; defaults to the current date when omitted.
+
+            Must not precede `startDate`.
+          $ref: '#/components/schemas/Date'
+
+
+    # Response
+    VerificationResponse:
+      type: object
+      description: |
+        A verification attempt and, once terminal, its result.
+
+        The envelope is stable and specified; the income payload it carries is not yet
+        defined. Clients should be written against the envelope.
+      required: [verificationId]
+      properties:
+        verificationId:
+          $ref: '#/components/schemas/VerificationId'
+        sources:
+          type: array
+          description: |
+            One entry per source consulted, each carrying that source's provenance and the
+            income it returned. Populated even when a source failed or returned nothing.
+
+            Partial success is normal with multiple sources, so this is not an optional
+            diagnostic. Eligibility determinations get appealed, and answering "where did
+            this figure come from, and as of when was it true" is an audit obligation.
+          items:
+            $ref: '#/components/schemas/SourceResult'
+
+    VerificationId:
+      type: string
+      format: uuid
+      description: |
+        Opaque, server-issued, non-sequential. 
+        
+        Potentially useful as an identifier for a future audit API.
+      examples:
+        - 8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31
+
+    TestConnectionResponse:
+      type: object
+      description: |
+        Confirmation that the caller's credentials were accepted. Carries no claimant data,
+        so it is safe to call from any environment at any time.
+
+        TBD: exact fields. These are the fields an agency can use to confirm their configuration.
+        Depends on authentication mechanism
+      required: [authenticatedAs, environment]
+      properties:
+        authenticatedAs:
+          type: string
+          description: |
+            The agency identity the server resolved from the assertion (the token `iss`)
+        environment:
+          type: string
+          enum: [test, production]
+          description: |
+            Used to verify that the intended environment was reached
+
+    SourceResult:
+      type: object
+      description: |
+        Returned income data from a specific data source.
+
+        TBD: include semi-raw data from the source, with PII stripped out, for programs that need
+        more granular detail than the normalized payload conveys.
+      required: [sourceId, status, retrievedAt]
+      properties:
+        sourceId:
+          type: string
+          description: 'TBD: Enumerated identifier for the data source. e.g. CDLE, EQUIFAX_ICIE3'
+        status:
+          type: string
+          enum: [ok, no_data, unavailable, error]
+        retrievedAt:
+          type: string
+          format: date-time
+          description: When this service obtained the data. An instant.
+        normalizedIncome:
+          description: |
+            The income this source reported, restated on common time bases so that figures from
+            different sources can be compared. Present only when `status` is `ok`.
+          $ref: '#/components/schemas/NormalizedIncome'
+
+    NormalizedIncome:
+      type: object
+      description: |
+        Income from a single source, normalized into a generic payload structure.
+
+        Every value here is **derived**, not quoted from the source. Sources report over whatever
+        period and granularity they keep, and this restates that into calendar months.
+
+        `months` carries a total and an employer breakdown for each month, so a program that budgets
+        on monthly income reads the total and ignores the rest. Another restatement can be added
+        alongside it later without disturbing existing consumers.
+      required: [months]
+      properties:
+        months:
+          type: object
+          description: |
+            Income per calendar month, keyed `YYYY-MM`.
+          propertyNames:
+            pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+          additionalProperties:
+            $ref: '#/components/schemas/NormalizedMonthlyIncome'
+          examples:
+            - '2026-03':
+                total: '1300.00'
+                records:
+                  - { employerName: 'Food and Stuff', amount: '1300.00' }
+              '2026-04':
+                total: '1500.00'
+                records:
+                  - { employerName: 'Food and Stuff', amount: '1500.00' }
+              '2026-05':
+                total: '4500.00'
+                records:
+                  - { employerName: 'Food and Stuff', amount: '1500.00' }
+                  - { employerName: 'Entertainment 720', amount: '3000.00' }
+
+    NormalizedMonthlyIncome:
+      type: object
+      description: One calendar month of income from a single source.
+      required: [total, records]
+      properties:
+        total:
+          description: A convenience sum of all employment records from this datasource for the given calendar month.
+          $ref: '#/components/schemas/Dollar'
+        records:
+          type: array
+          description: One entry per employer, since a claimant may hold more than one job in the same month.
+          items:
+            $ref: '#/components/schemas/NormalizedEmploymentRecord'
+
+    NormalizedEmploymentRecord:
+      type: object
+      description: Normalized income record from one employer for a given datasource
+      required: [employerName, amount]
+      properties:
+        employerName:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: The employer as named by the data source
+        amount:
+          description: Income from this employer in this month.
+          $ref: '#/components/schemas/Dollar'
+
+    # Shared
+    Dollar:
+      type: string
+      pattern: '^-?(0|[1-9][0-9]*)\.[0-9]{2}$'
+      description: |
+        A US dollar amount as a decimal string, e.g. `"1234.56"`.
+
+        Consumers should parse it into a decimal type for numeric operations.
+      examples:
+        - '1234.56'
+        - '0.00'
+        - '-42.00' # Not sure we'll deal with negative monetary amounts, but it's at least supported until it explicitly shouldn't be.
+
+    Date:
+      type: string
+      format: date
+      description: |
+        A calendar date with no time and no timezone.
+        Used for pay dates, pay period bounds, etc.
+      examples:
+        - '2026-03-15'
+
+    Error:
+      type: object
+      description: The unified error shape for this API.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: |
+            Enumerated identifier. This is what program client applications branch on.
+
+            TBD: the set of codes is not yet defined. It will become a closed `enum` once it is.
+            
+            Programs must tolerate codes they do not recognise rather than hard-failing, 
+            so that codes can be added without breaking existing integrations.
+        message:
+          type: string
+          description: |
+            Human-readable explanation for this occurrence. Useful for triaging.
