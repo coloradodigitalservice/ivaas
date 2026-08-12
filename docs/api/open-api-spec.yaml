@@ -48,6 +48,7 @@ paths:
               minimum:
                 summary: Minimum set of required fields
                 value:
+                  applicationId: "APP-2026-004471"
                   firstName: "John"
                   lastName: "Doe"
                   last4Ssn: "1234"
