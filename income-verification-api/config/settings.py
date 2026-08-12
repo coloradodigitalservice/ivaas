@@ -39,7 +39,14 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
-TEMPLATES: list[dict[str, object]] = []
+TEMPLATES = [
+     {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {},
+    },
+]
 
 WSGI_APPLICATION = "config.wsgi.application"
 
