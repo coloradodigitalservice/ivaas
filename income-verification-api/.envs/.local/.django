@@ -1,0 +1,5 @@
+# General
+# ------------------------------------------------------------------------------
+DJANGO_DEBUG=True
+DJANGO_SECRET_KEY=unsafe-local-development-key
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1

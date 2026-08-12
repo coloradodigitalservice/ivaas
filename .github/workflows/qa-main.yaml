@@ -1,0 +1,46 @@
+name: QA Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    name: Run QA checks
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 #v9.0.0
+        with:
+          enable-cache: true
+          cache-python: true
+
+      - name: Install dependencies
+        run: make sync-ci
+
+      - name: Run pre-commit
+        env:
+          SKIP: no-commit-to-branch
+        run: make pre-commit
+
+        # Running this separately because the pre-commit is running this on push only
+      - name: Local quality checks pass
+        run: make quality-check
