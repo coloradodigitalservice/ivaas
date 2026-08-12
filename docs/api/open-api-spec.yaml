@@ -58,7 +58,6 @@ paths:
                 value:
                   applicationId: "APP-2026-004471"
                   firstName: "John"
-                  middleName: "Middleton"
                   lastName: "Doe"
                   ssn: "123001234"
                   lookbackPeriod:
@@ -223,7 +222,6 @@ components:
 
         Domain rules: (TBD: enumerate the sourceIds that each field is required by)
         * Exactly one of `ssn` or `last4Ssn` must be present, depending on the needs of the intended downstream data source.
-        * `middleName` is required for {TBD SourceIds} data sources
       required: [applicationId, firstName, lastName, lookbackPeriod]
       properties:
         applicationId:
@@ -245,16 +243,6 @@ components:
           maxLength: 256
           pattern: '^[^\x00-\x1F\x7F]+$'
           description: Claimant's legal first name.
-        middleName:
-          type: string
-          minLength: 1
-          maxLength: 256
-          pattern: '^[^\x00-\x1F\x7F]+$'
-          description: |
-            Claimant's legal middle name.
-
-            TBD: not required by Equifax after all. Confirm whether any source needs it, and remove
-            this field if none does.
         lastName:
           type: string
           minLength: 1
