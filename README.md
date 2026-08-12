@@ -69,7 +69,6 @@ The application will be available at:
 
 - API: http://127.0.0.1:8000/api/
 - OpenAPI documentation: http://127.0.0.1:8000/api/docs
-- Django admin: http://127.0.0.1:8000/admin/
 
 > NOTE: `make run` starts PostgreSQL automatically if it is not already running.
 
