@@ -1,8 +1,15 @@
 API_DIR := income-verification-api
+LOCAL_ENV := \
+	--env-file .envs/.local/.django \
+	--env-file .envs/.local/.postgres
+
 COMPOSE := docker compose
 UV := cd $(API_DIR) && uv
 SYNC := $(UV) sync
 RUN := $(UV) run
+LOCAL_RUN := $(RUN) $(LOCAL_ENV)
+MANAGE := $(LOCAL_RUN) python manage.py
+
 
 .DEFAULT_GOAL := help
 
@@ -30,33 +37,33 @@ sync-ci: ## set up .venv and dependencies for CI, requiring pyproject.toml and u
 	$(SYNC) --locked
 
 .PHONY: db-up
-db-up: ## start PostgreSQL
+db-up: ## start the local docker PostgreSQL database
 	$(COMPOSE) up --wait postgres
 
-.PHONY: db-down
-db-down: ## stop local services
+.PHONY: down
+down: ## stop the docker services
 	$(COMPOSE) down
 
 .PHONY: db-reset
-db-reset: ## recreate the local PostgreSQL database
+db-reset: ## recreate the local docker PostgreSQL database
 	$(COMPOSE) down --volumes
 	$(COMPOSE) up --wait postgres
 
 .PHONY: run
-run: db-up ## run the Django development server
-	$(RUN) python manage.py runserver
+run: db-up ## run the Django development server using the local environment variables
+	$(MANAGE) runserver
 
 .PHONY: migrate
 migrate: db-up ## apply database migrations
-	 $(RUN) python manage.py migrate
+	$(MANAGE) migrate
 
 .PHONY: migrations
 migrations: ## generate database migrations
-	$(RUN) python manage.py makemigrations
+	$(MANAGE) makemigrations
 
 .PHONY: test
 test: db-up ## run tests
-	$(RUN) pytest
+	$(LOCAL_RUN) pytest
 
 .PHONY: quality-fix
 quality-fix: ## Apply available automatic fixes for python package quality violations
@@ -67,6 +74,6 @@ quality-fix: ## Apply available automatic fixes for python package quality viola
 quality-check: ## run all required checks
 	$(RUN) ruff format --check .
 	$(RUN) ruff check .
-	$(RUN) python manage.py check
-	$(RUN) mypy .
+	$(MANAGE) check
+	$(LOCAL_RUN) mypy .
 	$(MAKE) test

@@ -25,6 +25,8 @@ htmlcov/
 ## Environments
 .venv
 .env
+**/.envs/*
+!**/.envs/.local/
 
 ## mypy
 .mypy_cache/

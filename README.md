@@ -19,15 +19,15 @@ Before starting, ensure the following are installed:
 ### Install development tooling
 
 ```shell
-# install tooling with asdf
-asdf install
+    # install tooling with asdf
+    asdf install
 ```
 
 or
 
 ```shell
-# install tooling with mise
-mise install
+    # install tooling with mise
+    mise install
 ```
 
 ### Set up project for local development
@@ -43,7 +43,7 @@ Use the setup command to install any python dependencies:
 Start the local PostgreSQL container and apply the Django migrations:
 
 ```bash
-make migrate
+    make migrate
 ```
 
 The PostgreSQL data is stored in a Docker volume and persists when the container is stopped.
@@ -51,8 +51,8 @@ The PostgreSQL data is stored in a Docker volume and persists when the container
 To completely recreate the local database:
 
 ```bash
-make db-reset
-make migrate
+    make db-reset
+    make migrate
 ```
 
 > WARNING: `make db-reset` permanently deletes the existing local PostgreSQL data.
@@ -62,7 +62,7 @@ make migrate
 Start the local Django development server:
 
 ```bash
-make run
+    make run
 ```
 
 The application will be available at:
@@ -78,7 +78,7 @@ The application will be available at:
 Run the complete local quality suite:
 
 ```bash
-make quality-check
+    make quality-check
 ```
 
 This runs:
@@ -92,11 +92,11 @@ This runs:
 To automatically format code and apply safe lint fixes:
 
 ```bash
-make quality-fix
+    make quality-fix
 ```
 
 For a complete list of available `make` commands, run:
 
 ```shell
-make help
+    make help
 ```

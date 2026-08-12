@@ -10,34 +10,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-import os
 from pathlib import Path
+
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+env = environ.Env()
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-
-APP_ENV = os.getenv("APP_ENV", "local").lower()
-
-DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
-
-LOCAL_SECRET_KEY = "django-insecure-local-development-only"  # noqa: S105
-
-# Ensure the secret key is pulled from the environment for non-local environments
-if APP_ENV == "local":
-    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", LOCAL_SECRET_KEY)
-else:
-    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
-
-ALLOWED_HOSTS: list[str] = os.getenv(
-    "DJANGO_ALLOWED_HOSTS",
-    "localhost,127.0.0.1",
-).split(",")
+SECRET_KEY: str = env("DJANGO_SECRET_KEY")
+ALLOWED_HOSTS: list[str] = env.list("DJANGO_ALLOWED_HOSTS")
+DEBUG: bool = env.bool("DJANGO_DEBUG")
 
 
 # Application definition
@@ -88,26 +72,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv(
-            "DATABASE_NAME",
-            "income_verification_api",
-        ),
-        "USER": os.getenv(
-            "DATABASE_USER",
-            "income_verification_api",
-        ),
-        "PASSWORD": os.getenv(
-            "DATABASE_PASSWORD",
-            "local-development-only",
-        ),
-        "HOST": os.getenv(
-            "DATABASE_HOST",
-            "127.0.0.1",
-        ),
-        "PORT": os.getenv(
-            "DATABASE_PORT",
-            "5432",
-        ),
+        "NAME": env("POSTGRES_DB"),
+        "USER": env("POSTGRES_USER"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
+        "HOST": env("POSTGRES_HOST"),
+        "PORT": env.int("POSTGRES_PORT"),
     },
 }
 

@@ -9,5 +9,4 @@
 ## Review checklist
 
 - [ ] Tests cover the expected behavior and important failure cases.
-- [ ] The PR references the Monday ticket number.
 - [ ] The documentation has been updated if needed.
