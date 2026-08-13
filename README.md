@@ -12,8 +12,8 @@ If using a different version manager, or installing tools manually, ensure the i
 
 Before starting, ensure the following are installed:
 
-- A compatible tool version manager, such as `mise` or `asdf`
-- Docker with Docker Compose
+- A compatible tool version manager, such as [mise](https://mise.jdx.dev/) or [asdf](https://asdf-vm.com/)
+- [Docker](https://www.docker.com/get-started/) with Docker Compose
 - Make
 
 ### Install development tooling
