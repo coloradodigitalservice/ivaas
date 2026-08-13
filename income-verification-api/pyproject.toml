@@ -8,10 +8,8 @@ dependencies = [
     "django==6.0.8",
     "django-environ>=0.14.0",
     "django-ninja>=1.6.2",
-    "gunicorn==26.0.0",
     "psycopg[binary]==3.3.4",
     "uvicorn==0.52.2",
-    "uvicorn-worker==0.4.0",
 ]
 
 [dependency-groups]
