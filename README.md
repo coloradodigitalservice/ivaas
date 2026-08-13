@@ -85,10 +85,10 @@ make quality-check
 This runs:
 
 - Django system checks
-- Ruff formatting checks
-- Ruff linting
-- mypy type checking
-- pytest tests
+- Formatting checks
+- Linting checks
+- Type checks
+- Automated test suites
 
 To automatically format code and apply safe lint fixes:
 
