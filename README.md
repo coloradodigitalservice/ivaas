@@ -55,7 +55,8 @@ make db-reset
 make migrate
 ```
 
-> WARNING: `make db-reset` permanently deletes the existing local PostgreSQL data.
+> [!WARNING]
+> `make db-reset` permanently deletes the existing local PostgreSQL data.
 
 ### Run the application
 
@@ -70,7 +71,8 @@ The application will be available at:
 - API: http://127.0.0.1:8000/api/
 - OpenAPI documentation: http://127.0.0.1:8000/api/docs
 
-> NOTE: `make run` starts PostgreSQL automatically if it is not already running.
+> [!NOTE]
+> `make run` starts PostgreSQL automatically if it is not already running.
 
 ### Run project checks
 
