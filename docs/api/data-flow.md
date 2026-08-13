@@ -24,7 +24,7 @@ sequenceDiagram
     end
 
     programAdmin->>ivAdmin: Initiate onboarding
-    ivAdmin->>cognito: Setup client (Client ID & Client Secret)
+    ivAdmin->>cognito: Setup client (client id & client secret)
     ivAdmin->>programAdmin: Share client credentials 🔒
     programAdmin->>programApp: Store client credentials 🔒
     ivAdmin->>api: Add program configurations
@@ -32,8 +32,8 @@ sequenceDiagram
     loop as neeeded, verify connection and configurations
     programAdmin->>programApp: Initiate connection test
     opt needs fresh access token
-    programApp->>cognito: access token request
-    cognito->>programApp: access token response
+    programApp->>cognito: access token request 🔒
+    cognito->>programApp: access token response 🔒
     programApp->>programApp: cache access token
     end
     programApp->>api: Test connection request 🔒
