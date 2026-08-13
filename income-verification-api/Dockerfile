@@ -2,8 +2,7 @@ ARG PYTHON_VERSION=3.14.6
 ARG UV_VERSION=0.11.29
 
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
-FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
-
+FROM python:${PYTHON_VERSION}-slim-trixie AS builder
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
@@ -14,7 +13,6 @@ ENV UV_LINK_MODE=copy
 # Disable python downloads
 ENV UV_PYTHON_DOWNLOADS=0
 
-
 WORKDIR /api
 
 COPY --from=uv /uv /bin/
@@ -24,8 +22,7 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 
-
-FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+FROM python:${PYTHON_VERSION}-slim-trixie AS runtime
 
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.

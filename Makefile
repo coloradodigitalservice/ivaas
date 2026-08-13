@@ -41,10 +41,6 @@ sync-ci: ## set up .venv and dependencies for CI, requiring pyproject.toml and u
 db-up: ## start the local docker PostgreSQL database
 	$(COMPOSE) up --wait postgres
 
-.PHONY: down
-down: ## stop the docker services
-	$(COMPOSE) down
-
 .PHONY: db-reset
 db-reset: ## recreate the local docker PostgreSQL database
 	$(COMPOSE) down --volumes
