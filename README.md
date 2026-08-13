@@ -12,8 +12,8 @@ If using a different version manager, or installing tools manually, ensure the i
 
 Before starting, ensure the following are installed:
 
-- A compatible tool version manager, such as `mise` or `asdf`
-- Docker with Docker Compose
+- A compatible tool version manager, such as [mise](https://mise.jdx.dev/) or [asdf](https://asdf-vm.com/)
+- [Docker](https://www.docker.com/get-started/) with Docker Compose
 - Make
 
 ### Install development tooling
@@ -55,7 +55,8 @@ make db-reset
 make migrate
 ```
 
-> WARNING: `make db-reset` permanently deletes the existing local PostgreSQL data.
+> [!WARNING]
+> `make db-reset` permanently deletes the existing local PostgreSQL data.
 
 ### Run the application
 
@@ -70,7 +71,8 @@ The application will be available at:
 - API: http://127.0.0.1:8000/api/
 - OpenAPI documentation: http://127.0.0.1:8000/api/docs
 
-> NOTE: `make run` starts PostgreSQL automatically if it is not already running.
+> [!NOTE]
+> `make run` starts PostgreSQL automatically if it is not already running.
 
 ### Run project checks
 
@@ -83,10 +85,10 @@ make quality-check
 This runs:
 
 - Django system checks
-- Ruff formatting checks
-- Ruff linting
-- mypy type checking
-- pytest tests
+- Formatting checks
+- Linting checks
+- Type checks
+- Automated test suites
 
 To automatically format code and apply safe lint fixes:
 
