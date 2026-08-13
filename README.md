@@ -65,6 +65,12 @@ Start the local Django development server:
 make run
 ```
 
+Or run the application entirely in Docker:
+
+```shell
+make up
+```
+
 The application will be available at:
 
 - API: http://127.0.0.1:8000/api/

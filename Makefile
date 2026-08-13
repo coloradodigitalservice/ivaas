@@ -1,4 +1,5 @@
 API_DIR := income-verification-api
+DOCKER_API_NAME := income-verification-api
 LOCAL_ENV := \
 	--env-file .envs/.local/.django \
 	--env-file .envs/.local/.postgres
@@ -49,9 +50,27 @@ db-reset: ## recreate the local docker PostgreSQL database
 	$(COMPOSE) down --volumes
 	$(COMPOSE) up --wait postgres
 
+DOCKER := docker
+COMPOSE := $(DOCKER) compose
+
+.PHONY: up
+up: ## start the local containerized application
+	$(COMPOSE) up --build --detach --wait
+
+.PHONY: down
+down: ## stop the local containerized application
+	$(COMPOSE) down
+
+.PHONY: docker-migrate
+docker-migrate: ## apply migrations in the running api container
+	$(COMPOSE) run --rm $(DOCKER_API_NAME) python manage.py migrate
+
 .PHONY: run
-run: db-up ## run the Django development server using the local environment variables
-	$(MANAGE) runserver
+run: ## run the local development server
+	$(LOCAL_RUN) uvicorn config.asgi:application \
+		--reload \
+		--host 0.0.0.0 \
+		--port 8000
 
 .PHONY: migrate
 migrate: db-up ## apply database migrations

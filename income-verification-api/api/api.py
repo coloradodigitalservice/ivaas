@@ -4,6 +4,6 @@ from ninja import NinjaAPI
 api = NinjaAPI()
 
 
-@api.get("/hello")
-async def hello(request: HttpRequest) -> dict[str, str]:
-    return {"message": "Hello, world!"}
+@api.get("/health")
+def health(request: HttpRequest) -> dict[str, str]:
+    return {"status": "ok"}
