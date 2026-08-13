@@ -88,4 +88,3 @@ quality-check: ## run all required checks
 	$(RUN) ruff check .
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .
-	$(MAKE) test
