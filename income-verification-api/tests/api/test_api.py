@@ -1,8 +1,8 @@
 from django.test import Client
 
 
-def test_hello_endpoint(client: Client) -> None:
-    response = client.get("/api/hello")
+def test_health_endpoint(client: Client) -> None:
+    response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert response.json() == {"message": "Hello, world!"}
+    assert response.json() == {"status": "ok"}
