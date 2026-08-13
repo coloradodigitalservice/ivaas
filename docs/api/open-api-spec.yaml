@@ -171,7 +171,7 @@ components:
       schema:
         type: string
         maxLength: 128
-        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]{1,91})?$'
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
 
   headers:
     CorrelationId:
@@ -181,7 +181,7 @@ components:
       schema:
         type: string
         maxLength: 128
-        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]{1,91})?$'
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
 
   responses:
     Error:
@@ -228,7 +228,7 @@ components:
           type: string
           minLength: 1
           maxLength: 128
-          pattern: '^[\x20-\x7E]{1,128}$'
+          pattern: '^[\x20-\x7E]+$'
           description: |
             The program's own identifier for the claimant's benefits application this verification supports.
             Recorded for audit purposes and not echoed on the response.
@@ -241,13 +241,13 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^[^\x00-\x1F\x7F]{1,256}$'
+          pattern: '^[^\x00-\x1F\x7F]+$'
           description: Claimant's legal first name.
         lastName:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^[^\x00-\x1F\x7F]{1,256}$'
+          pattern: '^[^\x00-\x1F\x7F]+$'
           description: Claimant's legal last name.
         ssn:
           type: string
