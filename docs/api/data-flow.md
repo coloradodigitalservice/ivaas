@@ -86,7 +86,7 @@ sequenceDiagram
     api->>datasource1: Log audit metadata
     note over datasource1: (metadata is shared with CDLE)
     destroy datasource1
-    datasource1-->api: finalize adapter invocation
+    api-->datasource1: finalize adapter invocation
     end
 
     and
@@ -105,7 +105,7 @@ sequenceDiagram
     api->>api: Validate datasource results
     api->>api: Normalize datasource results for response
     destroy datasource2
-    datasource2-->api: finalize adapter invocation
+    api-->datasource2: finalize adapter invocation
     end
     end
 
