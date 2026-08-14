@@ -34,7 +34,9 @@ services:
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')",
         ]
-      interval: 5s
+      start_period: 10s
+      start_interval: 1s
+      interval: 1m
       timeout: 5s
       retries: 5
 volumes:
