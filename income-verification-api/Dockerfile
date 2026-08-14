@@ -32,9 +32,10 @@ ENV PATH="/api/.venv/bin:$PATH"
 
 WORKDIR /api
 
-RUN addgroup --system django \
+RUN addgroup --system --gid 1001 django \
     && adduser \
         --system \
+        --uid 1001 \
         --ingroup django \
         --home /home/django \
         django
