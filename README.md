@@ -59,7 +59,7 @@ make migrate
 
 ### Run the application
 
-Start the local Django development server:
+Start the local development server:
 
 ```shell
 make run
