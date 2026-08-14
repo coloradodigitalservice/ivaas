@@ -60,10 +60,16 @@ make migrate
 
 ### Run the application
 
-Start the local Django development server:
+Start the local development server:
 
 ```shell
 make run
+```
+
+Or run the application entirely in Docker:
+
+```shell
+make up
 ```
 
 The application will be available at:
