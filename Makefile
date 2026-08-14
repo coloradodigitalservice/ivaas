@@ -46,9 +46,6 @@ db-reset: ## recreate the local docker PostgreSQL database
 	$(COMPOSE) down --volumes
 	$(COMPOSE) up --wait postgres
 
-DOCKER := docker
-COMPOSE := $(DOCKER) compose
-
 .PHONY: up
 up: ## start the local containerized application
 	$(COMPOSE) up --build --detach --wait
@@ -62,7 +59,7 @@ docker-migrate: up ## apply migrations in the running api container
 	$(COMPOSE) exec $(COMPOSE_API_NAME) python manage.py migrate
 
 .PHONY: run
-run: ## run the local development server
+run: db-up ## run the local development server
 	$(LOCAL_RUN) uvicorn config.asgi:application \
 		--reload \
 		--host 127.0.0.1 \

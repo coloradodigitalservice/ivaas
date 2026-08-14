@@ -1,8 +1,10 @@
-ARG PYTHON_VERSION=3.14.6
-ARG UV_VERSION=0.11.29
+# python:3.14.6-slim-trixie
+ARG PYTHON_IMAGE=python@sha256:7bec7ddcddeff7975d6ba9b4be7dd6f6b2f55e7491539145e2978f7f97ce9144
+# ghcr.io/astral-sh/uv:0.11.29
+ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:eb2843a1e56fd9e30c7276ce1a52cba86e64c7b385f5e3279a0e08e02dd058fc
 
-FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
-FROM python:${PYTHON_VERSION}-slim-trixie AS builder
+FROM ${UV_IMAGE} AS uv
+FROM ${PYTHON_IMAGE} AS builder
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
@@ -22,7 +24,7 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 
-FROM python:${PYTHON_VERSION}-slim-trixie AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
 
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
