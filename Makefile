@@ -58,8 +58,8 @@ down: ## stop the local containerized application
 	$(COMPOSE) down
 
 .PHONY: docker-migrate
-docker-migrate: ## apply migrations in the running api container
-	$(COMPOSE) run --rm $(DOCKER_API_NAME) python manage.py migrate
+docker-migrate: up ## apply migrations in the running api container
+	$(COMPOSE) exec $(COMPOSE_API_NAME) python manage.py migrate
 
 .PHONY: run
 run: ## run the local development server
