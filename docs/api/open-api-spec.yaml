@@ -22,7 +22,8 @@ servers:
     description: 'TBD: Production'
 
 security:
-  - agencyAssertion: []
+  - agencyAssertionTest: []
+  - agencyAssertionProd: []
 
 paths:
   /v1/income-verification:
@@ -116,10 +117,13 @@ paths:
 components:
 
   securitySchemes:
-    agencyAssertion:
+    agencyAssertionTest:
       type: oauth2
       description: |
         TBD: Auth ADR, likely Cognito client credentials flow.
+
+        **Test environment.** Tokens are issued by the test Cognito user pool and are accepted only
+        by the test environment API.
 
         Machine-to-machine access using an Amazon Cognito access token, obtained through the
         `client_credentials` grant. An agency is issued an app client id and secret at onboarding,
@@ -147,8 +151,22 @@ components:
         `client_id` is the agency identity for this API. It selects the data sources configured for
         that agency, which in turn determines which request fields that agency must send.
       flows:
-        clientCredentials: # TBD: We can document the token endpoint here too
-          tokenUrl: 'https://TBD.auth.us-west-2.amazoncognito.com/oauth2/token'
+        clientCredentials:
+          tokenUrl: 'https://TBD-test.auth.us-west-2.amazoncognito.com/oauth2/token'
+          scopes: {}
+
+    agencyAssertionProd:
+      type: oauth2
+      description: |
+        **Production environment.** Tokens are issued by the production Cognito user pool and are
+        accepted only by the production API.
+
+        Claims, signature verification, and identity semantics are identical to
+        `agencyAssertionTest`
+        Token endpoint, `iss`, and the issuing user pool differ.
+      flows:
+        clientCredentials:
+          tokenUrl: 'https://TBD-prod.auth.us-west-2.amazoncognito.com/oauth2/token'
           scopes: {}
 
   parameters:
