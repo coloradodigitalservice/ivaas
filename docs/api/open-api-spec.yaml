@@ -200,7 +200,7 @@ components:
         addressed to a different audience, replayed, etc.
 
         The response body does not distinguish between these cases.
-        The specific reason is logged server-side against the Correlation-Id to with support.
+        The specific reason is logged server-side against the Correlation-Id to assist with support.
       headers:
         Correlation-Id:
           $ref: '#/components/headers/CorrelationId'
