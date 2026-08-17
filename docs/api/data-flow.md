@@ -65,8 +65,8 @@ sequenceDiagram
     user->>programApp: Trigger income verification
 
     opt needs fresh access token
-    programApp->>cognito: access token request
-    cognito->>programApp: access token response
+    programApp->>cognito: access token request 🔒
+    cognito->>programApp: access token response 🔒
     programApp->>programApp: cache access token
     end
 
@@ -79,8 +79,8 @@ sequenceDiagram
     opt if the program requests data from CDLE FAMLI
     create participant datasource1 as IV Snowflake CDLE Data Share
     api-->datasource1: invoke adapter
-    api->>datasource1: SQL REST API Query
-    datasource1->>api: Query result(s)
+    api->>datasource1: SQL REST API Query 🔒
+    datasource1->>api: Query result(s) 🔒
     api->>api: Validate datasource results
     api->>api: Normalize datasource results for response
     api->>datasource1: Log audit metadata
