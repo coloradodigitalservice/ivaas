@@ -94,12 +94,17 @@ This runs:
 - Formatting checks
 - Linting checks
 - Type checks
-- Automated test suites
 
 To automatically format code and apply safe lint fixes:
 
 ```shell
 make quality-fix
+```
+
+To run the automated test suite, use the `make test` command:
+
+```shell
+make test
 ```
 
 For a complete list of available `make` commands, run:

@@ -44,6 +44,9 @@ jobs:
         # Running this separately because the pre-commit is running this on push only
       - name: Local quality checks pass
         run: make quality-check
+
+      - name: Run tests
+        run: make test
   docker:
     name: Docker image builds and serves
     runs-on: ubuntu-latest
