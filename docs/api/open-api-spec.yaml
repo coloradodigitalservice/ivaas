@@ -33,7 +33,7 @@ paths:
 
         This is modelled as a creation (POST) rather than a retrieval (GET) deliberately. The operation
         is not safe or cacheable: it produces an attempt record for audit, it may
-        be metered, and it may contact third-party sources. Repeated a requests are not guaranteed free of side effects.
+        be metered, and it may contact third-party sources. Repeated requests are not guaranteed free of side effects.
 
         A `200` response carries a completed `VerificationResponse`.
       parameters:
