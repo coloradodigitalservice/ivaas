@@ -382,10 +382,10 @@ components:
       properties:
         sourceId:
           type: string
-          description: 'TBD: Enumerated identifier for the data source. e.g. CDLE, EQUIFAX_ICIE3'
+          enum: [CDLE_1_0, EQUIFAX_ICIE_3_0_0]
         status:
           type: string
-          enum: [ok, no_data, unavailable, error]
+          enum: [OK, NO_DATA, UNAVAILABLE, ERROR]
         retrievedAt:
           type: string
           format: date-time
