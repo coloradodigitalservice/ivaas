@@ -49,12 +49,13 @@ paths:
               minimum:
                 summary: Minimum set of required fields
                 value:
-                  applicationId: "APP-2026-004471"
+                  applicationId: "APP-2026-004471" # TBD: could we just leverage the verificationId, even if requires some development on the program side to map it to an internal ID?
                   firstName: "John"
                   lastName: "Doe"
                   last4Ssn: "1234"
                   lookbackPeriod:
                     startDate: "2026-01-01"
+                    endDate: "2026-06-30"
               strict:
                 summary: Complete set of fields for data sources with more strict requirements
                 value:
@@ -108,10 +109,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/TestConnectionResponse'
         '401':
+          description: |
+            For example purposes.
+            If infrastructure before the web application intercepts and rejects the request, the response shape will be
+            that of the component that generates the response, rather than the application's Error response format
           $ref: '#/components/responses/Unauthorized'
         '500':
-          $ref: '#/components/responses/Error'
-        '503':
+          description: |
+            For example purposes.
+            If infrastructure before the web application intercepts and rejects the request, the response shape will be
+            that of the component that generates the response, rather than the application's Error response format
           $ref: '#/components/responses/Error'
 
 components:
@@ -294,14 +301,14 @@ components:
 
         A source that cannot reach back to `startDate` returns an error rather than a shortened
         window, so a caller never has to infer that it received less than it asked for.
-      required: [startDate]
+      required: [startDate, endDate]
       properties:
         startDate:
           description: First day of the window, inclusive.
           $ref: '#/components/schemas/Date'
         endDate:
           description: |
-            Last day of the window, inclusive. Optional; defaults to the current date when omitted.
+            Last day of the window, inclusive.
 
             Must not precede `startDate`.
           $ref: '#/components/schemas/Date'
@@ -366,8 +373,11 @@ components:
       description: |
         Returned income data from a specific data source.
 
-        TBD: include semi-raw data from the source, with PII stripped out, for programs that need
-        more granular detail than the normalized payload conveys.
+        Tradeoffs for programs for using raw vs normalized response data
+        * Prioritizing raw data over normalized means there are less questions to answer
+        * Raw data allows greater flexibility for the program
+        * Program would have to take on more development to digest raw data from multiple sources, and would need to keep up with datasource API schema/version changes
+        * TBD Idea: Normalized section maybe only served if program requests it, with possible configuration to decide how to normalize it
       required: [sourceId, status, retrievedAt]
       properties:
         sourceId:
@@ -380,10 +390,18 @@ components:
           type: string
           format: date-time
           description: When this service obtained the data. An instant.
+        rawIncome:
+          description: |
+            The raw income this source reported, with PII removed and without any normalization.
+
+            Present only when `status` is `ok`.
+          $ref: '#/components/schemas/RawIncome'
         normalizedIncome:
           description: |
             The income this source reported, restated on common time bases so that figures from
-            different sources can be compared. Present only when `status` is `ok`.
+            different sources can be compared.
+
+            Present only when `status` is `ok`.
           $ref: '#/components/schemas/NormalizedIncome'
 
     NormalizedIncome:
@@ -395,8 +413,9 @@ components:
         period and granularity they keep, and this restates that into calendar months.
 
         `months` carries a total and an employer breakdown for each month, so a program that budgets
-        on monthly income reads the total and ignores the rest. Another restatement can be added
-        alongside it later without disturbing existing consumers.
+        on monthly income reads the total and ignores the rest.
+
+        Another normalization can be added alongside it later without impacting existing programs.
       required: [months]
       properties:
         months:
@@ -449,6 +468,14 @@ components:
         amount:
           description: Income from this employer in this month.
           $ref: '#/components/schemas/Dollar'
+
+    RawIncome:
+      type: object
+      description: |
+        TBD replace with classes representing every adapter's PII-removed raw response
+
+        Semi-raw data from the source, with PII stripped out, for programs that need
+        more granular detail than the normalized payload conveys, or that they can reliable make assumptions about.
 
     # Shared
     Dollar:
