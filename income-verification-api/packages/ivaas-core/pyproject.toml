@@ -1,0 +1,15 @@
+[project]
+name = "ivaas-core"
+version = "0.1.0"
+description = "Contract between the ivaas platform and income datasource adapters: DTOs, exceptions, ABCs, etc."
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+test = [
+    "pytest>=9.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"

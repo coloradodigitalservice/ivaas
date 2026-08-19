@@ -6,6 +6,12 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "income-verification-api",
+    "ivaas-core",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.8.0"
@@ -285,6 +291,7 @@ dependencies = [
     { name = "django" },
     { name = "django-environ" },
     { name = "django-ninja" },
+    { name = "ivaas-core" },
     { name = "psycopg", extra = ["binary"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -315,6 +322,7 @@ requires-dist = [
     { name = "django", specifier = "==6.0.8" },
     { name = "django-environ", specifier = ">=0.14.0" },
     { name = "django-ninja", specifier = ">=1.6.2" },
+    { name = "ivaas-core", editable = "packages/ivaas-core" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.4" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.52.2" },
 ]
@@ -348,6 +356,21 @@ sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
 ]
+
+[[package]]
+name = "ivaas-core"
+version = "0.1.0"
+source = { editable = "packages/ivaas-core" }
+
+[package.dev-dependencies]
+test = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+test = [{ name = "pytest", specifier = ">=9.1.1" }]
 
 [[package]]
 name = "librt"

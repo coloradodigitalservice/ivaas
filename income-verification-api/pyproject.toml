@@ -8,9 +8,16 @@ dependencies = [
     "django==6.0.8",
     "django-environ>=0.14.0",
     "django-ninja>=1.6.2",
+    "ivaas-core",
     "psycopg[binary]==3.3.4",
     "uvicorn[standard]==0.52.2",
 ]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+ivaas-core = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -58,6 +65,7 @@ indent-style = "space"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["INP001", "S101"]
+"packages/*/tests/**" = ["INP001", "S101"]
 "**/migrations/*.py" = ["RUF012", "E501"]
 
 [tool.mypy]
@@ -78,7 +86,7 @@ addopts = [
     "--cov-report=term-missing:skip-covered",
     "--cov-fail-under=80",
 ]
-testpaths = ["tests"]
+testpaths = ["tests", "packages"]
 python_files = ["test_*.py"]
 
 [tool.coverage.run]
