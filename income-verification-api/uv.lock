@@ -91,7 +91,7 @@ dependencies = [
     { name = "ivaas-core" },
 ]
 wheels = [
-    { filename = "cdle_adapter-0.1.0-py3-none-any.whl", hash = "sha256:2aa7639f4b26fcb653ab10d2788e7f606e75fb4c62ae546c468c10caa81f1e20" },
+    { filename = "cdle_adapter-0.1.0-py3-none-any.whl", hash = "sha256:5fae6265623ab6f3b68a2f580a7f4bdc7c4d5c5770a78045a87b6a4464d52393" },
 ]
 
 [package.metadata]
