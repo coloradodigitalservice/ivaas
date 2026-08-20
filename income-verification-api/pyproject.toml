@@ -21,7 +21,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 ivaas-core = { workspace = true }
-cdle-adapter = { path = "vendor/cdle_adapter-0.1.0-py3-none-any.whl" }
+cdle-adapter = { path = "custom-adapters/wheels/cdle_adapter-0.1.0-py3-none-any.whl" }
 
 [dependency-groups]
 dev = [
