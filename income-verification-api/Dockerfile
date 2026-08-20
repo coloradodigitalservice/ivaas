@@ -20,9 +20,13 @@ WORKDIR /api
 COPY --from=uv /uv /bin/
 
 COPY pyproject.toml uv.lock .python-version ./
+COPY packages/ packages/
+COPY custom-adapters/ custom-adapters/
 
+# `--no-editable` copies the ivaas-core workspace member into the venv, so the
+# runtime stage only needs the venv, instead of the broader source tree.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-install-project --no-dev
+    uv sync --locked --no-install-project --no-dev --no-editable
 
 FROM ${PYTHON_IMAGE} AS runtime
 
@@ -49,6 +53,7 @@ COPY --from=builder \
 
 COPY --chown=django:django api /api/api
 COPY --chown=django:django config /api/config
+COPY --chown=django:django income_sources /api/income_sources
 COPY --chown=django:django manage.py /api/manage.py
 
 USER django
