@@ -86,7 +86,7 @@ wheels = [
 [[package]]
 name = "cdle-adapter"
 version = "0.1.0"
-source = { path = "vendor/cdle_adapter-0.1.0-py3-none-any.whl" }
+source = { path = "custom-adapters/wheels/cdle_adapter-0.1.0-py3-none-any.whl" }
 dependencies = [
     { name = "ivaas-core" },
 ]
@@ -334,7 +334,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cdle-adapter", path = "vendor/cdle_adapter-0.1.0-py3-none-any.whl" },
+    { name = "cdle-adapter", path = "custom-adapters/wheels/cdle_adapter-0.1.0-py3-none-any.whl" },
     { name = "django", specifier = "==6.0.8" },
     { name = "django-environ", specifier = ">=0.14.0" },
     { name = "django-ninja", specifier = ">=1.6.2" },

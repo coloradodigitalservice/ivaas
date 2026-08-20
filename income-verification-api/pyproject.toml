@@ -12,7 +12,7 @@ dependencies = [
     "psycopg[binary]==3.3.4",
     "uvicorn[standard]==0.52.2",
 
-    # Custom adapters
+    # custom adapters
     "cdle-adapter",
 ]
 
@@ -21,6 +21,8 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 ivaas-core = { workspace = true }
+
+# custom adapters
 cdle-adapter = { path = "custom-adapters/wheels/cdle_adapter-0.1.0-py3-none-any.whl" }
 
 [dependency-groups]
