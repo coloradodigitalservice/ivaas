@@ -77,7 +77,7 @@ adapters-sync: adapters-fetch ## fetch the pinned CDLE wheel and verify it again
 
 .PHONY: adapters-upgrade
 adapters-upgrade: adapters-fetch ## after editing the pinned version in pyproject.toml: fetch and RELOCK (review the hash diff)
-	$(UV) lock
+	$(UV) lock --upgrade-package cdle-adapter
 	$(SYNC)
 
 .PHONY: adapters-bootstrap
@@ -96,7 +96,7 @@ adapters-bootstrap: ## BOOTSTRAP ONLY (no IVC release exists yet): copy the sibl
 	mkdir -p $(WHEELS_DIR); \
 	rm -f $(WHEELS_DIR)/cdle_adapter-*.whl; \
 	cp $(ADAPTERS_ABS)/dist/cdle_adapter-*.whl $(WHEELS_DIR)/
-	$(UV) lock
+	$(UV) lock --upgrade-package cdle-adapter
 	$(SYNC)
 
 .PHONY: dev-adapter
