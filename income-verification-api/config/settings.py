@@ -28,6 +28,7 @@ DEBUG: bool = env.bool("DJANGO_DEBUG")
 
 INSTALLED_APPS = [
     "api",
+    "income_source_adapters",
 ]
 
 MIDDLEWARE = [
@@ -79,3 +80,21 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+# Income datasources
+#
+# State-specific configuration
+# The class paths and config keys are opaque strings to the application; the
+# income_source_adapters registry instantiates enabled entries at startup and fails
+# fast if an enabled source is missing configuration.
+
+INCOME_SOURCE_ADAPTERS = {
+    "cdle": {
+        "class": "cdle_adapter.CdleAdapter",
+        "enabled": env.bool("CDLE_ENABLED", default=False),
+        "config": {
+            "account_url": env("CDLE_SNOWFLAKE_URL", default=None),
+            "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=10),
+        },
+    },
+}

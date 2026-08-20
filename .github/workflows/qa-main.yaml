@@ -33,28 +33,57 @@ jobs:
           enable-cache: true
           cache-python: true
 
-      - name: Install dependencies
-        run: make sync-ci
+      # Public/fork lane: runs WITHOUT the private CDLE adapter wheel, so it is
+      # safe for fork PRs (no secrets involved). The wheel is omitted from the
+      # sync and every uv run is --no-sync so nothing tries to re-install it.
+      - name: Install dependencies (public lane — private adapter omitted)
+        run: make sync-ci-public
 
       - name: Run pre-commit
         env:
           SKIP: no-commit-to-branch
-        run: make pre-commit
+        run: make pre-commit UV_RUN_FLAGS=--no-sync
 
         # Running this separately because the pre-commit is running this on push only
       - name: Local quality checks pass
-        run: make quality-check
+        run: make quality-check UV_RUN_FLAGS=--no-sync
 
       - name: Run tests
-        run: make test
+        run: make test UV_RUN_FLAGS=--no-sync
   docker:
+    # Trusted lane: needs the private CDLE wheel from the IVC release, so it
+    # requires the IVC_RELEASES_TOKEN secret (read-only contents on the IVC
+    # repo). Runs only on push (never on fork PRs — GitHub withholds secrets
+    # there, and PR-controlled code must never see this credential).
     name: Docker image builds and serves
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+      # TODO: once IVC_RELEASES_TOKEN is provisioned, make absence a hard
+      # failure instead of a skip — a green "docker" check should mean the
+      # image actually built.
+      - name: Check for IVC release token
+        id: token
+        env:
+          GH_TOKEN: ${{ secrets.IVC_RELEASES_TOKEN }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "IVC_RELEASES_TOKEN not configured — skipping trusted docker lane"
+          fi
+      - name: Download pinned CDLE adapter wheel
+        if: steps.token.outputs.available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.IVC_RELEASES_TOKEN }}
+        run: make adapters-fetch
       - run: make up
+        if: steps.token.outputs.available == 'true'
       - run: curl --fail --silent --show-error http://127.0.0.1:8000/api/health
+        if: steps.token.outputs.available == 'true'
       - run: make down
-        if: always()
+        if: always() && steps.token.outputs.available == 'true'

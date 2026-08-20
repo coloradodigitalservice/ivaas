@@ -6,8 +6,8 @@ from typing import ClassVar
 from ivaas_core.models import SourceIncome, VerificationRequest
 
 
-class IncomeSource(ABC):
-    """An income datasource, as the ivaas platform sees it.
+class IncomeSourceAdapter(ABC):
+    """An adapter to an income datasource for the IVaaS platform to invoke.
 
     # TODO: Refine/remove this statement once settled
     Concrete adapters (one package per datasource, living outside this repo)
@@ -18,11 +18,7 @@ class IncomeSource(ABC):
     """
 
     source_id: ClassVar[str]
-    """Provenance identifier for this source, versioned with the adapter.
-    Reported on every per-source API result.
-    Presence is validated by the application's adapter registry at startup.
-    Python cannot cheaply enforce ClassVar assignment at subclass
-    definition time."""
+    """Provenance identifier for this source."""
 
     @abstractmethod
     async def verify(self, request: VerificationRequest) -> SourceIncome:
