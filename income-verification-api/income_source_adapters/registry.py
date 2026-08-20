@@ -1,4 +1,4 @@
-"""Builds and holds the process-wide registry of configured income sources.
+"""Builds and holds the process-wide registry of configured income source adapters.
 
 Settings declare sources under ``INCOME_SOURCE_ADAPTERS``:
 
@@ -38,7 +38,7 @@ def build_registry(
                 f"INCOME_SOURCE_ADAPTERS[{name!r}] 'enabled' must be a bool, got {enabled!r}"
             )
         if not enabled:
-            logger.debug("income source %r is disabled; skipping", name)
+            logger.debug("income source adapter %r is disabled; skipping", name)
             continue
 
         dotted_path = declaration.get("class")
@@ -57,7 +57,7 @@ def build_registry(
         missing = sorted(key for key, value in config.items() if value is None)
         if missing:
             raise ImproperlyConfigured(
-                f"income source {name!r} is enabled but missing configuration for: "
+                f"income source adapter {name!r} is enabled but missing configuration for: "
                 f"{', '.join(missing)} (check the corresponding environment variables)"
             )
 
@@ -65,36 +65,36 @@ def build_registry(
             source_class = import_string(dotted_path)
         except ImportError as error:
             raise ImproperlyConfigured(
-                f"income source {name!r} class {dotted_path!r} cannot be imported"
+                f"income source adapter {name!r} class {dotted_path!r} cannot be imported"
             ) from error
 
         try:
             instance = source_class(**config)
         except (TypeError, ValueError) as error:
             raise ImproperlyConfigured(
-                f"income source {name!r} rejected its configuration: {error}"
+                f"income source adapter {name!r} rejected its configuration: {error}"
             ) from error
 
         if not isinstance(instance, IncomeSourceAdapter):
             raise ImproperlyConfigured(
-                f"income source {name!r} class {dotted_path!r} does not implement "
+                f"income source adapter {name!r} class {dotted_path!r} does not implement "
                 "IncomeSourceAdapter"
             )
         source_id = getattr(type(instance), "source_id", None)
         if not isinstance(source_id, str) or not source_id:
             raise ImproperlyConfigured(
-                f"income source {name!r} class {dotted_path!r} does not declare a "
+                f"income source adapter {name!r} class {dotted_path!r} does not declare a "
                 "non-empty source_id string"
             )
         if source_id in seen_source_ids:
             raise ImproperlyConfigured(
-                f"income sources {seen_source_ids[source_id]!r} and {name!r} both declare "
+                f"income source adapters {seen_source_ids[source_id]!r} and {name!r} both declare "
                 f"source_id {source_id!r}; source ids must be unique"
             )
         seen_source_ids[source_id] = name
 
         registry[name] = instance
-        logger.info("income source %r ready (source_id=%s)", name, source_id)
+        logger.info("income source adapter %r ready (source_id=%s)", name, source_id)
     return registry
 
 
@@ -111,7 +111,7 @@ def get_adapter(name: str) -> IncomeSourceAdapter:
         return _registry[name]
     except KeyError:
         raise KeyError(
-            f"no enabled income source named {name!r}; enabled sources: "
+            f"no enabled income source adapter named {name!r}; enabled adapters: "
             f"{sorted(_registry) or 'none'}"
         ) from None
 

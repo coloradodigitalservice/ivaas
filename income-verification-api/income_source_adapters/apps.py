@@ -5,7 +5,7 @@ class IncomeSourceAdaptersConfig(AppConfig):
     name = "income_source_adapters"
 
     def ready(self) -> None:
-        """Assemble the income-source registry from settings.
+        """Assemble the adapter registry from settings.
 
         Runs in every process that loads settings (runserver, migrate,
         collectstatic, shells), so instantiation must stay cheap and

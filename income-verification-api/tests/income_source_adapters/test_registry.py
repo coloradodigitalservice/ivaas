@@ -102,7 +102,7 @@ class TestProcessRegistry:
             assert sorted(registry.enabled_adapters()) == ["stub"]
 
     def test_unknown_name_raises_helpfully(self) -> None:
-        with pytest.raises(KeyError, match="no enabled income source"):
+        with pytest.raises(KeyError, match="no enabled income source adapter"):
             registry.get_adapter("nope")
 
     def test_runtime_smoke_settings_to_contract_exception(
