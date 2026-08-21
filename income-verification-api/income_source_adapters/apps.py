@@ -13,6 +13,10 @@ class IncomeSourceAdaptersConfig(AppConfig):
         authenticating or touching the network. Idempotent: re-entry
         rebuilds the registry from settings rather than appending.
         """
-        from income_source_adapters import registry
+        from django.core import checks
 
+        from income_source_adapters.checks import unreferenced_adapter_wheels
+        from income_source_adapters.registry import registry
+
+        checks.register(unreferenced_adapter_wheels)
         registry.refresh_from_settings()

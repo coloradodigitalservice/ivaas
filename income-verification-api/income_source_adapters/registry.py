@@ -1,16 +1,14 @@
-"""Builds and holds the process-wide registry of configured income source adapters.
+"""The application's registry of configured income source adapters.
 
-Settings declare sources under ``INCOME_SOURCE_ADAPTERS``:
-
-Disabled entries are skipped entirely, so commands in environments that never
-enable a source (CI, migrate, collectstatic) load settings without that
-source's environment variables. Enabled entries fail fast and loudly at
-startup when misconfigured.
+Settings declare adapters under `INCOME_SOURCE_ADAPTERS`; the module-level
+`registry` instance is the process-wide singleton, rebuilt at startup.
 """
 
 import logging
 from collections.abc import Mapping
+from importlib import metadata
 from types import MappingProxyType
+from typing import Self
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -19,103 +17,144 @@ from ivaas_core import IncomeSourceAdapter
 
 logger = logging.getLogger(__name__)
 
-_registry: dict[str, IncomeSourceAdapter] = {}
+# The settings name adapters are declared under
+INCOME_SOURCE_ADAPTERS = "INCOME_SOURCE_ADAPTERS"
 
 
-def build_registry(
-    declarations: Mapping[str, Mapping[str, object]],
-) -> dict[str, IncomeSourceAdapter]:
-    """Instantiate every enabled declaration, validating as we go."""
-    registry: dict[str, IncomeSourceAdapter] = {}
-    seen_source_ids: dict[str, str] = {}
-    for name, declaration in declarations.items():
-        if not isinstance(declaration, Mapping):
-            raise ImproperlyConfigured(f"INCOME_SOURCE_ADAPTERS[{name!r}] must be a mapping")
+class AdapterRegistry:
+    """The enabled adapters, keyed by their settings declaration name."""
 
-        enabled = declaration.get("enabled", False)
-        if not isinstance(enabled, bool):
-            raise ImproperlyConfigured(
-                f"INCOME_SOURCE_ADAPTERS[{name!r}] 'enabled' must be a bool, got {enabled!r}"
-            )
-        if not enabled:
-            logger.debug("income source adapter %r is disabled; skipping", name)
-            continue
+    def __init__(self) -> None:
+        self._adapters: dict[str, IncomeSourceAdapter] = {}
 
-        dotted_path = declaration.get("class")
-        if not isinstance(dotted_path, str) or not dotted_path:
-            raise ImproperlyConfigured(
-                f"INCOME_SOURCE_ADAPTERS[{name!r}] must declare a 'class' string"
-            )
+    @classmethod
+    def from_settings(cls) -> Self:
+        """Instantiate and validate every adapter enabled in `INCOME_SOURCE_ADAPTERS`."""
+        adapters_settings = getattr(settings, INCOME_SOURCE_ADAPTERS, {})
+        if not isinstance(adapters_settings, Mapping):
+            raise ImproperlyConfigured(f"{INCOME_SOURCE_ADAPTERS} must be a mapping")
 
-        config = declaration.get("config", None)
-        if config is None:
-            config = {}
-        if not isinstance(config, Mapping):
-            raise ImproperlyConfigured(
-                f"INCOME_SOURCE_ADAPTERS[{name!r}] 'config' must be a mapping"
-            )
-        missing = sorted(key for key, value in config.items() if value is None)
-        if missing:
-            raise ImproperlyConfigured(
-                f"income source adapter {name!r} is enabled but missing configuration for: "
-                f"{', '.join(missing)} (check the corresponding environment variables)"
-            )
+        registry_from_settings = cls()
+        seen_source_ids: dict[str, str] = {}
+        for name, declaration in adapters_settings.items():
+            if not isinstance(declaration, Mapping):
+                raise ImproperlyConfigured(f"{name!r} adapter settings must be a mapping")
 
+            enabled = declaration.get("enabled", False)
+            if not isinstance(enabled, bool):
+                raise ImproperlyConfigured(
+                    f"{name!r} adapter settings property 'enabled' must be a bool. "
+                    f"Value was {enabled!r}"
+                )
+            if not enabled:
+                logger.debug("income source adapter %r is disabled; skipping", name)
+                continue
+
+            dotted_path = declaration.get("class")
+            if not isinstance(dotted_path, str) or not dotted_path:
+                raise ImproperlyConfigured(
+                    f"{name!r} adapter settings must declare a 'class' string"
+                )
+
+            # config semantics: omitted or None means no constructor kwargs; a
+            # Mapping is passed as kwargs; anything else is a declaration error.
+            config = declaration.get("config", None)
+            if config is None:
+                config = {}
+            if not isinstance(config, Mapping):
+                raise ImproperlyConfigured(f"{name!r} adapter settings 'config' must be a mapping")
+            missing = sorted(key for key, value in config.items() if value is None)
+            if missing:
+                raise ImproperlyConfigured(
+                    f"income source adapter {name!r} is enabled but missing configuration for: "
+                    f"{', '.join(missing)} (check the corresponding environment variables)"
+                )
+
+            try:
+                source_class = import_string(dotted_path)
+            except ImportError as error:
+                raise ImproperlyConfigured(
+                    f"income source adapter {name!r} class {dotted_path!r} cannot be imported"
+                ) from error
+
+            try:
+                instance = source_class(**config)
+            except (TypeError, ValueError) as error:
+                raise ImproperlyConfigured(
+                    f"income source adapter {name!r} rejected its configuration: {error}"
+                ) from error
+
+            if not isinstance(instance, IncomeSourceAdapter):
+                raise ImproperlyConfigured(
+                    f"income source adapter {name!r} class {dotted_path!r} does not implement "
+                    "IncomeSourceAdapter"
+                )
+
+            source_id = getattr(type(instance), "source_id", None)
+            if not isinstance(source_id, str) or not source_id:
+                raise ImproperlyConfigured(
+                    f"income source adapter {name!r} class {dotted_path!r} does not declare a "
+                    "non-empty source_id string"
+                )
+            if source_id in seen_source_ids:
+                raise ImproperlyConfigured(
+                    f"income source adapters {seen_source_ids[source_id]!r} and {name!r} both "
+                    f"declare source_id {source_id!r}; source ids must be unique"
+                )
+            seen_source_ids[source_id] = name
+
+            registry_from_settings._adapters[name] = instance
+        return registry_from_settings
+
+    def refresh_from_settings(self) -> None:
+        """Build or rebuild this registry from settings. Idempotent."""
+        rebuilt = type(self).from_settings()
+        self._adapters.clear()
+        self._adapters.update(rebuilt._adapters)
+        self.log_summary()
+
+    def get_adapter(self, name: str) -> IncomeSourceAdapter:
         try:
-            source_class = import_string(dotted_path)
-        except ImportError as error:
-            raise ImproperlyConfigured(
-                f"income source adapter {name!r} class {dotted_path!r} cannot be imported"
-            ) from error
+            return self._adapters[name]
+        except KeyError:
+            raise KeyError(
+                f"no enabled income source adapter named {name!r}; enabled adapters: "
+                f"{sorted(self._adapters) or 'none'}"
+            ) from None
 
+    @property
+    def adapters(self) -> Mapping[str, IncomeSourceAdapter]:
+        """Read-only view of the enabled adapters."""
+        return MappingProxyType(self._adapters)
+
+    def log_summary(self) -> None:
+        if not self._adapters:
+            logger.info("no income source adapters configured")
+            return
         try:
-            instance = source_class(**config)
-        except (TypeError, ValueError) as error:
-            raise ImproperlyConfigured(
-                f"income source adapter {name!r} rejected its configuration: {error}"
-            ) from error
-
-        if not isinstance(instance, IncomeSourceAdapter):
-            raise ImproperlyConfigured(
-                f"income source adapter {name!r} class {dotted_path!r} does not implement "
-                "IncomeSourceAdapter"
-            )
-        source_id = getattr(type(instance), "source_id", None)
-        if not isinstance(source_id, str) or not source_id:
-            raise ImproperlyConfigured(
-                f"income source adapter {name!r} class {dotted_path!r} does not declare a "
-                "non-empty source_id string"
-            )
-        if source_id in seen_source_ids:
-            raise ImproperlyConfigured(
-                f"income source adapters {seen_source_ids[source_id]!r} and {name!r} both declare "
-                f"source_id {source_id!r}; source ids must be unique"
-            )
-        seen_source_ids[source_id] = name
-
-        registry[name] = instance
-        logger.info("income source adapter %r ready (source_id=%s)", name, source_id)
-    return registry
+            package_map = metadata.packages_distributions()
+        except Exception:  # startup logging must never fail
+            package_map = {}
+        for adapter_settings_key, adapter in self._adapters.items():
+            log_adapter_summary(adapter_settings_key, adapter, package_map)
 
 
-def refresh_from_settings() -> None:
-    """Rebuild the process-wide registry from settings. Idempotent."""
-    declarations = getattr(settings, "INCOME_SOURCE_ADAPTERS", {})
-    rebuilt = build_registry(declarations)
-    _registry.clear()
-    _registry.update(rebuilt)
-
-
-def get_adapter(name: str) -> IncomeSourceAdapter:
+def log_adapter_summary(
+    settings_key: str, adapter: IncomeSourceAdapter, package_map: Mapping[str, list[str]]
+) -> None:
+    """Stateless per-adapter startup line; independent of any registry instance."""
+    module = type(adapter).__module__.partition(".")[0]
+    distributions = package_map.get(module, [])
     try:
-        return _registry[name]
-    except KeyError:
-        raise KeyError(
-            f"no enabled income source adapter named {name!r}; enabled adapters: "
-            f"{sorted(_registry) or 'none'}"
-        ) from None
+        adapter_wheel_version = metadata.version(distributions[0] if distributions else module)
+    except Exception:  # startup logging must never fail
+        adapter_wheel_version = "unknown"
+    logger.info(
+        "Income source adapter initialized: name=%r source_id=%r version=%r",
+        settings_key,
+        adapter.source_id,
+        adapter_wheel_version,
+    )
 
 
-def enabled_adapters() -> Mapping[str, IncomeSourceAdapter]:
-    """Read-only view of the registry."""
-    return MappingProxyType(_registry)
+registry = AdapterRegistry
