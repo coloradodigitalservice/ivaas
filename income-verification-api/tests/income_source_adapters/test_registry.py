@@ -68,7 +68,7 @@ class TestBuildRegistry:
 
     def test_non_mapping_declaration_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="must be a mapping"):
-            registry.build_registry({"stub": "cdle_adapter.CdleAdapter"})  # type: ignore[dict-item]
+            registry.build_registry({"stub": "example.Adapter"})  # type: ignore[dict-item]
 
     def test_non_bool_enabled_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="'enabled' must be a bool"):
