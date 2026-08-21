@@ -84,20 +84,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cdle-adapter"
-version = "0.1.0"
-source = { path = "custom-adapters/wheels/cdle_adapter-0.1.0-py3-none-any.whl" }
-dependencies = [
-    { name = "ivaas-core" },
-]
-wheels = [
-    { filename = "cdle_adapter-0.1.0-py3-none-any.whl", hash = "sha256:5fae6265623ab6f3b68a2f580a7f4bdc7c4d5c5770a78045a87b6a4464d52393" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ivaas-core" }]
-
-[[package]]
 name = "cfgv"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -302,7 +288,6 @@ name = "income-verification-api"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "cdle-adapter" },
     { name = "django" },
     { name = "django-environ" },
     { name = "django-ninja" },
@@ -334,7 +319,6 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cdle-adapter", path = "custom-adapters/wheels/cdle_adapter-0.1.0-py3-none-any.whl" },
     { name = "django", specifier = "==6.0.8" },
     { name = "django-environ", specifier = ">=0.14.0" },
     { name = "django-ninja", specifier = ">=1.6.2" },
