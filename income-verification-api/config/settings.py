@@ -81,6 +81,34 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+
+# Logging
+#
+# Django's default config only surfaces `django.*` loggers; application
+# loggers (e.g. income_source_adapters.registry) need a handler of their own.
+# Application output goes to stderr, per twelve-factor: the runtime
+# environment owns collection and routing. Configured per application
+# namespace (not the root logger) so Django's own records are not duplicated
+# through a second handler.
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console": {"format": "%(levelname)s: %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "console"},
+    },
+    "loggers": {
+        "income_source_adapters": {
+            "handlers": ["console"],
+            "level": env.str("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+    },
+}
+
 # Income datasources
 #
 # State-specific configuration
@@ -91,9 +119,9 @@ USE_TZ = True
 INCOME_SOURCE_ADAPTERS = {
     "cdle": {
         "class": "cdle_adapter.CdleAdapter",
-        "enabled": env.bool("CDLE_ENABLED", default=False),
+        "enabled": env.bool("CDLE_ADAPTER_ENABLED", default=False),
         "config": {
-            "account_url": env("CDLE_SNOWFLAKE_URL", default=None),
+            "account_url": env("CDLE_ACCOUNT_URL", default=None),
             "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=10),
         },
     },
