@@ -21,18 +21,24 @@ COPY --from=uv /uv /bin/
 
 COPY pyproject.toml uv.lock .python-version ./
 COPY packages/ packages/
-COPY custom-adapters/ custom-adapters/
 
 # `--no-editable` copies the ivaas-core workspace member into the venv, so the
 # runtime stage only needs the venv, instead of the broader source tree.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev --no-editable
 
+# Install adapters last, do not sync after this.
+COPY custom-adapters/ custom-adapters/
+RUN custom-adapters/install.sh
+
 FROM ${PYTHON_IMAGE} AS runtime
 
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
+
+# Prevent a uv sync after adapter install, in the event a runtime with uv were to be configured in the future
+ENV UV_NO_SYNC=1
 
 ENV PATH="/api/.venv/bin:$PATH"
 
