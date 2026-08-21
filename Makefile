@@ -2,7 +2,8 @@ API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
 LOCAL_ENV := \
 	--env-file .envs/.local/.django \
-	--env-file .envs/.local/.postgres
+	--env-file .envs/.local/.postgres \
+	--env-file .envs/.local/.adapters
 
 COMPOSE := docker compose
 UV := cd $(API_DIR) && uv
