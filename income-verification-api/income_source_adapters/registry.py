@@ -157,4 +157,4 @@ def log_adapter_summary(
     )
 
 
-registry = AdapterRegistry
+registry = AdapterRegistry()
