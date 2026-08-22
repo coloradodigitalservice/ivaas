@@ -1,8 +1,8 @@
 from django.apps import AppConfig
 
 
-class IncomeSourceAdaptersConfig(AppConfig):
-    name = "income_source_adapters"
+class AdapterRegistryConfig(AppConfig):
+    name = "adapter_registry"
 
     def ready(self) -> None:
         """Assemble the adapter registry from settings.
@@ -15,8 +15,8 @@ class IncomeSourceAdaptersConfig(AppConfig):
         """
         from django.core import checks
 
-        from income_source_adapters.checks import unreferenced_adapter_wheels
-        from income_source_adapters.registry import registry
+        from adapter_registry.checks import unreferenced_adapter_wheels
+        from adapter_registry.registry import registry
 
         checks.register(unreferenced_adapter_wheels)
         registry.refresh_from_settings()

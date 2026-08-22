@@ -90,7 +90,7 @@ testpaths = ["tests", "packages"]
 python_files = ["test_*.py"]
 
 [tool.coverage.run]
-source = ["api"] # This allows us to pass in multiple pytest coverage options for the additional options above ^
+source = ["api", "adapter_registry", "ivaas_core"]
 omit = ["*/migrations/*"]
 branch = true
 

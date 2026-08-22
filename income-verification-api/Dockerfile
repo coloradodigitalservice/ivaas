@@ -59,7 +59,7 @@ COPY --from=builder \
 
 COPY --chown=django:django api /api/api
 COPY --chown=django:django config /api/config
-COPY --chown=django:django income_source_adapters /api/income_source_adapters
+COPY --chown=django:django adapter_registry /api/adapter_registry
 COPY --chown=django:django manage.py /api/manage.py
 
 USER django

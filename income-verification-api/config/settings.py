@@ -28,7 +28,7 @@ DEBUG: bool = env.bool("DJANGO_DEBUG")
 
 INSTALLED_APPS = [
     "api",
-    "income_source_adapters",
+    "adapter_registry",
 ]
 
 MIDDLEWARE = [
@@ -85,7 +85,7 @@ USE_TZ = True
 # Logging
 #
 # Django's default config only surfaces `django.*` loggers; application
-# loggers (e.g. income_source_adapters.registry) need a handler of their own.
+# loggers (e.g. adapter_registry.registry) need a handler of their own.
 # Application output goes to stderr, per twelve-factor: the runtime
 # environment owns collection and routing. Configured per application
 # namespace (not the root logger) so Django's own records are not duplicated
@@ -101,7 +101,7 @@ LOGGING = {
         "console": {"class": "logging.StreamHandler", "formatter": "console"},
     },
     "loggers": {
-        "income_source_adapters": {
+        "adapter_registry": {
             "handlers": ["console"],
             "level": env.str("DJANGO_LOG_LEVEL", default="INFO"),
             "propagate": False,
@@ -111,10 +111,8 @@ LOGGING = {
 
 # Income datasources
 #
-# State-specific configuration
-# The class paths and config keys are opaque strings to the application; the
-# income_source_adapters registry instantiates enabled entries at startup and fails
-# fast if an enabled source is missing configuration.
+# The class paths and config keys are opaque strings to the application instantiated by the
+# adapter registry
 
 INCOME_SOURCE_ADAPTERS = {
     "cdle": {

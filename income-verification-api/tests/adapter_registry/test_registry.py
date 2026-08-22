@@ -11,16 +11,16 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 from ivaas_core import IncomeSourceAdapter, SubjectNotFound, VerificationRequest
 
-from income_source_adapters.registry import (
+from adapter_registry.registry import (
     INCOME_SOURCE_ADAPTERS,
     AdapterRegistry,
     log_adapter_summary,
     registry,
 )
-from tests.income_source_adapters.fixtures import StubSource
+from tests.adapter_registry.fixtures import StubSource
 
-STUB = "tests.income_source_adapters.fixtures.StubSource"
-LOGGER = "income_source_adapters.registry.logger"
+STUB = "tests.adapter_registry.fixtures.StubSource"
+LOGGER = "adapter_registry.registry.logger"
 
 
 def adapter_settings_entry(**overrides: object) -> dict[str, dict[str, object]]:
@@ -71,16 +71,14 @@ class TestFromSettings:
     def test_non_income_source_class_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="does not implement IncomeSourceAdapter"):
             build_from_settings(
-                adapter_settings_entry(
-                    **{"class": "tests.income_source_adapters.fixtures.NotASource"}
-                )
+                adapter_settings_entry(**{"class": "tests.adapter_registry.fixtures.NotASource"})
             )
 
     def test_missing_source_id_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="source_id"):
             build_from_settings(
                 adapter_settings_entry(
-                    **{"class": "tests.income_source_adapters.fixtures.MissingSourceId"}
+                    **{"class": "tests.adapter_registry.fixtures.MissingSourceId"}
                 )
             )
 
