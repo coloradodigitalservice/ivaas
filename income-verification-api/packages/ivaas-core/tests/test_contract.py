@@ -1,8 +1,6 @@
 """Contract tests for the ivaas-core package.
 
-Exercises the contract the way the application will use it: a minimal
-conforming adapter is instantiated, type-checked against the interface, and
-its contract exceptions are caught by identity.
+Exercises contract the way the application will use it.
 """
 
 import asyncio
@@ -171,8 +169,10 @@ class TestSourceIncome:
             retrieved_at=datetime(2026, 8, 19, tzinfo=UTC),
             raw_income=source_dict,
         )
+        source_dict["quarters"] = (1,2,3)
         source_dict["extra"] = True
 
+        assert result.raw_income["quarters"] == (1, 2)
         assert "extra" not in result.raw_income
 
     def test_dtos_serialize_with_dataclasses_asdict(self) -> None:
