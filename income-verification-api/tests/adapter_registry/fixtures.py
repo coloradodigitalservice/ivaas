@@ -1,4 +1,4 @@
-"""Importable-by-dotted-path fixture classes for registry tests."""
+"""Importable-by-dotted-path fixture classes for registry tests, to mimic dynamic adapter imports"""
 
 from datetime import UTC, datetime
 
