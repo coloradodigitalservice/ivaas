@@ -1,5 +1,3 @@
-"""The interface every income datasource adapter implements."""
-
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
@@ -7,14 +5,9 @@ from ivaas_core.models import SourceIncome, VerificationRequest
 
 
 class IncomeSourceAdapter(ABC):
-    """An adapter to an income datasource for the IVaaS platform to invoke.
-
-    # TODO: Refine/remove this statement once settled
-    Concrete adapters (one package per datasource, living outside this repo)
-    subclass this. Constructors receive all configuration as keyword
-    arguments assembled by application settings; adapters never read Django
-    settings or their own environment. Constructors must not authenticate or
-    touch the network — they run in every process that loads settings.
+    """
+    The interface every income datasource adapter implements, and IVaaS invokes.
+    Concrete adapters subclass this.
     """
 
     source_id: ClassVar[str]
@@ -22,10 +15,11 @@ class IncomeSourceAdapter(ABC):
 
     @abstractmethod
     async def verify(self, request: VerificationRequest) -> SourceIncome:
-        """Look up the subject's income for the requested window.
+        """Perform income verification routine, based on the requested parameters.
 
-        Must either return within the adapter's configured timeout bound or
-        raise ``SourceTimeout`` — an unbounded external call hangs a worker.
-        Raises only contract exception types (``ivaas_core.exceptions``);
-        vendor errors are caught, sanitized, and translated.
+        Should raise only contract exception types (``ivaas_core.exceptions``);
+        Vendor errors should be caught, sanitized, and translated accordingly.
+
+        e.g. if the external data source does not respond within the configured timeout bound,
+        raise SourceTimeout.
         """
