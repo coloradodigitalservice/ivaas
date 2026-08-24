@@ -1,6 +1,3 @@
-"""Registry behavior: enablement, fail-fast validation, idempotency, and the
-settings-to-contract-exception runtime path."""
-
 import asyncio
 from collections.abc import Iterator
 from importlib import metadata
