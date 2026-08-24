@@ -1,19 +1,16 @@
 """Contract DTOs, aligned to the schemas in docs/api/open-api-spec.yaml.
 
 Plain frozen dataclasses: this package depends on nothing but the standard
-library. Validation enforces the structural rules the spec states where a
-mistake is cheap to reject early (field presence, formats, ordering,
-consistency); wire-format concerns belong to the API layer and to the
-adapters that produce the raw payload.
+library. Validation enforces structural rules (field presence, formats, ordering, consistency);
+Payload validation concerns belong to
+* Adapters interacting with external datasources
+* The IVaaS API layer
 
-Immutability model: dataclasses are frozen (attribute reassignment raises),
-and mappings are defensively copied at construction so later mutation of the
-caller's original cannot alter a DTO. The copies are exposed under the
-read-only ``Mapping`` type, which strict type checking enforces; runtime
-write-protection of mapping contents is deliberately not provided, keeping
-the DTOs compatible with ``dataclasses.asdict`` and ordinary serializers.
-Values nested inside ``raw_income`` are opaque and shared, not deep-copied —
-adapters must not retain or mutate what they return.
+Immutability model:
+* dataclasses are frozen (attribute reassignment raises)
+* mappings are defensively copied at construction so later mutation of the caller's original cannot
+  alter a DTO. The copies are exposed under the
+* Read-only `Mapping` type, which strict type checking enforces;
 """
 
 import re
@@ -38,13 +35,21 @@ def _validate_name(value: str, field_name: str) -> None:
         raise ValueError(f"{field_name} must not contain control characters")
 
 
+def _validate_ssn_fields(ssn: str | None, last4_ssn: str | None) -> None:
+    if (ssn is None) == (last4_ssn is None):
+        raise ValueError("exactly one of ssn or last4_ssn must be provided")
+    if ssn is not None and not _SSN_PATTERN.fullmatch(ssn):
+        raise ValueError("ssn must be nine digits (no separators)")
+    if last4_ssn is not None and not _LAST4_SSN_PATTERN.fullmatch(last4_ssn):
+        raise ValueError("last4_ssn must be four digits")
+
+
 @dataclass(frozen=True, slots=True)
 class LookbackPeriod:
     """The window of time to return income for, both bounds inclusive.
 
-    A source that cannot reach back to ``start_date`` raises
-    ``SourceUnavailable`` rather than returning a shortened window, so a
-    caller never has to infer that it received less than it asked for.
+    An adapter that cannot reach back to `start_date` should raise, so that returned data is
+    unambiguously representative of the whole period
     """
 
     start_date: date
@@ -59,7 +64,7 @@ class LookbackPeriod:
 class VerificationRequest:
     """What an income datasource needs to look up a subject.
 
-    Exactly one of ``ssn`` or ``last4_ssn`` must be provided, depending on
+    Exactly one of `ssn` or `last4_ssn` must be provided, depending on
     the needs of the downstream datasource. Both are suppressed from repr so
     request objects can be logged safely.
     """
@@ -73,12 +78,7 @@ class VerificationRequest:
     def __post_init__(self) -> None:
         _validate_name(self.first_name, "first_name")
         _validate_name(self.last_name, "last_name")
-        if (self.ssn is None) == (self.last4_ssn is None):
-            raise ValueError("exactly one of ssn or last4_ssn must be provided")
-        if self.ssn is not None and not _SSN_PATTERN.fullmatch(self.ssn):
-            raise ValueError("ssn must be nine digits with no separators")
-        if self.last4_ssn is not None and not _LAST4_SSN_PATTERN.fullmatch(self.last4_ssn):
-            raise ValueError("last4_ssn must be four digits")
+        _validate_ssn_fields(self.ssn, self.last4_ssn)
 
 
 @dataclass(frozen=True, slots=True)
