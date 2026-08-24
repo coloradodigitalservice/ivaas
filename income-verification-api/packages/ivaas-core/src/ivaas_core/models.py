@@ -85,12 +85,10 @@ class VerificationRequest:
 class SourceIncome:
     """What an adapter returns for a successful lookup.
 
-    The application wraps this in the API's per-source envelope (source id,
+    The application must wrap this in the API's per-source envelope (source id,
     status). `retrieved_at` is an instant and must be timezone-aware.
-    `raw_income` is the source's PII-stripped raw payload and, for MVP, the
-    entire product: the application passes it through to the caller without
-    inspecting it. Its shape is adapter-specific and is defined alongside the
-    adapter that produces it.
+    `raw_income` is the source's PII-stripped raw payload. Its shape is adapter-specific and is
+    defined alongside the adapter that produces it.
     """
 
     retrieved_at: datetime
