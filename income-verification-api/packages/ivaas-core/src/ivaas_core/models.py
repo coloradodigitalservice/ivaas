@@ -8,8 +8,8 @@ Payload validation concerns belong to
 
 Immutability model:
 * dataclasses are frozen (attribute reassignment raises)
-* mappings are defensively copied at construction so later mutation of the caller's original cannot
-  alter a DTO. The copies are exposed under the
+* mappings are defensively copied at construction, so that later mutation of the caller's original cannot
+  alter a DTO.
 * Read-only `Mapping` type, which strict type checking enforces;
 """
 
@@ -86,8 +86,8 @@ class SourceIncome:
     """What an adapter returns for a successful lookup.
 
     The application wraps this in the API's per-source envelope (source id,
-    status). ``retrieved_at`` is an instant and must be timezone-aware.
-    ``raw_income`` is the source's PII-stripped raw payload and, for MVP, the
+    status). `retrieved_at` is an instant and must be timezone-aware.
+    `raw_income` is the source's PII-stripped raw payload and, for MVP, the
     entire product: the application passes it through to the caller without
     inspecting it. Its shape is adapter-specific and is defined alongside the
     adapter that produces it.
