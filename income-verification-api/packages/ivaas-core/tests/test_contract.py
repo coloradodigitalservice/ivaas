@@ -9,16 +9,12 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError, asdict
 from datetime import UTC, date, datetime
-from decimal import Decimal
 
 import pytest
 from ivaas_core import (
     IncomeSourceAdapter,
     IncomeSourceError,
     LookbackPeriod,
-    NormalizedEmploymentRecord,
-    NormalizedIncome,
-    NormalizedMonthlyIncome,
     SourceIncome,
     SourceResponseInvalid,
     SourceTimeout,
@@ -57,17 +53,9 @@ class StubSource(IncomeSourceAdapter):
             raise SourceTimeout("stub timed out")
         if not self.subject_exists:
             raise SubjectNotFound("stub holds no records")
-        month = NormalizedMonthlyIncome(
-            total=Decimal("1300.00"),
-            records=(
-                NormalizedEmploymentRecord(
-                    employer_name="Food and Stuff", amount=Decimal("1300.00")
-                ),
-            ),
-        )
         return SourceIncome(
             retrieved_at=datetime(2026, 8, 19, tzinfo=UTC),
-            normalized_income=NormalizedIncome(months={"2026-03": month}),
+            raw_income={"entries": [{"employer_name": "Food and Stuff", "gross_wages": "1300.00"}]},
         )
 
 
@@ -83,7 +71,9 @@ class TestIncomeSourceAdapterInterface:
         result = asyncio.run(StubSource().verify(make_request()))
 
         assert isinstance(result, SourceIncome)
-        assert result.normalized_income.months["2026-03"].total == Decimal("1300.00")
+        assert result.raw_income["entries"] == [
+            {"employer_name": "Food and Stuff", "gross_wages": "1300.00"}
+        ]
 
     def test_contract_exceptions_are_caught_by_identity(self, make_request: MakeRequest) -> None:
         with pytest.raises(SubjectNotFound):
@@ -166,69 +156,29 @@ class TestLookbackPeriod:
         assert LookbackPeriod(start_date=day, end_date=day).start_date == day
 
 
-def make_month(amount: str = "1300.00") -> NormalizedMonthlyIncome:
-    return NormalizedMonthlyIncome(
-        total=Decimal(amount),
-        records=(
-            NormalizedEmploymentRecord(employer_name="Food and Stuff", amount=Decimal(amount)),
-        ),
-    )
-
-
-class TestNormalizedIncome:
-    def test_rejects_total_that_is_not_sum_of_records(self) -> None:
-        with pytest.raises(ValueError, match="does not equal sum"):
-            NormalizedMonthlyIncome(
-                total=Decimal("100.00"),
-                records=(
-                    NormalizedEmploymentRecord(employer_name="A", amount=Decimal("1.00")),
-                    NormalizedEmploymentRecord(employer_name="B", amount=Decimal("2.00")),
-                ),
-            )
-
-    def test_empty_months_are_valid(self) -> None:
-        assert NormalizedIncome(months={}).months == {}
-
-    @pytest.mark.parametrize("key", ["2026-13", "2026-0", "202603", "2026-03\n", "march"])
-    def test_rejects_malformed_month_keys(self, key: str) -> None:
-        with pytest.raises(ValueError, match="YYYY-MM"):
-            NormalizedIncome(months={key: make_month()})
-
-    def test_rejects_empty_employer_name(self) -> None:
-        with pytest.raises(ValueError, match="must not be empty"):
-            NormalizedEmploymentRecord(employer_name="", amount=Decimal("1.00"))
-
-    def test_months_defensively_copies_the_input_mapping(self) -> None:
-        source_dict = {"2026-03": make_month()}
-        income = NormalizedIncome(months=source_dict)
-        source_dict["2026-04"] = make_month()
-
-        assert "2026-04" not in income.months
-
-    def test_dtos_serialize_with_dataclasses_asdict(self) -> None:
-        income = NormalizedIncome(months={"2026-03": make_month()})
-
-        serialized = asdict(income)
-
-        assert serialized["months"]["2026-03"]["total"] == Decimal("1300.00")
-
-
 class TestSourceIncome:
     def test_rejects_naive_retrieved_at(self) -> None:
         with pytest.raises(ValueError, match="timezone-aware"):
-            SourceIncome(
-                retrieved_at=datetime(2026, 8, 19),
-                normalized_income=NormalizedIncome(months={}),
-            )
+            SourceIncome(retrieved_at=datetime(2026, 8, 19), raw_income={})
+
+    def test_raw_income_is_required(self) -> None:
+        with pytest.raises(TypeError):
+            SourceIncome(retrieved_at=datetime(2026, 8, 19, tzinfo=UTC))  # type: ignore[call-arg]
 
     def test_raw_income_defensively_copies_the_input_mapping(self) -> None:
         source_dict: dict[str, object] = {"quarters": (1, 2)}
         result = SourceIncome(
             retrieved_at=datetime(2026, 8, 19, tzinfo=UTC),
-            normalized_income=NormalizedIncome(months={}),
             raw_income=source_dict,
         )
         source_dict["extra"] = True
 
-        assert result.raw_income is not None
         assert "extra" not in result.raw_income
+
+    def test_dtos_serialize_with_dataclasses_asdict(self) -> None:
+        result = SourceIncome(
+            retrieved_at=datetime(2026, 8, 19, tzinfo=UTC),
+            raw_income={"entries": []},
+        )
+
+        assert asdict(result)["raw_income"] == {"entries": []}

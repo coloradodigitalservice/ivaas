@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 
 from ivaas_core import (
     IncomeSourceAdapter,
-    NormalizedIncome,
     SourceIncome,
     SubjectNotFound,
     VerificationRequest,
@@ -23,10 +22,7 @@ class StubSource(IncomeSourceAdapter):
 
 class MissingSourceId(IncomeSourceAdapter):
     async def verify(self, request: VerificationRequest) -> SourceIncome:
-        return SourceIncome(
-            retrieved_at=datetime.now(tz=UTC),
-            normalized_income=NormalizedIncome(months={}),
-        )
+        return SourceIncome(retrieved_at=datetime.now(tz=UTC), raw_income={})
 
 
 class NotASource:

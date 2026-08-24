@@ -3,8 +3,8 @@
 Plain frozen dataclasses: this package depends on nothing but the standard
 library. Validation enforces the structural rules the spec states where a
 mistake is cheap to reject early (field presence, formats, ordering,
-consistency); pure wire-format concerns (e.g. rendering ``Decimal`` as the
-spec's two-decimal ``Dollar`` string) belong to the API layer.
+consistency); wire-format concerns belong to the API layer and to the
+adapters that produce the raw payload.
 
 Immutability model: dataclasses are frozen (attribute reassignment raises),
 and mappings are defensively copied at construction so later mutation of the
@@ -20,12 +20,9 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from decimal import Decimal
 
 _SSN_PATTERN = re.compile(r"[0-9]{9}")
 _LAST4_SSN_PATTERN = re.compile(r"[0-9]{4}")
-# TODO: These should be more clearly enumerable
-_MONTH_KEY_PATTERN = re.compile(r"[0-9]{4}-(0[1-9]|1[0-2])")
 # Spec pattern for names: printable, no ASCII control characters.
 _CONTROL_CHARS_PATTERN = re.compile(r"[\x00-\x1F\x7F]")
 
@@ -85,72 +82,21 @@ class VerificationRequest:
 
 
 @dataclass(frozen=True, slots=True)
-class NormalizedEmploymentRecord:
-    """Normalized income from one employer for one calendar month."""
-
-    employer_name: str
-    amount: Decimal
-
-    def __post_init__(self) -> None:
-        _validate_name(self.employer_name, "employer_name")
-
-
-@dataclass(frozen=True, slots=True)
-class NormalizedMonthlyIncome:
-    """One calendar month of income from a single source.
-
-    ``total`` is the sum of ``records``, and it is derived, so a mismatch is a
-    bug in the adapter and rejected here.
-
-    TODO: total as an implementation detail of construction, or derived on demand instead?
-    """
-
-    total: Decimal
-    records: tuple[NormalizedEmploymentRecord, ...]
-
-    def __post_init__(self) -> None:
-        expected = sum((record.amount for record in self.records), Decimal("0"))
-        if self.total != expected:
-            raise ValueError(f"total {self.total} does not equal sum of records {expected}")
-
-
-@dataclass(frozen=True, slots=True)
-class NormalizedIncome:
-    """Income from a single source, restated into calendar months.
-
-    Every value here is derived, not quoted from the source. Keys of
-    ``months`` are ``YYYY-MM``.
-    """
-
-    months: Mapping[str, NormalizedMonthlyIncome]
-
-    def __post_init__(self) -> None:
-        for key in self.months:
-            if not _MONTH_KEY_PATTERN.fullmatch(key):
-                raise ValueError(f"month key {key!r} is not in YYYY-MM form")
-        object.__setattr__(self, "months", dict(self.months))
-
-
-@dataclass(frozen=True, slots=True)
 class SourceIncome:
     """What an adapter returns for a successful lookup.
 
-    TODO: validate this decision
     The application wraps this in the API's per-source envelope (source id,
     status). ``retrieved_at`` is an instant and must be timezone-aware.
-    ``raw_income`` is the source's PII-stripped raw payload; its per-adapter
-    shape is not yet specified (spec TBD), so it is carried as an opaque
-    mapping for now. ``normalized_income`` is deliberately required even
-    though the wire schema leaves it optional: producing normalized income
-    is this platform's job, and the API layer can still choose what to emit.
+    ``raw_income`` is the source's PII-stripped raw payload and, for MVP, the
+    entire product: the application passes it through to the caller without
+    inspecting it. Its shape is adapter-specific and is defined alongside the
+    adapter that produces it.
     """
 
     retrieved_at: datetime
-    normalized_income: NormalizedIncome
-    raw_income: Mapping[str, object] | None = None
+    raw_income: Mapping[str, object]
 
     def __post_init__(self) -> None:
         if self.retrieved_at.utcoffset() is None:
             raise ValueError("retrieved_at must be timezone-aware")
-        if self.raw_income is not None:
-            object.__setattr__(self, "raw_income", dict(self.raw_income))
+        object.__setattr__(self, "raw_income", dict(self.raw_income))

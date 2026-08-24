@@ -15,9 +15,6 @@ from ivaas_core.exceptions import (
 )
 from ivaas_core.models import (
     LookbackPeriod,
-    NormalizedEmploymentRecord,
-    NormalizedIncome,
-    NormalizedMonthlyIncome,
     SourceIncome,
     VerificationRequest,
 )
@@ -26,9 +23,6 @@ __all__ = [
     "IncomeSourceAdapter",
     "IncomeSourceError",
     "LookbackPeriod",
-    "NormalizedEmploymentRecord",
-    "NormalizedIncome",
-    "NormalizedMonthlyIncome",
     "SourceIncome",
     "SourceResponseInvalid",
     "SourceTimeout",
