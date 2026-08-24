@@ -20,6 +20,5 @@ class IncomeSourceAdapter(ABC):
         Should raise only contract exception types (``ivaas_core.exceptions``);
         Vendor errors should be caught, sanitized, and translated accordingly.
 
-        e.g. if the external data source does not respond within the configured timeout bound,
-        raise SourceTimeout.
+        See ./exceptions.py
         """
