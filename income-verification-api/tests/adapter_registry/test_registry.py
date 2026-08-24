@@ -183,9 +183,9 @@ class TestProcessRegistry:
     ) -> None:
         mock_logger = MagicMock()
         monkeypatch.setattr(LOGGER, mock_logger)
-        monkeypatch.setattr(metadata, "version", lambda dist: {"d": "1.2.3"}[dist])
+        monkeypatch.setattr(metadata, "version", lambda dist: {"stub-adapter": "1.2.3"}[dist])
 
-        log_adapter_summary("stub", StubSource(), {"tests": ["d"]})
+        log_adapter_summary("stub", StubSource(), {"tests": ["stub-adapter"]})
 
         assert mock_logger.info.call_args.args[3] == "1.2.3"
 
