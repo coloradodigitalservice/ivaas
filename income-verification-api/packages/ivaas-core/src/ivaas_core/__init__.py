@@ -1,8 +1,6 @@
 """Contract between the ivaas platform and income datasource adapters.
 
-Everything the application and adapters share lives here — and nothing else:
-the ``IncomeSourceAdapter`` interface, the request/response DTOs, and the exception
-types. This package depends only on the Python standard library.
+Everything the application and adapters share lives here, and nothing else.
 """
 
 from ivaas_core.adapter import IncomeSourceAdapter
