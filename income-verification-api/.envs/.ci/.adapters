@@ -1,7 +1,5 @@
 # Adapter Settings (CI)
 # ------------------------------------------------------------------------------
-# CI builds the generic app: no adapter wheels are present, so no adapter may
-# be enabled. Selected via ADAPTERS_ENV in .github/workflows/qa-main.yaml.
 
 ## Colorado CDLE
 CDLE_ADAPTER_ENABLED=False

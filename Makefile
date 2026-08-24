@@ -9,23 +9,23 @@ ENV := \
 COMPOSE := docker compose
 UV := cd $(API_DIR) && uv
 SYNC := $(UV) sync
-# --no-sync: side-loaded adapter wheels are not in the lockfile, and a plain
-# `uv run` syncs first and would uninstall them. `make sync`/`make sync-ci`
-# are the explicit synchronization points.
-RUN := $(UV) run --no-sync
-LOCAL_RUN := $(RUN) $(ENV)
+# --no-sync: adapter wheels are not in the lockfile. A plain `uv run` syncs first and would uninstall them.
+# `make sync`/`make sync-ci` are the explicit synchronization points.
+RUN_NO_SYNC := $(UV) run --no-sync
+LOCAL_RUN := $(RUN_NO_SYNC) $(ENV)
 MANAGE := $(LOCAL_RUN) python manage.py
 
 # ============================================================================
 # Custom adapters.
 #
-# Adapter wheels are placed in $(WHEELS_DIR) by whoever builds (a developer,
-# or the CI repo that owns fetching). Everything here runs off wheels being
-# in that directory, and everything tolerates it being empty — zero adapters
-# is a valid (generic) configuration.
-# ============================================================================
+# For live adapter-app development, adapters must be checked out to the following directory
 ADAPTERS_CHECKOUT ?= ../income-verification-core
-ADAPTERS_WHEELS_DIRECTORY := $(API_DIR)/custom-adapters/wheels
+
+# Adapter wheels must be placed in $(API_DIR)/custom-adapters/wheels on build
+# (custom-adapters/install.sh installs from there).
+# An empty directory implies zero configured adapters, but still runs as valid (generic) configuration.
+
+# ============================================================================
 
 .DEFAULT_GOAL := help
 
@@ -38,11 +38,11 @@ setup: sync install-hooks ## set up the local development environment
 
 .PHONY: install-hooks
 install-hooks: ## install pre-commit hooks
-	$(RUN) pre-commit install --install-hooks
+	$(RUN_NO_SYNC) pre-commit install --install-hooks
 
 .PHONY: pre-commit
 pre-commit: ## run pre-commit hooks on all files
-	$(RUN) pre-commit run --all-files
+	$(RUN_NO_SYNC) pre-commit run --all-files
 
 .PHONY: sync
 sync: ## set up .venv and dependencies, including any adapter wheels
@@ -56,9 +56,7 @@ sync-ci: ## set up .venv and dependencies for CI, requiring pyproject.toml and u
 
 .PHONY: adapters-install
 adapters-install: ## install landing-zone adapter wheels into the venv (no-op when empty)
-	@if ls $(ADAPTERS_WHEELS_DIRECTORY)/*.whl >/dev/null 2>&1; then \
-		( $(UV) pip install --python .venv/bin/python --no-deps custom-adapters/wheels/*.whl ); \
-	fi
+	@cd $(API_DIR) && custom-adapters/install.sh
 
 .PHONY: dev-adapter
 dev-adapter: ## live-develop adapters from the sibling checkout (cleanup: make sync)
@@ -109,12 +107,12 @@ test: db-up ## run tests
 
 .PHONY: quality-fix
 quality-fix: ## Apply available automatic fixes for python package quality violations
-	$(RUN) ruff format .
-	$(RUN) ruff check --fix .
+	$(RUN_NO_SYNC) ruff format .
+	$(RUN_NO_SYNC) ruff check --fix .
 
 .PHONY: quality-check
 quality-check: ## run all required checks
-	$(RUN) ruff format --check .
-	$(RUN) ruff check .
+	$(RUN_NO_SYNC) ruff format --check .
+	$(RUN_NO_SYNC) ruff check .
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .
