@@ -8,8 +8,8 @@ Payload validation concerns belong to
 
 Immutability model:
 * dataclasses are frozen (attribute reassignment raises)
-* mappings are defensively copied at construction, so that later mutation of the caller's original cannot
-  alter a DTO.
+* mappings are defensively copied at construction, so that later mutation of the caller's original
+  cannot alter a DTO.
 * Read-only `Mapping` type, which strict type checking enforces;
 """
 

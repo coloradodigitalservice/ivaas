@@ -169,7 +169,7 @@ class TestSourceIncome:
             retrieved_at=datetime(2026, 8, 19, tzinfo=UTC),
             raw_income=source_dict,
         )
-        source_dict["quarters"] = (1,2,3)
+        source_dict["quarters"] = (1, 2, 3)
         source_dict["extra"] = True
 
         assert result.raw_income["quarters"] == (1, 2)
