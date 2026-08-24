@@ -20,11 +20,7 @@ MANAGE := $(LOCAL_RUN) python manage.py
 #
 # For live adapter-app development, adapters must be checked out to the following directory
 ADAPTERS_CHECKOUT ?= ../income-verification-core
-
-# Adapter wheels must be placed in $(API_DIR)/custom-adapters/wheels on build
-# (custom-adapters/install.sh installs from there).
-# An empty directory implies zero configured adapters, but still runs as valid (generic) configuration.
-
+# Otherwise, adapters are installed via `make adapters-install`
 # ============================================================================
 
 .DEFAULT_GOAL := help
