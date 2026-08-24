@@ -1,9 +1,10 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
-LOCAL_ENV := \
+ADAPTERS_ENV ?= .envs/.local/.adapters # CI overrides this with .envs/.ci/.adapters
+ENV := \
 	--env-file .envs/.local/.django \
 	--env-file .envs/.local/.postgres \
-	--env-file .envs/.local/.adapters
+	--env-file $(ADAPTERS_ENV)
 
 COMPOSE := docker compose
 UV := cd $(API_DIR) && uv
@@ -12,7 +13,7 @@ SYNC := $(UV) sync
 # `uv run` syncs first and would uninstall them. `make sync`/`make sync-ci`
 # are the explicit synchronization points.
 RUN := $(UV) run --no-sync
-LOCAL_RUN := $(RUN) $(LOCAL_ENV)
+LOCAL_RUN := $(RUN) $(ENV)
 MANAGE := $(LOCAL_RUN) python manage.py
 
 # ============================================================================
