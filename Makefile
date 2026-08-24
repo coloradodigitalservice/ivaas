@@ -19,6 +19,7 @@ MANAGE := $(LOCAL_RUN) python manage.py
 # Custom adapters.
 #
 # For live adapter-app development, adapters must be checked out to the following directory
+# TODO: Rename alongside repo-rename
 ADAPTERS_CHECKOUT ?= ../income-verification-core
 # Otherwise, adapters are installed via `make adapters-install`
 # ============================================================================
