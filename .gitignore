@@ -40,5 +40,6 @@ dmypy.json
 ## PyPI configuration file
 .pypirc
 
-## Private adapter wheels
-income-verification-api/custom-adapters/wheels/
+## Private adapter wheels (keep the landing zone itself, ignore the rest of its contents)
+income-verification-api/custom-adapters/wheels/*
+!income-verification-api/custom-adapters/wheels/.gitkeep
