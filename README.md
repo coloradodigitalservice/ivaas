@@ -30,11 +30,12 @@ mindmap
         Bootstrap on deployment with AppConfig?
     Build & Deployment
         Generic platform checks
-            GitHub actions
+            Public GitHub actions
         State-specific quality gates
+            Public or private CI integrations
         IAC
           Public templates
-          State-specific implementations
+          State-specific deployment pipelines
 ```
 
 ## Development
