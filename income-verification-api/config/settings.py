@@ -84,13 +84,6 @@ USE_TZ = True
 
 
 # Logging
-#
-# Django's default config only surfaces `django.*` loggers; application
-# loggers (e.g. adapter_registry.registry) need a handler of their own.
-# Application output goes to stderr, per twelve-factor: the runtime
-# environment owns collection and routing. Configured per application
-# namespace (not the root logger) so Django's own records are not duplicated
-# through a second handler.
 
 LOGGING = {
     "version": 1,
