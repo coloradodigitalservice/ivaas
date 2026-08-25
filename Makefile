@@ -21,8 +21,6 @@ MANAGE := $(LOCAL_RUN) python manage.py
 # For live adapter-app development, adapters must be checked out to the following directory
 # TODO: Rename alongside repo-rename
 ADAPTERS_CHECKOUT ?= ../income-verification-core
-# Every adapter package directory dev-adapters editable-installs. Space-separated:
-# add more paths or globs here as more checkouts or modules appear.
 ADAPTER_MODULES := $(abspath $(ADAPTERS_CHECKOUT))/adapters/*/
 # Otherwise, adapters are installed via `make adapters-install`
 # ============================================================================
