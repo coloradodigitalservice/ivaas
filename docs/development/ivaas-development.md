@@ -30,11 +30,13 @@ mise install
 
 ### Set up project for local development
 
-Use the setup command to install project dependencies:
+1. If the IVaaS implementation is already configured to use adapters (see [Adapters](../configuration/ivaas-configuration.md#adapters) documentation),
+   you will need to first download/build each configured adapter according to its own documentation (See [Adapter installation](../configuration/ivaas-configuration.md#adapter-installation))
 
-```shell
-make setup
-```
+2. Use the setup command to install project dependencies:
+    ```shell
+    make setup
+    ```
 
 ### Initialize the database
 
