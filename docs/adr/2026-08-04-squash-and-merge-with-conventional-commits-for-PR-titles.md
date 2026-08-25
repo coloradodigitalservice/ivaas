@@ -29,7 +29,7 @@ This ADR decides the convention only. It does not select tooling to aid with enf
 
 ### Consequences
 
-* We should enable [similar automated checks](https://github.com/coloradodigitalservice/income-verification-core/blob/main/.github/workflows/lint-pr.yml) as `income-verification-core`
+* We should enable [similar automated checks](https://github.com/coloradodigitalservice/income-verification-core/blob/main/.github/workflows/lint-pr.yaml) as `income-verification-core`
 * All [consequences of the `income-verification-core` adr](https://github.com/coloradodigitalservice/income-verification-core/blob/main/docs/adr/2026-07-22-squash-and-merge-with-conventional-commits-for-PR-titles.md#consequences) would apply here
 
 ## Options Considered
