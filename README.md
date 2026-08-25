@@ -1,6 +1,6 @@
-# Income Verification As A Service (IVAAS) Application
+# Income Verification as a Service (IVaaS) Application
 
-The application for IVAAS.
+The application for IVaaS.
 
 ## Setup
 
