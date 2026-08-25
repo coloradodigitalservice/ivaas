@@ -10,9 +10,9 @@ Before starting, ensure the following are installed:
 
 ## Setup
 
-This project uses the tools pinned in [`.tool-versions`](./.tool-versions) for compatibility with version managers such as [asdf](https://asdf-vm.com/) and [mise](https://mise.jdx.dev/).
+This project uses the tools pinned in [`.tool-versions`](../../.tool-versions) for compatibility with version managers such as [asdf](https://asdf-vm.com/) and [mise](https://mise.jdx.dev/).
 
-If using a different version manager, or installing tools manually, ensure the installed versions match those pinned in `.tool-versions`. The Python version used by the API is additionally pinned in [`income-verification-api/.python-version`](./income-verification-api/.python-version).
+If using a different version manager, or installing tools manually, ensure the installed versions match those pinned in `.tool-versions`. The Python version used by the API is additionally pinned in [`income-verification-api/.python-version`](../../income-verification-api/.python-version).
 
 ### Install development tooling
 
