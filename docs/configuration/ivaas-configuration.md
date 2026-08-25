@@ -3,9 +3,9 @@
 ## Adapters
 
 To fetch data from specific/proprietary income sources, IVaaS uses "adapters".
-Adapters are responsible for fetching and transforming data from various income data sources into a standardized format that IVaaS can process and return to clients.
+Adapters are responsible for fetching and transforming data from various income data sources into a format that IVaaS can process and return to clients.
 
-Adapters encapsulate logic and implementation details
+Adapters encapsulate logic and implementation details relating to the data sources they interact with, so that the IVaaS application needs only to be concerned with invoking the relevant adapter(s) based on incoming client requests.
 
 ### Adapter development
 
@@ -17,7 +17,7 @@ Adapters that may be beneficial to other IVaaS installations should be published
 
 The source code for adapters where state-specific datasource implementation details are sensitive can be hosted privately.
 Privately hosted adapter code _will_ complicate build pipelines and development processes due to the inherent access restrictions.
-This approach is suitable for adapters with private source code, even if an IVaaS installation/implementaton is public, since the adapter wheels are .gitignored.
+This approach is suitable for adapters with private source code, even if an IVaaS installation/implementation is public, since the adapter wheels are .gitignored.
 
 #### Best practices
 
@@ -27,7 +27,7 @@ Adapter development requires only that the resulting adapter implement the contr
 
 The adapter must be built into a wheel and dropped into the designated "landing-zone". See [adapter installation](#adapter-installation)
 
-It is recommened (but optional) for local development, to configure `ADAPTERS_CHECKOUT` in the [Makefile](../../Makefile) to take advantage of `make dev-adapters` fast feedback loops.
+It is recommended (but optional) for local development, to configure `ADAPTERS_CHECKOUT` in the [Makefile](../../Makefile) to take advantage of `make dev-adapters` fast feedback loops.
 
 ### Adapter installation
 
