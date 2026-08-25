@@ -21,6 +21,9 @@ MANAGE := $(LOCAL_RUN) python manage.py
 # For live adapter-app development, adapters must be checked out to the following directory
 # TODO: Rename alongside repo-rename
 ADAPTERS_CHECKOUT ?= ../income-verification-core
+# Every adapter package directory dev-adapters editable-installs. Space-separated:
+# add more paths or globs here as more checkouts or modules appear.
+ADAPTER_MODULES := $(abspath $(ADAPTERS_CHECKOUT))/adapters/*/
 # Otherwise, adapters are installed via `make adapters-install`
 # ============================================================================
 
@@ -55,9 +58,9 @@ sync-ci: ## set up .venv and dependencies for CI, requiring pyproject.toml and u
 adapters-install: ## install landing-zone adapter wheels into the venv (no-op when empty)
 	@cd $(API_DIR) && custom-adapters/install.sh
 
-.PHONY: dev-adapter
-dev-adapter: ## live-develop adapters from the sibling checkout (cleanup: make sync)
-	@set -e; for d in $(abspath $(ADAPTERS_CHECKOUT))/adapters/*/; do \
+.PHONY: dev-adapters
+dev-adapters: ## live-develop adapters from the sibling checkout (cleanup: make sync)
+	@set -e; for d in $(ADAPTER_MODULES); do \
 		[ -d "$$d" ] || continue; \
 		( $(UV) pip install --python .venv/bin/python --no-deps -e "$$d" ); \
 	done

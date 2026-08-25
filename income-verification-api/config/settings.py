@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import environ
@@ -114,7 +115,7 @@ LOGGING = {
 # The class paths and config keys are opaque strings to the application instantiated by the
 # adapter registry
 
-INCOME_SOURCE_ADAPTERS = {
+INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
     "cdle": {
         "class": "cdle_adapter.CdleAdapter",
         "enabled": env.bool("CDLE_ADAPTER_ENABLED", default=False),
