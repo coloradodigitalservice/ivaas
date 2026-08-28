@@ -91,6 +91,10 @@ run: db-up ## run the local development server
 		--host 127.0.0.1 \
 		--port 8000
 
+.PHONY: shell
+shell: db-up ## Django shell with local env files
+	$(MANAGE) shell
+
 .PHONY: migrate
 migrate: db-up ## apply database migrations
 	$(MANAGE) migrate
