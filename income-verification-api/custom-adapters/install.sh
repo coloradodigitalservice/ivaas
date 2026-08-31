@@ -1,18 +1,24 @@
 #!/bin/sh
 # Installs any adapter wheels from the landing zone into the project venv.
-# Each wheel arrives with a *-requirements.txt pinning the exact dependency
-# versions it was built and tested against; those are installed first, then
-# the wheels themselves with --no-deps so nothing resolves at install time.
+# Wheels install with their declared dependencies, constrained by this
+# project's own lockfile (pip/uv constraints: bounds that apply only to
+# packages actually being installed). Anything IVaaS also depends on stays
+# at IVaaS's locked version.
+# An adapter that cannot accept those versions fails the install loudly
+# instead of silently changing the environment.
+# All wheels install in one resolver invocation, so version conflicts
+# between adapters also fail loudly.
 set -eu
 
 wheels_dir="$(dirname "$0")/wheels"
-application_venv_python="$(dirname "$0")/../.venv/bin/python"
-
-for requirements in "$wheels_dir"/*-requirements.txt; do
-    [ -f "$requirements" ] || continue
-    uv pip install --python "$application_venv_python" --requirements "$requirements"
-done
+api_dir="$(dirname "$0")/.."
+application_venv_python="$api_dir/.venv/bin/python"
 
 if ls "$wheels_dir"/*.whl >/dev/null 2>&1; then
-    uv pip install --python "$application_venv_python" --no-deps "$wheels_dir"/*.whl
+    constraints="$wheels_dir/.ivaas-constraints.txt"
+    trap 'rm -f "$constraints"' EXIT
+    uv export --project "$api_dir" --frozen --no-dev --no-hashes --no-emit-workspace \
+        --quiet --output-file "$constraints"
+    uv pip install --python "$application_venv_python" \
+        --constraint "$constraints" "$wheels_dir"/*.whl
 fi
