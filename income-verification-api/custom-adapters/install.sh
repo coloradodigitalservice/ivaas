@@ -1,7 +1,8 @@
 #!/bin/sh
 # Installs any adapter wheels from the landing zone into the project venv.
-# Wheels install with their declared dependencies, constrained by this
-# project's own lockfile.
+# Wheels install with their declared dependencies. Packages IVaaS locks
+# are constrained to its locked versions; dependencies only adapters
+# use resolve at install time within the ranges the wheels declare.
 set -eu
 
 wheels_dir="$(dirname "$0")/wheels"
@@ -14,8 +15,8 @@ if ls "$wheels_dir"/*.whl >/dev/null 2>&1; then
     # Export IVaaS constraints_txt_temp for adapters to build against
     # --frozen: Use the lockfile exactly as it is on disc
     # --no-dev: dev dependencies not relevant for adapter wheel installation
-    # --no-hashes: publish only the acceptable dependency ranges, rather than exact shas
-    # --no-emit-workspace: leave out packages like ivaas-core which are already resolved as dependencies of the adapter
+    # --no-hashes: omit integrity hashes; versions stay exact pins (constraints install nothing, so hashes add nothing)
+    # --no-emit-workspace: leave out workspace packages like ivaas-core, already installed in the venv
     # --quiet, --output-file: write constraints to the temporary file
     uv export --project "$api_dir" --frozen --no-dev --no-hashes --no-emit-workspace \
         --quiet --output-file "$constraints_txt_temp"
