@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import environ
@@ -28,6 +29,7 @@ DEBUG: bool = env.bool("DJANGO_DEBUG")
 
 INSTALLED_APPS = [
     "api",
+    "adapter_registry",
 ]
 
 MIDDLEWARE = [
@@ -79,3 +81,40 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+
+# Logging
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console": {"format": "%(levelname)s:     %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "console"},
+    },
+    "loggers": {
+        "adapter_registry": {
+            "handlers": ["console"],
+            "level": env.str("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+    },
+}
+
+# Income datasources
+#
+# The class paths and config keys are opaque strings to the application instantiated by the
+# adapter registry
+
+INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
+    "cdle": {
+        "class": "cdle_adapter.CdleAdapter",
+        "enabled": env.bool("CDLE_ADAPTER_ENABLED", default=False),
+        "config": {
+            "account_url": env("CDLE_ACCOUNT_URL", default=None),
+            "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=10),
+        },
+    },
+}

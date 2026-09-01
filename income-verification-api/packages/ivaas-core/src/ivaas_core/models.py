@@ -1,0 +1,100 @@
+"""Contract DTOs, aligned to the schemas in docs/api/open-api-spec.yaml.
+
+Plain frozen dataclasses: this package depends on nothing but the standard
+library. Validation enforces structural rules (field presence, formats, ordering, consistency);
+Payload validation concerns belong to
+* Adapters interacting with external datasources
+* The IVaaS API layer
+
+Immutability model:
+* dataclasses are frozen (attribute reassignment raises)
+* mappings are defensively copied at construction, so that later mutation of the caller's original
+  cannot alter a DTO.
+* Read-only `Mapping` type, which strict type checking enforces;
+"""
+
+import re
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import date, datetime
+
+_SSN_PATTERN = re.compile(r"[0-9]{9}")
+_LAST4_SSN_PATTERN = re.compile(r"[0-9]{4}")
+# Spec pattern for names: printable, no ASCII control characters.
+_CONTROL_CHARS_PATTERN = re.compile(r"[\x00-\x1F\x7F]")
+
+_MAX_NAME_LENGTH = 256
+
+
+def _validate_name(value: str, field_name: str) -> None:
+    if not value:
+        raise ValueError(f"{field_name} must not be empty")
+    if len(value) > _MAX_NAME_LENGTH:
+        raise ValueError(f"{field_name} must be at most {_MAX_NAME_LENGTH} characters")
+    if _CONTROL_CHARS_PATTERN.search(value):
+        raise ValueError(f"{field_name} must not contain control characters")
+
+
+def _validate_ssn_fields(ssn: str | None, last4_ssn: str | None) -> None:
+    if (ssn is None) == (last4_ssn is None):
+        raise ValueError("exactly one of ssn or last4_ssn must be provided")
+    if ssn is not None and not _SSN_PATTERN.fullmatch(ssn):
+        raise ValueError("ssn must be nine digits (no separators)")
+    if last4_ssn is not None and not _LAST4_SSN_PATTERN.fullmatch(last4_ssn):
+        raise ValueError("last4_ssn must be four digits")
+
+
+@dataclass(frozen=True, slots=True)
+class LookbackPeriod:
+    """The window of time to return income for, both bounds inclusive.
+
+    An adapter that cannot reach back to `start_date` should raise, so that returned data is
+    unambiguously representative of the whole period
+    """
+
+    start_date: date
+    end_date: date
+
+    def __post_init__(self) -> None:
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must not precede start_date")
+
+
+@dataclass(frozen=True, slots=True)
+class VerificationRequest:
+    """What an income datasource needs to look up a subject.
+
+    Exactly one of `ssn` or `last4_ssn` must be provided, depending on
+    the needs of the downstream datasource. Both are suppressed from repr so
+    request objects can be logged safely.
+    """
+
+    first_name: str
+    last_name: str
+    lookback_period: LookbackPeriod
+    ssn: str | None = field(default=None, repr=False)
+    last4_ssn: str | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        _validate_name(self.first_name, "first_name")
+        _validate_name(self.last_name, "last_name")
+        _validate_ssn_fields(self.ssn, self.last4_ssn)
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIncome:
+    """What an adapter returns for a successful lookup.
+
+    The application must wrap this in the API's per-source envelope (source id,
+    status). `retrieved_at` is an instant and must be timezone-aware.
+    `raw_income` is the source's PII-stripped raw payload. Its shape is adapter-specific and is
+    defined alongside the adapter that produces it.
+    """
+
+    retrieved_at: datetime
+    raw_income: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        if self.retrieved_at.utcoffset() is None:
+            raise ValueError("retrieved_at must be timezone-aware")
+        object.__setattr__(self, "raw_income", dict(self.raw_income))

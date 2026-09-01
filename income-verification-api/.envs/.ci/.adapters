@@ -1,0 +1,5 @@
+# Adapter Settings (CI)
+# ------------------------------------------------------------------------------
+
+## Colorado CDLE
+CDLE_ADAPTER_ENABLED=False

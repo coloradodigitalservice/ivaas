@@ -372,12 +372,6 @@ components:
       type: object
       description: |
         Returned income data from a specific data source.
-
-        Tradeoffs for programs for using raw vs normalized response data
-        * Prioritizing raw data over normalized means there are less questions to answer
-        * Raw data allows greater flexibility for the program
-        * Program would have to take on more development to digest raw data from multiple sources, and would need to keep up with datasource API schema/version changes
-        * TBD Idea: Normalized section maybe only served if program requests it, with possible configuration to decide how to normalize it
       required: [sourceId, status, retrievedAt]
       properties:
         sourceId:
@@ -392,103 +386,15 @@ components:
           description: When this service obtained the data. An instant.
         rawIncome:
           description: |
-            The raw income this source reported, with PII removed and without any normalization.
+            The raw income this source reported, with PII removed.
 
             Present only when `status` is `ok`.
           $ref: '#/components/schemas/RawIncome'
-        normalizedIncome:
-          description: |
-            The income this source reported, restated on common time bases so that figures from
-            different sources can be compared.
-
-            Present only when `status` is `ok`.
-          $ref: '#/components/schemas/NormalizedIncome'
-
-    NormalizedIncome:
-      type: object
-      description: |
-        Income from a single source, normalized into a generic payload structure.
-
-        Every value here is **derived**, not quoted from the source. Sources report over whatever
-        period and granularity they keep, and this restates that into calendar months.
-
-        `months` carries a total and an employer breakdown for each month, so a program that budgets
-        on monthly income reads the total and ignores the rest.
-
-        Another normalization can be added alongside it later without impacting existing programs.
-      required: [months]
-      properties:
-        months:
-          type: object
-          description: |
-            Income per calendar month, keyed `YYYY-MM`.
-          propertyNames:
-            pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
-          additionalProperties:
-            $ref: '#/components/schemas/NormalizedMonthlyIncome'
-          examples:
-            - '2026-03':
-                total: '1300.00'
-                records:
-                  - { employerName: 'Food and Stuff', amount: '1300.00' }
-              '2026-04':
-                total: '1500.00'
-                records:
-                  - { employerName: 'Food and Stuff', amount: '1500.00' }
-              '2026-05':
-                total: '4500.00'
-                records:
-                  - { employerName: 'Food and Stuff', amount: '1500.00' }
-                  - { employerName: 'Entertainment 720', amount: '3000.00' }
-
-    NormalizedMonthlyIncome:
-      type: object
-      description: One calendar month of income from a single source.
-      required: [total, records]
-      properties:
-        total:
-          description: A convenience sum of all employment records from this datasource for the given calendar month.
-          $ref: '#/components/schemas/Dollar'
-        records:
-          type: array
-          description: One entry per employer, since a claimant may hold more than one job in the same month.
-          items:
-            $ref: '#/components/schemas/NormalizedEmploymentRecord'
-
-    NormalizedEmploymentRecord:
-      type: object
-      description: Normalized income record from one employer for a given datasource
-      required: [employerName, amount]
-      properties:
-        employerName:
-          type: string
-          minLength: 1
-          maxLength: 256
-          description: The employer as named by the data source
-        amount:
-          description: Income from this employer in this month.
-          $ref: '#/components/schemas/Dollar'
 
     RawIncome:
       type: object
       description: |
-        TBD replace with classes representing every adapter's PII-removed raw response
-
-        Semi-raw data from the source, with PII stripped out, for programs that need
-        more granular detail than the normalized payload conveys, or that they can reliable make assumptions about.
-
-    # Shared
-    Dollar:
-      type: string
-      pattern: '^-?(0|[1-9][0-9]*)\.[0-9]{2}$'
-      description: |
-        A US dollar amount as a decimal string, e.g. `"1234.56"`.
-
-        Consumers should parse it into a decimal type for numeric operations.
-      examples:
-        - '1234.56'
-        - '0.00'
-        - '-42.00' # Not sure we'll deal with negative monetary amounts, but it's at least supported until it explicitly shouldn't be.
+        The source's PII-stripped payload, passed through as a free-form object.
 
     Date:
       type: string

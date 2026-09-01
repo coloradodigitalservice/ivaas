@@ -4,8 +4,8 @@
 .venv
 .envs
 
-__pycache__
-*.py[cod]
+**/__pycache__
+**/*.py[cod]
 
 .mypy_cache
 .pytest_cache
@@ -13,6 +13,6 @@ __pycache__
 .coverage
 htmlcov
 
-tests
+**/tests
 
 README.md

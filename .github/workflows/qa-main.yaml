@@ -19,6 +19,8 @@ jobs:
   qa:
     name: Run QA checks
     runs-on: ubuntu-latest
+    env:
+      ADAPTERS_ENV: .envs/.ci/.adapters
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
 
     steps:
@@ -33,6 +35,8 @@ jobs:
           enable-cache: true
           cache-python: true
 
+      # TODO: This currently build a generic version of the app (no adapters)
+      #       Would need to checkout and build adapter repositories for integration tests
       - name: Install dependencies
         run: make sync-ci
 
@@ -47,14 +51,14 @@ jobs:
 
       - name: Run tests
         run: make test
-  docker:
-    name: Docker image builds and serves
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-      - run: make up
-      - run: curl --fail --silent --show-error http://127.0.0.1:8000/api/health
-      - run: make down
+
+      - name: Docker image builds and serves
+        run: make up
+
+      - name: Health check
+        run: curl --fail --silent --show-error http://127.0.0.1:8000/api/health
+
+
+      - name: Tear down
         if: always()
+        run: make down

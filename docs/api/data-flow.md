@@ -5,7 +5,7 @@
 >
 > Error cases can be added with `option` and/or `break`, but will significantly impact readability at ths stage.
 
-API request details can be found in the open-api-spec.yaml
+API request details can be found in the [open-api-spec.yaml](./open-api-spec.yaml)
 
 ## Program Client Onboarding
 
@@ -82,7 +82,7 @@ sequenceDiagram
     api->>datasource1: SQL REST API Query 🔒
     datasource1->>api: Query result(s) 🔒
     api->>api: Validate datasource results
-    api->>api: Normalize datasource results for response
+    api->>api: Package datasource results for response
     api->>datasource1: Log audit metadata
     note over datasource1: (metadata is shared with CDLE)
     destroy datasource1
@@ -103,13 +103,13 @@ sequenceDiagram
     api->>datasource2: Instant Client Insights for Eligibility Request 🔒
     datasource2->>api: Instant Client Insights for Eligibility Response 🔒
     api->>api: Validate datasource results
-    api->>api: Normalize datasource results for response
+    api->>api: Package datasource results for response
     destroy datasource2
     api-->datasource2: finalize adapter invocation
     end
     end
 
-    api->>api: package normalized response data
+    api->>api: Package and consolidate adapter responses
     api->>programApp: Income data response 🔒
 
     opt Income verification business logic

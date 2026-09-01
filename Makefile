@@ -1,16 +1,29 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
-LOCAL_ENV := \
+ADAPTERS_ENV ?= .envs/.local/.adapters # CI overrides this with .envs/.ci/.adapters
+ENV := \
 	--env-file .envs/.local/.django \
-	--env-file .envs/.local/.postgres
+	--env-file .envs/.local/.postgres \
+	--env-file $(ADAPTERS_ENV)
 
 COMPOSE := docker compose
 UV := cd $(API_DIR) && uv
 SYNC := $(UV) sync
-RUN := $(UV) run
-LOCAL_RUN := $(RUN) $(LOCAL_ENV)
+# --no-sync: adapter wheels are not in the lockfile. A plain `uv run` syncs first and would uninstall them.
+# `make sync`/`make sync-ci` are the explicit synchronization points.
+RUN_NO_SYNC := $(UV) run --no-sync
+LOCAL_RUN := $(RUN_NO_SYNC) $(ENV)
 MANAGE := $(LOCAL_RUN) python manage.py
 
+# ============================================================================
+# Custom adapters.
+#
+# For live adapter-app development, adapters must be checked out to the following directory
+# TODO: Rename alongside repo-rename
+ADAPTERS_CHECKOUT ?= ../income-verification-core
+ADAPTER_MODULES := $(abspath $(ADAPTERS_CHECKOUT))/adapters/*/
+# Otherwise, adapters are installed via `make adapters-install`
+# ============================================================================
 
 .DEFAULT_GOAL := help
 
@@ -23,19 +36,32 @@ setup: sync install-hooks ## set up the local development environment
 
 .PHONY: install-hooks
 install-hooks: ## install pre-commit hooks
-	$(RUN) pre-commit install --install-hooks
+	$(RUN_NO_SYNC) pre-commit install --install-hooks
 
 .PHONY: pre-commit
 pre-commit: ## run pre-commit hooks on all files
-	$(RUN) pre-commit run --all-files
+	$(RUN_NO_SYNC) pre-commit run --all-files
 
 .PHONY: sync
-sync: ## set up .venv and dependencies
+sync: ## set up .venv and dependencies, including any adapter wheels
 	$(SYNC)
+	@$(MAKE) --no-print-directory adapters-install
 
 .PHONY: sync-ci
 sync-ci: ## set up .venv and dependencies for CI, requiring pyproject.toml and uv.lock to be consistent
 	$(SYNC) --locked
+	@$(MAKE) --no-print-directory adapters-install
+
+.PHONY: adapters-install
+adapters-install: ## install landing-zone adapter wheels into the venv (no-op when empty)
+	@cd $(API_DIR) && custom-adapters/install.sh
+
+.PHONY: dev-adapters
+dev-adapters: ## live-develop adapters from the sibling checkout (cleanup: make sync)
+	@set -e; for d in $(ADAPTER_MODULES); do \
+		[ -d "$$d" ] || continue; \
+		( $(UV) pip install --python .venv/bin/python --no-deps -e "$$d" ); \
+	done
 
 .PHONY: db-up
 db-up: ## start the local docker PostgreSQL database
@@ -56,7 +82,7 @@ down: ## stop the local containerized application
 
 .PHONY: docker-migrate
 docker-migrate: up ## apply migrations in the running api container
-	$(COMPOSE) exec $(COMPOSE_API_NAME) python manage.py migrate
+	$(COMPOSE) exec $(DOCKER_API_NAME) python manage.py migrate
 
 .PHONY: run
 run: db-up ## run the local development server
@@ -79,12 +105,12 @@ test: db-up ## run tests
 
 .PHONY: quality-fix
 quality-fix: ## Apply available automatic fixes for python package quality violations
-	$(RUN) ruff format .
-	$(RUN) ruff check --fix .
+	$(RUN_NO_SYNC) ruff format .
+	$(RUN_NO_SYNC) ruff check --fix .
 
 .PHONY: quality-check
 quality-check: ## run all required checks
-	$(RUN) ruff format --check .
-	$(RUN) ruff check .
+	$(RUN_NO_SYNC) ruff format --check .
+	$(RUN_NO_SYNC) ruff check .
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .

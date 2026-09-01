@@ -27,6 +27,7 @@ htmlcov/
 .env
 **/.envs/*
 !**/.envs/.local/
+!**/.envs/.ci/
 
 ## mypy
 .mypy_cache/
@@ -38,3 +39,7 @@ dmypy.json
 
 ## PyPI configuration file
 .pypirc
+
+## Private adapter wheels (keep the landing zone itself, ignore the rest of its contents)
+income-verification-api/custom-adapters/wheels/*
+!income-verification-api/custom-adapters/wheels/.gitkeep

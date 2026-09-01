@@ -19,6 +19,7 @@ services:
     env_file:
       - ./income-verification-api/.envs/.local/.django
       - ./income-verification-api/.envs/.local/.postgres
+      - ./income-verification-api/${ADAPTERS_ENV:-.envs/.local/.adapters}
     environment:
       POSTGRES_HOST: postgres
     ports:
