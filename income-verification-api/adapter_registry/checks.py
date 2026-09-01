@@ -17,7 +17,7 @@ def unreferenced_adapter_wheels(
     A wheel that was properly placed but never declared in settings usually means a
     half-finished adapter add.
     """
-    wheels_dir = Path(settings.BASE_DIR) / "custom-adapters" / "wheels"
+    wheels_dir = Path(settings.BASE_DIR, "custom-adapters", "wheels")
     if not wheels_dir.is_dir():
         return []
 
