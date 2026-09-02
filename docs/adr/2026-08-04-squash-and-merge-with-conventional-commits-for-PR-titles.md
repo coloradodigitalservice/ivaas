@@ -16,7 +16,6 @@ Should we adopt a structured commit message convention now?
 ### Decision Drivers
 
 * API Clients and other stakeholders will benefit from a changelog to summarize the changes to this service
-* `income-verification-core` [has already adopted this strategy](https://github.com/coloradodigitalservice/income-verification-core/blob/main/docs/adr/2026-07-22-squash-and-merge-with-conventional-commits-for-PR-titles.md)
 * The team is lean, so whatever we adopt has to cost close to nothing.
 * The repository is new, so a convention adopted now applies to the whole history.
 
@@ -29,24 +28,36 @@ This ADR decides the convention only. It does not select tooling to aid with enf
 
 ### Consequences
 
-* We should enable [similar automated checks](https://github.com/coloradodigitalservice/income-verification-core/blob/main/.github/workflows/lint-pr.yaml) as `income-verification-core`
-* All [consequences of the `income-verification-core` adr](https://github.com/coloradodigitalservice/income-verification-core/blob/main/docs/adr/2026-07-22-squash-and-merge-with-conventional-commits-for-PR-titles.md#consequences) would apply here
+* We should enable automated checks on PRs to enforce the convention.
+* The type and scope vocabulary is ours to agree on and document in `CONTRIBUTING` documentation.
+* Breaking changes are best marked with `!` in the title, given the single line restriction.
+* Release automation becomes a follow-on decision. Candidates could include:
+  * [python-semantic-release](https://python-semantic-release.readthedocs.io/), which ships a `conventional-monorepo` parser that filters commits per package by changed path and scope
+  * [release-please-action](https://github.com/googleapis/release-please-action) or [git-cliff](https://git-cliff.org/) for changelog generation alone.
 
 ## Options Considered
 
 ### Adopt the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for merge commits
 
-All the [pros and cons of this option from the `income-verification-core` adr](https://github.com/coloradodigitalservice/income-verification-core/blob/main/docs/adr/2026-07-22-squash-and-merge-with-conventional-commits-for-PR-titles.md#adopt-the-conventional-commits-specification-for-merge-commits), plus:
-
-* `++` Unifies the contributor experience across modules that the team is already accutomed to.
-* `±` Adds process where there currently is none.
+* `++` Unifies the contributor experience across modules that the current IVaaS team is already accutomed to.
+* `++` Encodes change type and breaking status in the subject, so changelogs and version
+  bumps can be derived from history.
+* `+` Published specification with an existing [tool ecosystem](https://www.conventionalcommits.org/en/about/),
+  so we do not design or maintain a format ourselves.
+* `+` Under squash and merge, the check lands on the PR title, so commits on a branch are
+  unaffected.
+* `±` Requires agreeing a type and scope vocabulary and documenting it.
+* `-` Adds a required check that can block a merge on a title typo.
+* `-` Restricts breaking-change notation to `!`, because the PR title is a single line.
 
 ### No commit convention
 
 Freeform commits. Change metadata lives on the pull request rather than in the
 message.
 
-All the [pros and cons of this option from the `income-verification-core` adr](https://github.com/coloradodigitalservice/income-verification-core/blob/main/docs/adr/2026-07-22-squash-and-merge-with-conventional-commits-for-PR-titles.md#no-commit-convention), plus:
-
+* `+` Adds no CI check, no vocabulary to agree, and nothing for contributors to learn.
+* `±` Something like [Release Drafter](https://github.com/release-drafter/release-drafter) could still be used to automate release notes, but it reads labels applied by hand to each pull request.
+  That metadata lives in GitHub rather than the repository, so a fork or a migration off GitHub would lose it.
+* `-` Adopting the convention later splits the history into two formats and leaves the earlier range unusable by tooling.
 * `-` Would require a different mechanism (possibly manual) to generate changelogs for API clients and stakeholders.
-* `-` Makes the developer experience between modules dissimilar.
+* `-` Makes the developer experience between modules dissimilar, as the current IVaaS team is using conventional commits in other repositories.
