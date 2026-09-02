@@ -11,7 +11,7 @@ info:
     service.
 
     The portable parts map to **schemas** under `components/schemas`, which are owned by
-    `income-verification-core`. Another state adopting the core is expected to reuse those
+    the `ivaas-core` package. Another state adopting the core is expected to reuse those
     schemas while defining its own paths, servers, and (notably) its own authentication
     scheme. Nothing in `components/securitySchemes` should be assumed portable.
 
