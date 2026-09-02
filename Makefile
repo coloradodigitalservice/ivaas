@@ -1,6 +1,6 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
-ADAPTERS_ENV ?= .envs/.local/.adapters # CI overrides this with .envs/.ci/.adapters
+ADAPTERS_ENV ?= .envs/.local/.adapters# CI overrides this with .envs/.ci/.adapters
 ENV := \
 	--env-file .envs/.local/.django \
 	--env-file .envs/.local/.postgres \
