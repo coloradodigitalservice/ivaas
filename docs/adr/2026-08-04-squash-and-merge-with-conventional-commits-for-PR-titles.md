@@ -39,7 +39,7 @@ This ADR decides the convention only. It does not select tooling to aid with enf
 
 ### Adopt the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for merge commits
 
-* `++` Unifies the contributor experience across modules that the current IVaaS team is already accutomed to.
+* `++` Unifies the contributor experience across modules that the current IVaaS team is already accustomed to.
 * `++` Encodes change type and breaking status in the subject, so changelogs and version
   bumps can be derived from history.
 * `+` Published specification with an existing [tool ecosystem](https://www.conventionalcommits.org/en/about/),
