@@ -19,8 +19,7 @@ MANAGE := $(LOCAL_RUN) python manage.py
 # Custom adapters.
 #
 # For live adapter-app development, adapters must be checked out to the following directory
-# TODO: Rename alongside repo-rename
-ADAPTERS_CHECKOUT ?= ../income-verification-core
+ADAPTERS_CHECKOUT ?= ../iv-colorado-adapters
 ADAPTER_MODULES := $(abspath $(ADAPTERS_CHECKOUT))/adapters/*/
 # Otherwise, adapters are installed via `make adapters-install`
 # ============================================================================
