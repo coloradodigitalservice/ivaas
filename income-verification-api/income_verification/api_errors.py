@@ -158,12 +158,15 @@ def _error_response(
         status=definition.status_code,
     )
 
+    # Identify whether it was a client or server error
     is_internal_error = definition.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
     log_message = (
         "income verification request failed"
         if is_internal_error
         else "income verification request rejected"
     )
+
+    # Build safe structured metadata
     attributes: dict[str, object] = {
         "event_name": (
             "income_verification.request.failed"
