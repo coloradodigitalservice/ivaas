@@ -19,7 +19,6 @@ from pydantic_core import PydanticCustomError
 
 from income_verification.api_error_codes import ERRORS, ErrorCode, ErrorDefinition
 from income_verification.api_errors import (
-    GENERIC_HTTP_ERROR_MESSAGE,
     _code_for_validation_error,
     _code_for_validation_errors,
     _error_response,
@@ -171,49 +170,46 @@ def test_unexpected_exception_returns_and_logs_controlled_internal_error(
     assert sentinel not in serialized
 
 
-def test_http_500_uses_controlled_internal_error(
-    captured_api_error_logs: StringIO,
-) -> None:
-    sentinel = "PII_SENTINEL_HTTP_500_MESSAGE"
-
-    response = _dispatch_exception(HttpError(HTTPStatus.INTERNAL_SERVER_ERROR, sentinel))
-
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert json.loads(response.content) == {
-        "code": ErrorCode.INTERNAL_ERROR,
-        "message": ERRORS[ErrorCode.INTERNAL_ERROR].message,
-    }
-    serialized = captured_api_error_logs.getvalue()
-    assert json.loads(serialized)["exception.type"] == "HttpError"
-    assert sentinel not in response.content.decode()
-    assert sentinel not in serialized
-
-
 @pytest.mark.parametrize(
-    ("status", "expected_level"),
+    ("framework_status", "expected_code", "expected_level"),
     [
-        (HTTPStatus.FORBIDDEN, "WARNING"),
-        (HTTPStatus.SERVICE_UNAVAILABLE, "ERROR"),
+        (HTTPStatus.BAD_REQUEST, ErrorCode.INVALID_REQUEST, "WARNING"),
+        (HTTPStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED, "WARNING"),
+        (HTTPStatus.FORBIDDEN, ErrorCode.FORBIDDEN, "WARNING"),
+        (HTTPStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, "ERROR"),
+        (HTTPStatus.SERVICE_UNAVAILABLE, ErrorCode.SERVICE_UNAVAILABLE, "ERROR"),
+        (HTTPStatus.IM_A_TEAPOT, ErrorCode.INTERNAL_ERROR, "ERROR"),
     ],
 )
-def test_generic_http_error_preserves_status_and_uses_safe_severity(
+def test_http_errors_use_the_stable_error_contract(
     captured_api_error_logs: StringIO,
-    status: HTTPStatus,
+    framework_status: HTTPStatus,
+    expected_code: ErrorCode,
     expected_level: str,
 ) -> None:
-    sentinel = f"PII_SENTINEL_HTTP_{status}_MESSAGE"
+    sentinel = f"PII_SENTINEL_HTTP_{framework_status}_MESSAGE"
 
-    response = _dispatch_exception(HttpError(status, sentinel))
+    response = _dispatch_exception(HttpError(framework_status, sentinel))
 
-    assert response.status_code == status
-    assert json.loads(response.content) == {"detail": GENERIC_HTTP_ERROR_MESSAGE}
+    definition = ERRORS[expected_code]
+    assert response.status_code == definition.status_code
+    assert json.loads(response.content) == {
+        "code": expected_code,
+        "message": definition.message,
+    }
     assert response.headers["Correlation-Id"] == CORRELATION_ID
     serialized = captured_api_error_logs.getvalue()
     record = json.loads(serialized)
     assert record["level"] == expected_level
-    assert record["event.name"] == "api.request.failed"
+    expected_event = (
+        "income_verification.request.failed"
+        if definition.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+        else "income_verification.request.rejected"
+    )
+    assert record["event.name"] == expected_event
+    assert record["error.code"] == expected_code
     assert record["exception.type"] == "HttpError"
-    assert record["http.response.status_code"] == status
+    assert record["http.response.status_code"] == definition.status_code
     assert record["ivaas.correlation.id"] == CORRELATION_ID
     assert sentinel not in response.content.decode()
     assert sentinel not in serialized

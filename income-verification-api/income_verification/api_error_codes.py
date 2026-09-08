@@ -22,7 +22,10 @@ class ErrorCode(StrEnum):
     INVALID_APPLICATION_ID = "INVALID_APPLICATION_ID"
     INVALID_LOOKBACK_PERIOD = "INVALID_LOOKBACK_PERIOD"
 
+    UNAUTHORIZED = "UNAUTHORIZED"
+    FORBIDDEN = "FORBIDDEN"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -82,6 +85,18 @@ ERRORS: dict[ErrorCode, ErrorDefinition] = {
     ErrorCode.INTERNAL_ERROR: ErrorDefinition(
         message="An internal server error occurred.",
         status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+    ),
+    ErrorCode.UNAUTHORIZED: ErrorDefinition(
+        message="Authentication is required.",
+        status_code=HTTPStatus.UNAUTHORIZED,
+    ),
+    ErrorCode.FORBIDDEN: ErrorDefinition(
+        message="The authenticated client is not authorized to perform this request.",
+        status_code=HTTPStatus.FORBIDDEN,
+    ),
+    ErrorCode.SERVICE_UNAVAILABLE: ErrorDefinition(
+        message="The service is temporarily unavailable.",
+        status_code=HTTPStatus.SERVICE_UNAVAILABLE,
     ),
 }
 

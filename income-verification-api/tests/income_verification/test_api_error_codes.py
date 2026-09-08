@@ -40,7 +40,7 @@ def test_request_validation_errors_use_the_locked_bad_request_definition() -> No
     validation_errors = {
         code: definition
         for code, definition in ERRORS.items()
-        if code is not ErrorCode.INTERNAL_ERROR
+        if isinstance(definition, RequestValidationErrorDefinition)
     }
 
     assert all(
@@ -52,12 +52,37 @@ def test_request_validation_errors_use_the_locked_bad_request_definition() -> No
     }
 
 
-def test_internal_error_has_an_explicit_server_error_definition() -> None:
-    definition = ERRORS[ErrorCode.INTERNAL_ERROR]
+@pytest.mark.parametrize(
+    ("code", "status", "message"),
+    [
+        (ErrorCode.UNAUTHORIZED, HTTPStatus.UNAUTHORIZED, "Authentication is required."),
+        (
+            ErrorCode.FORBIDDEN,
+            HTTPStatus.FORBIDDEN,
+            "The authenticated client is not authorized to perform this request.",
+        ),
+        (
+            ErrorCode.INTERNAL_ERROR,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "An internal server error occurred.",
+        ),
+        (
+            ErrorCode.SERVICE_UNAVAILABLE,
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "The service is temporarily unavailable.",
+        ),
+    ],
+)
+def test_api_level_errors_have_explicit_general_definitions(
+    code: ErrorCode,
+    status: HTTPStatus,
+    message: str,
+) -> None:
+    definition = ERRORS[code]
 
     assert type(definition) is ErrorDefinition
-    assert definition.status_code is HTTPStatus.INTERNAL_SERVER_ERROR
-    assert definition.message == "An internal server error occurred."
+    assert definition.status_code is status
+    assert definition.message == message
 
 
 def test_field_error_codes_are_derived_from_error_definitions() -> None:

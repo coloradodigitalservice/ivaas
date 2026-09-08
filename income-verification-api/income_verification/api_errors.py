@@ -23,7 +23,14 @@ logger = logging.getLogger(__name__)
 
 # Bound structured log volume while retaining the total error count.
 MAX_LOGGED_VALIDATION_ERRORS = 5
-GENERIC_HTTP_ERROR_MESSAGE = "The request could not be completed."
+
+_HTTP_ERROR_CODES: dict[int, ErrorCode] = {
+    HTTPStatus.BAD_REQUEST: ErrorCode.INVALID_REQUEST,
+    HTTPStatus.UNAUTHORIZED: ErrorCode.UNAUTHORIZED,
+    HTTPStatus.FORBIDDEN: ErrorCode.FORBIDDEN,
+    HTTPStatus.INTERNAL_SERVER_ERROR: ErrorCode.INTERNAL_ERROR,
+    HTTPStatus.SERVICE_UNAVAILABLE: ErrorCode.SERVICE_UNAVAILABLE,
+}
 
 
 class ValidationReason(StrEnum):
@@ -210,47 +217,24 @@ def register_exception_handlers(api: NinjaAPI) -> None:
         request: HttpRequest,
         exc: HttpError,
     ) -> HttpResponse:
-        if exc.status_code == HTTPStatus.BAD_REQUEST:
-            return _error_response(
-                api,
-                request,
-                ErrorCode.INVALID_REQUEST,
-                error_type="bad_request",
-            )
+        code = _HTTP_ERROR_CODES.get(exc.status_code)
+        if code is None:
+            code = ErrorCode.INTERNAL_ERROR
+            error_type = "unexpected_http_error"
+        elif code is ErrorCode.INVALID_REQUEST:
+            error_type = "bad_request"
+        elif code is ErrorCode.INTERNAL_ERROR:
+            error_type = "internal_error"
+        else:
+            error_type = "http_error"
 
-        if exc.status_code == HTTPStatus.INTERNAL_SERVER_ERROR:
-            return _error_response(
-                api,
-                request,
-                ErrorCode.INTERNAL_ERROR,
-                error_type="internal_error",
-                exception_type=type(exc).__name__,
-            )
-
-        is_server_error = HTTPStatus.INTERNAL_SERVER_ERROR <= exc.status_code <= 599
-        log_method = logger.error if is_server_error else logger.warning
-        log_method(
-            "API request failed",
-            extra={
-                "event_name": "api.request.failed",
-                "error_type": "http_error",
-                "http_request_method": request.method or "UNKNOWN",
-                "http_response_status_code": exc.status_code,
-                "url_path": request.path,
-                "exception_type": type(exc).__name__,
-            },
-        )
-
-        # Transitional framework fallback; known failures should use the IVaaS catalog.
-        response = api.create_response(
+        return _error_response(
+            api,
             request,
-            {"detail": GENERIC_HTTP_ERROR_MESSAGE},
-            status=exc.status_code,
+            code,
+            error_type=error_type,
+            exception_type=type(exc).__name__,
         )
-        correlation_id = get_correlation_id()
-        if correlation_id is not None:
-            response[CORRELATION_ID_HEADER_NAME] = correlation_id
-        return response
 
     @api.exception_handler(Exception)
     def unexpected_exception(
