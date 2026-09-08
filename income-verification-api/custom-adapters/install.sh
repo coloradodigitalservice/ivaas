@@ -24,13 +24,10 @@ if ls "$wheels_dir"/*.whl >/dev/null 2>&1; then
         --quiet --output-file "$ivaas_constraints_temp_txt"
     # Install adapter wheels with their dependencies from the wheels landing zone
     # --constraint: all constraints files apply together; the install fails where any conflict
-    # --strict: audit the whole venv afterwards and warn (does not fail) for packages left with
-    #   unsatisfied declared dependencies
     uv pip install --python "$application_venv_python" \
-        --strict \
         --constraint "$ivaas_constraints_temp_txt" \
         --constraint "$constraints_txt" \
         "$wheels_dir"/*.whl
-    # pip check to fail where --strict only warned above
+    # Audit the whole venv: fail if any package is left with unsatisfied declared dependencies
     uv pip check --python "$application_venv_python"
 fi
