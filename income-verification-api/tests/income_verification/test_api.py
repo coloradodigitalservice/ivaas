@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Iterator
-from contextlib import contextmanager
 from io import StringIO
 from typing import Any, cast
 from unittest.mock import patch
@@ -59,8 +58,8 @@ def assert_error_response(response: Any, code: ErrorCode, *, echoes_correlation_
         assert "Correlation-Id" not in response.headers
 
 
-@contextmanager
-def capture_income_verification_logs() -> Iterator[StringIO]:
+@pytest.fixture
+def captured_income_verification_logs() -> Iterator[StringIO]:
     stream = StringIO()
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
@@ -190,21 +189,21 @@ def test_rejects_missing_correlation_id(client: Client) -> None:
 
 def test_rejects_malformed_correlation_id_without_echoing_or_retaining_it(
     client: Client,
+    captured_income_verification_logs: StringIO,
 ) -> None:
     malformed_correlation_id = "SENTINEL-MALFORMED-CORRELATION-ID"
-    with capture_income_verification_logs() as stream:
-        response = client.post(
-            INCOME_VERIFICATION_PATH,
-            data=json.dumps(valid_request()),
-            content_type="application/json",
-            headers={"Correlation-Id": malformed_correlation_id},
-        )
+    response = client.post(
+        INCOME_VERIFICATION_PATH,
+        data=json.dumps(valid_request()),
+        content_type="application/json",
+        headers={"Correlation-Id": malformed_correlation_id},
+    )
 
     assert_error_response(response, ErrorCode.INVALID_CORRELATION_ID, echoes_correlation_id=False)
-    record = json.loads(stream.getvalue())
+    record = json.loads(captured_income_verification_logs.getvalue())
     assert record["error.code"] == ErrorCode.INVALID_CORRELATION_ID
     assert "ivaas.correlation.id" not in record
-    assert malformed_correlation_id not in stream.getvalue()
+    assert malformed_correlation_id not in captured_income_verification_logs.getvalue()
 
 
 def test_accepts_correlation_id_without_client_ref(client: Client) -> None:
@@ -436,6 +435,7 @@ def test_rejects_reversed_lookback_period(client: Client) -> None:
 )
 def test_rejected_request_logs_exclude_user_values(
     client: Client,
+    captured_income_verification_logs: StringIO,
     case: str,
     sentinels: tuple[str, ...],
 ) -> None:
@@ -448,11 +448,10 @@ def test_rejected_request_logs_exclude_user_values(
     else:
         payload[case] = f"{sentinels[0]}\x00"
 
-    with capture_income_verification_logs() as stream:
-        response = post_verification(client, payload)
+    response = post_verification(client, payload)
 
     assert response.status_code == 400
-    emitted = stream.getvalue()
+    emitted = captured_income_verification_logs.getvalue()
     record = json.loads(emitted)
     assert record["event.name"] == "income_verification.request.rejected"
     assert record["error.type"] == "validation_error"
@@ -468,7 +467,10 @@ def test_rejected_request_logs_exclude_user_values(
         assert sentinel not in emitted
 
 
-def test_multiple_validation_failures_use_fallback_without_logging_values(client: Client) -> None:
+def test_multiple_validation_failures_use_fallback_without_logging_values(
+    client: Client,
+    captured_income_verification_logs: StringIO,
+) -> None:
     sentinels = (
         "SENTINEL-MULTI-APP",
         "SENTINEL-MULTI-FIRST",
@@ -479,14 +481,14 @@ def test_multiple_validation_failures_use_fallback_without_logging_values(client
     payload["firstName"] = f"{sentinels[1]}\x00"
     payload["last4Ssn"] = sentinels[2]
 
-    with capture_income_verification_logs() as stream:
-        response = post_verification(client, payload)
+    response = post_verification(client, payload)
 
     assert_error_response(response, ErrorCode.INVALID_REQUEST, echoes_correlation_id=True)
-    record = json.loads(stream.getvalue())
+    emitted = captured_income_verification_logs.getvalue()
+    record = json.loads(emitted)
     assert record["error.code"] == ErrorCode.INVALID_REQUEST
     assert record["validation.error.count"] == 3
-    assert all(sentinel not in stream.getvalue() for sentinel in sentinels)
+    assert all(sentinel not in emitted for sentinel in sentinels)
 
 
 def test_rejects_malformed_json(client: Client) -> None:
