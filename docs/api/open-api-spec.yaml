@@ -26,7 +26,7 @@ security:
   - agencyAssertionProd: []
 
 paths:
-  /v1/income-verification:
+  /api/v1/income-verification:
     post:
       summary: Request income details
       description: |
@@ -87,7 +87,7 @@ paths:
         '503':
           $ref: '#/components/responses/Error'
 
-  /v1/test-connection:
+  /api/v1/test-connection:
     get:
       summary: Verify authenticated connectivity
       description: |
@@ -182,8 +182,8 @@ components:
       in: header
       required: true
       description: |
-        Correlation identifier echoed on every response and recorded on every log line for
-        the request. Two accepted forms:
+        Correlation identifier echoed on every response and recorded on application logs emitted
+        while handling the request. Two accepted forms:
 
         - `{uuidv4}`: version-4 UUID on its own.
         - `{uuidv4}:{reference}`: version-4 UUID, a colon, then an agency's own reference or identifier string
@@ -376,7 +376,8 @@ components:
       properties:
         sourceId:
           type: string
-          enum: [CDLE_1_0, EQUIFAX_ICIE_3_0_0]
+          minLength: 1
+          description: Identifier declared by the income source adapter.
         status:
           type: string
           enum: [OK, NO_DATA, UNAVAILABLE, ERROR]

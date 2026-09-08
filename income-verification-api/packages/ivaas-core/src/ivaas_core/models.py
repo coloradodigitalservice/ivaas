@@ -18,29 +18,30 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-_SSN_PATTERN = re.compile(r"[0-9]{9}")
-_LAST4_SSN_PATTERN = re.compile(r"[0-9]{4}")
-# Spec pattern for names: printable, no ASCII control characters.
-_CONTROL_CHARS_PATTERN = re.compile(r"[\x00-\x1F\x7F]")
-
-_MAX_NAME_LENGTH = 256
+from ivaas_core.constraints import (
+    LAST4_SSN_PATTERN,
+    NAME_MAX_LENGTH,
+    NAME_MIN_LENGTH,
+    NAME_PATTERN,
+    SSN_PATTERN,
+)
 
 
 def _validate_name(value: str, field_name: str) -> None:
-    if not value:
-        raise ValueError(f"{field_name} must not be empty")
-    if len(value) > _MAX_NAME_LENGTH:
-        raise ValueError(f"{field_name} must be at most {_MAX_NAME_LENGTH} characters")
-    if _CONTROL_CHARS_PATTERN.search(value):
+    if not value or len(value) < NAME_MIN_LENGTH:
+        raise ValueError(f"{field_name} must be at least {NAME_MIN_LENGTH} characters")
+    if len(value) > NAME_MAX_LENGTH:
+        raise ValueError(f"{field_name} must be at most {NAME_MAX_LENGTH} characters")
+    if not re.fullmatch(NAME_PATTERN, value):
         raise ValueError(f"{field_name} must not contain control characters")
 
 
 def _validate_ssn_fields(ssn: str | None, last4_ssn: str | None) -> None:
     if (ssn is None) == (last4_ssn is None):
         raise ValueError("exactly one of ssn or last4_ssn must be provided")
-    if ssn is not None and not _SSN_PATTERN.fullmatch(ssn):
+    if ssn is not None and not re.fullmatch(SSN_PATTERN, ssn):
         raise ValueError("ssn must be nine digits (no separators)")
-    if last4_ssn is not None and not _LAST4_SSN_PATTERN.fullmatch(last4_ssn):
+    if last4_ssn is not None and not re.fullmatch(LAST4_SSN_PATTERN, last4_ssn):
         raise ValueError("last4_ssn must be four digits")
 
 

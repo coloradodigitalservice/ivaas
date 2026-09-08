@@ -74,8 +74,10 @@ make up
 
 The application will be available at:
 
-- API: http://127.0.0.1:8000/api/
+- Health check: http://127.0.0.1:8000/api/health
+- Income verification: http://127.0.0.1:8000/api/v1/income-verification
 - OpenAPI documentation: http://127.0.0.1:8000/api/docs
+- OpenAPI document: http://127.0.0.1:8000/api/openapi.json
 
 > [!NOTE]
 > `make run` starts PostgreSQL automatically if it is not already running.

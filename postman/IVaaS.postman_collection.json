@@ -1,0 +1,391 @@
+{
+  "info": {
+    "_postman_id": "99ddd3b9-b63c-40b0-ae58-1d9d1dfae837",
+    "name": "IVaaS API",
+    "description": "Development and contract-testing requests for the IVaaS API. Start the application locally, then run the collection with its default variables. Authentication is intentionally unset until the API enforces the documented Cognito flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000/api",
+      "type": "string",
+      "description": "IVaaS API base URL without a trailing slash."
+    },
+    {
+      "key": "apiVersion",
+      "value": "v1",
+      "type": "string",
+      "description": "Must match the application's API_VERSION setting."
+    },
+    {
+      "key": "correlationId",
+      "value": "",
+      "type": "string",
+      "description": "Generated before every request as a UUIDv4 with a Postman reference suffix."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const correlationId = pm.variables.replaceIn('{{$guid}}') + ':postman';",
+          "pm.collectionVariables.set('correlationId', correlationId);"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Service metadata",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Unversioned application health check."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports healthy', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({ status: 'ok' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generated OpenAPI document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/openapi.json",
+              "host": ["{{baseUrl}}"],
+              "path": ["openapi.json"]
+            },
+            "description": "The code-generated API contract used by Swagger UI."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('advertises the configured API version and route', () => {",
+                  "  const document = pm.response.json();",
+                  "  const version = pm.collectionVariables.get('apiVersion');",
+                  "  pm.expect(document.info.version).to.equal(version);",
+                  "  pm.expect(document.paths).to.have.property(`/${version}/income-verification`);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Income verification",
+      "item": [
+        {
+          "name": "Verify using last four SSN digits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            },
+            "description": "Minimum documented verification request using last4Ssn."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('echoes the correlation id', () => {",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});",
+                  "pm.test('returns a verification envelope', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.verificationId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);",
+                  "  pm.expect(body.sources).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify using full SSN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"ssn\": \"123001234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            },
+            "description": "Complete documented verification request using ssn instead of last4Ssn."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('echoes the correlation id', () => {",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject missing Correlation-Id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns the documented error envelope', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({",
+                  "    code: 'INVALID_REQUEST',",
+                  "    message: 'Request failed validation.'",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject both SSN forms",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"ssn\": \"123001234\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns INVALID_REQUEST and echoes correlation id', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('INVALID_REQUEST');",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject reversed lookback period",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-06-30\",\n    \"endDate\": \"2026-01-01\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns INVALID_REQUEST', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('INVALID_REQUEST');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject malformed JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns INVALID_REQUEST', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('INVALID_REQUEST');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
