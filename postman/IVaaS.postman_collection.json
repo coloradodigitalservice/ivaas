@@ -121,7 +121,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"last4Ssn\": \"0000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -173,7 +173,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"ssn\": \"123001234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"ssn\": \"000000000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -215,7 +215,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"last4Ssn\": \"0000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -247,7 +247,7 @@
           ]
         },
         {
-          "name": "Reject both SSN forms",
+          "name": "Reject malformed full SSN",
           "request": {
             "method": "POST",
             "header": [
@@ -264,7 +264,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"ssn\": \"123001234\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"ssn\": \"NOTANSSN\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -284,8 +284,149 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('returns 400', () => pm.response.to.have.status(400));",
-                  "pm.test('returns INVALID_REQUEST and echoes correlation id', () => {",
-                  "  pm.expect(pm.response.json().code).to.equal('INVALID_REQUEST');",
+                  "pm.test('returns INVALID_SSN_FORMAT and echoes correlation id', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('INVALID_SSN_FORMAT');",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject missing identity identifier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns MISSING_IDENTITY_IDENTIFIER and echoes correlation id', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('MISSING_IDENTITY_IDENTIFIER');",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject malformed Correlation-Id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "INVALID-TEST-CORRELATION-ID",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"last4Ssn\": \"0000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns INVALID_CORRELATION_ID without echoing it', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('INVALID_CORRELATION_ID');",
+                  "  pm.expect(pm.response.headers.has('Correlation-Id')).to.equal(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject both SSN forms",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"ssn\": \"000000000\",\n  \"last4Ssn\": \"0000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('returns MULTIPLE_IDENTITY_IDENTIFIERS and echoes correlation id', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('MULTIPLE_IDENTITY_IDENTIFIERS');",
                   "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
                   "});"
                 ]
@@ -311,7 +452,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"applicationId\": \"APP-2026-004471\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"last4Ssn\": \"1234\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-06-30\",\n    \"endDate\": \"2026-01-01\"\n  }\n}",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"last4Ssn\": \"0000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-06-30\",\n    \"endDate\": \"2026-01-01\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -331,8 +472,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('returns 400', () => pm.response.to.have.status(400));",
-                  "pm.test('returns INVALID_REQUEST', () => {",
-                  "  pm.expect(pm.response.json().code).to.equal('INVALID_REQUEST');",
+                  "pm.test('returns INVALID_LOOKBACK_PERIOD and echoes correlation id', () => {",
+                  "  pm.expect(pm.response.json().code).to.equal('INVALID_LOOKBACK_PERIOD');",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
                   "});"
                 ]
               }

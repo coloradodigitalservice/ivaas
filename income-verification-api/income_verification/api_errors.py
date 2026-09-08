@@ -1,15 +1,16 @@
 """Exception handling for the program-facing IVaaS API."""
 
 import logging
+from collections.abc import Mapping, Sequence
+from enum import StrEnum
 from typing import Any
 
 from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import HttpError, ValidationError
-from pydantic.alias_generators import to_camel
 
+from income_verification.api_error_codes import ERRORS, FIELD_ERROR_CODES, ErrorCode
 from income_verification.correlation_id import CORRELATION_ID_HEADER_NAME
-from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.request_context import get_correlation_id
 
 logger = logging.getLogger(__name__)
@@ -17,35 +18,54 @@ logger = logging.getLogger(__name__)
 MAX_LOGGED_VALIDATION_ERRORS = 5
 
 
+class ValidationReason(StrEnum):
+    """
+    IVaaS-owned vocabulary for validation telemetry. Ensures that a cusom pydantic validation
+    error won't accidentally leak sensitive information.
+    """
+
+    MISSING = "missing"
+    INVALID = "invalid"
+
+
+def _validation_reason(error_type: object) -> ValidationReason:
+    """Translate a framework validation type to a stable IVaaS reason."""
+    if error_type == "missing" or error_type == ErrorCode.MISSING_IDENTITY_IDENTIFIER.value:
+        return ValidationReason.MISSING
+    return ValidationReason.INVALID
+
+
 def _sanitized_validation_errors(
-    errors: list[dict[str, Any]],
+    errors: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, str]]:
     """Return validation metadata that is safe to include in application logs."""
-    return [
-        {
-            "field": ".".join(str(part) for part in error.get("loc", ())),
-            "type": str(error.get("type", "unknown")),
-        }
-        for error in errors[:MAX_LOGGED_VALIDATION_ERRORS]
-    ]
+    sanitized_errors: list[dict[str, str]] = []
+    for error in errors[:MAX_LOGGED_VALIDATION_ERRORS]:
+        location = error.get("loc", ())
+        field = _field_for_location(location) if isinstance(location, (tuple, list)) else None
+        sanitized_errors.append(
+            {
+                "field": field or "request",
+                "reason": _validation_reason(error.get("type")).value,
+            }
+        )
+    return sanitized_errors
 
 
-def _location_matches_field(
-    location: tuple[object, ...] | list[object],
-    field: str,
-) -> bool:
-    """Return whether a validation location refers to a public API field."""
-    for part in location:
-        part_name = str(part)
+def _normalized_field_name(value: object) -> str:
+    """Normalize Python, JSON, and HTTP spellings for field matching."""
+    return "".join(character.lower() for character in str(value) if character.isalnum())
 
-        if part_name == field:
-            return True
 
-        # Pydantic may report the Python field name rather than its API alias.
-        if to_camel(part_name) == field:
-            return True
-
-    return False
+def _field_for_location(location: tuple[object, ...] | list[object]) -> str | None:
+    """Return an allowlisted public field name for a validation location."""
+    fields_by_normalized_name = {
+        _normalized_field_name(field): field for field in FIELD_ERROR_CODES
+    }
+    for part in reversed(location):
+        if field := fields_by_normalized_name.get(_normalized_field_name(part)):
+            return field
+    return None
 
 
 def _code_for_validation_error(
@@ -65,27 +85,26 @@ def _code_for_validation_error(
     if not isinstance(location, (tuple, list)):
         return None
 
-    for code, definition in ERRORS.items():
-        if definition.field is None:
-            continue
+    field = _field_for_location(location)
+    if field is None:
+        return None
 
-        if _location_matches_field(location, definition.field):
-            return code
-
-    return None
+    code = FIELD_ERROR_CODES[field]
+    if code is ErrorCode.INVALID_CORRELATION_ID and error_type == "missing":
+        # A required header that was not sent is a generic incomplete request.
+        # INVALID_CORRELATION_ID is reserved for a supplied malformed value.
+        return None
+    return code
 
 
 def _code_for_validation_errors(
     errors: list[dict[str, Any]],
 ) -> ErrorCode:
     """Choose the public error code for a set of validation failures."""
-    # If there is more than one validation error, we default to a generic invalid request code.
-    # we could probably have more sophisticated logic here and use a code for multiple validation errors then return the list of codes
-    # in the definition of the error response.
+    # A single response code cannot represent several independent failures safely.
     if len(errors) != 1:
         return ErrorCode.INVALID_REQUEST
 
-    # Otherwise, we have exactly one validation error, so we attempt to map it to a specific error code.
     return _code_for_validation_error(errors[0]) or ErrorCode.INVALID_REQUEST
 
 
@@ -120,9 +139,7 @@ def _error_response(
 
     if validation_errors is not None:
         attributes["validation_error_count"] = len(validation_errors)
-        attributes["validation_errors"] = _sanitized_validation_errors(
-            validation_errors
-        )
+        attributes["validation_errors"] = _sanitized_validation_errors(validation_errors)
 
     logger.warning(
         "income verification request rejected",

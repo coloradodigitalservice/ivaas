@@ -28,7 +28,9 @@ from ivaas_core.constraints import (
 
 
 def _validate_name(value: str, field_name: str) -> None:
-    if not value or len(value) < NAME_MIN_LENGTH:
+    if not value:
+        raise ValueError(f"{field_name} must not be empty")
+    if len(value) < NAME_MIN_LENGTH:
         raise ValueError(f"{field_name} must be at least {NAME_MIN_LENGTH} characters")
     if len(value) > NAME_MAX_LENGTH:
         raise ValueError(f"{field_name} must be at most {NAME_MAX_LENGTH} characters")

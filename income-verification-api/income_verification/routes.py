@@ -6,14 +6,33 @@ from typing import Annotated
 from django.http import HttpRequest, HttpResponse
 from ninja import Header, Router
 
+from income_verification.correlation_id import (
+    CORRELATION_ID_HEADER_NAME,
+    CORRELATION_ID_MAX_LENGTH,
+    CORRELATION_ID_PATTERN,
+)
 from income_verification.request_context import set_verification_log_context
-from income_verification.correlation_id import CORRELATION_ID_HEADER_NAME, CORRELATION_ID_MAX_LENGTH, CORRELATION_ID_PATTERN
 from income_verification.schemas import Error, VerificationRequest, VerificationResponse
 
 logger = logging.getLogger(__name__)
 
 # Tags here for the API documentation
 router = Router(tags=["Income verification"])
+
+CORRELATION_ID_RESPONSE_HEADER = {
+    "description": "Echo of a valid request Correlation-Id header.",
+    "required": True,
+    "schema": {
+        "type": "string",
+        "maxLength": CORRELATION_ID_MAX_LENGTH,
+        "pattern": CORRELATION_ID_PATTERN,
+    },
+}
+# Error responses cannot echo an ID when the request omitted it or supplied a malformed one.
+OPTIONAL_CORRELATION_ID_RESPONSE_HEADER = {
+    **CORRELATION_ID_RESPONSE_HEADER,
+    "required": False,
+}
 
 CorrelationId = Annotated[
     str,
@@ -35,11 +54,11 @@ CorrelationId = Annotated[
         "responses": {
             200: {
                 "description": "Verification completed.",
-                "headers": {CORRELATION_ID_HEADER_NAME: CORRELATION_ID_HEADER_NAME},
+                "headers": {CORRELATION_ID_HEADER_NAME: CORRELATION_ID_RESPONSE_HEADER},
             },
             400: {
                 "description": "Request validation failed.",
-                "headers": {CORRELATION_ID_HEADER_NAME: CORRELATION_ID_HEADER_NAME},
+                "headers": {CORRELATION_ID_HEADER_NAME: OPTIONAL_CORRELATION_ID_RESPONSE_HEADER},
             },
         }
     },

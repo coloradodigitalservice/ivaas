@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from typing import Literal, Self
-from income_verification.api_error_codes import ErrorCode, ERRORS
 from uuid import UUID
 
 from ivaas_core import (
@@ -19,6 +18,7 @@ from pydantic import ConfigDict, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import PydanticCustomError
 
+from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.dtos import VerificationRequestEnvelope
 
 
@@ -56,7 +56,6 @@ class VerificationRequest(ApiSchema):
     ssn: str | None = Field(default=None, pattern=SSN_PATTERN, repr=False)
     last4_ssn: str | None = Field(default=None, pattern=LAST4_SSN_PATTERN, repr=False)
     lookback_period: CoreLookbackPeriod
-
 
     @model_validator(mode="after")
     def request_must_be_valid(self) -> Self:

@@ -102,7 +102,6 @@ LOGGING = {
             "()": "income_verification.request_context.JsonLogFormatter",
         },
     },
-
     "handlers": {
         # Write the logs to stdout and apply the filters to each log.
         "console": {

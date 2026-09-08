@@ -1,17 +1,20 @@
 import asyncio
 import json
 import logging
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Iterator
+from contextlib import contextmanager
 from io import StringIO
 from typing import Any, cast
 from unittest.mock import patch
 from uuid import UUID
 
+import pytest
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.test import Client, RequestFactory
 from ivaas_core import NAME_MAX_LENGTH, SSN_PATTERN
 
+from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.request_context import (
     JsonLogFormatter,
     RequestContextFilter,
@@ -46,6 +49,31 @@ def post_verification(client: Client, payload: object) -> Any:
     )
 
 
+def assert_error_response(response: Any, code: ErrorCode, *, echoes_correlation_id: bool) -> None:
+    definition = ERRORS[code]
+    assert response.status_code == definition.status_code
+    assert response.json() == {"code": code.value, "message": definition.message}
+    if echoes_correlation_id:
+        assert response.headers["Correlation-Id"] == CORRELATION_ID
+    else:
+        assert "Correlation-Id" not in response.headers
+
+
+@contextmanager
+def capture_income_verification_logs() -> Iterator[StringIO]:
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.addFilter(RequestContextFilter())
+    handler.setFormatter(JsonLogFormatter())
+    logger = logging.getLogger("income_verification")
+    original_handlers = logger.handlers
+    logger.handlers = [handler]
+    try:
+        yield stream
+    finally:
+        logger.handlers = original_handlers
+
+
 def test_health_endpoint(client: Client) -> None:
     response = client.get(f"{API_ROOT}/health")
 
@@ -54,7 +82,7 @@ def test_health_endpoint(client: Client) -> None:
 
 
 def test_accepts_verification_request(client: Client) -> None:
-    with patch("api.routes.logger") as logger:
+    with patch("income_verification.routes.logger") as logger:
         response = post_verification(client, valid_request())
 
     assert response.status_code == 200
@@ -82,29 +110,101 @@ def test_accepts_full_ssn_instead_of_last_four(client: Client) -> None:
     assert response.status_code == 200
 
 
+def test_rejects_malformed_full_ssn(client: Client) -> None:
+    payload = valid_request()
+    payload.pop("last4Ssn")
+    payload["ssn"] = "99999PII9"
+
+    response = post_verification(client, payload)
+
+    assert_error_response(response, ErrorCode.INVALID_SSN_FORMAT, echoes_correlation_id=True)
+
+
+def test_rejects_malformed_last_four_ssn(client: Client) -> None:
+    payload = valid_request()
+    payload["last4Ssn"] = "PII!"
+
+    response = post_verification(client, payload)
+
+    assert_error_response(response, ErrorCode.INVALID_LAST4_SSN_FORMAT, echoes_correlation_id=True)
+
+
+def test_rejects_missing_identity_identifier(client: Client) -> None:
+    payload = valid_request()
+    payload.pop("last4Ssn")
+
+    response = post_verification(client, payload)
+
+    assert_error_response(
+        response,
+        ErrorCode.MISSING_IDENTITY_IDENTIFIER,
+        echoes_correlation_id=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "code"),
+    [
+        ("firstName", "SENTINEL-FIRST\nPRIVATE", ErrorCode.INVALID_FIRST_NAME),
+        ("lastName", "SENTINEL-LAST\nPRIVATE", ErrorCode.INVALID_LAST_NAME),
+        ("applicationId", "SENTINEL-APP\x00PRIVATE", ErrorCode.INVALID_APPLICATION_ID),
+    ],
+)
+def test_rejects_invalid_text_fields(
+    client: Client,
+    field: str,
+    value: str,
+    code: ErrorCode,
+) -> None:
+    payload = valid_request()
+    payload[field] = value
+
+    response = post_verification(client, payload)
+
+    assert_error_response(response, code, echoes_correlation_id=True)
+
+
 def test_rejects_missing_correlation_id(client: Client) -> None:
-    with patch("api.api.logger") as logger:
+    with patch("income_verification.api_errors.logger") as logger:
         response = client.post(
             INCOME_VERIFICATION_PATH,
             data=json.dumps(valid_request()),
             content_type="application/json",
         )
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "code": "INVALID_REQUEST",
-        "message": "Request failed validation.",
-    }
+    assert_error_response(response, ErrorCode.INVALID_REQUEST, echoes_correlation_id=False)
     logger.warning.assert_called_once_with(
         "income verification request rejected",
         extra={
             "event_name": "income_verification.request.rejected",
             "error_type": "validation_error",
+            "error_code": ErrorCode.INVALID_REQUEST.value,
             "http_request_method": "POST",
+            "http_response_status_code": 400,
             "url_path": INCOME_VERIFICATION_PATH,
             "validation_error_count": 1,
+            "validation_errors": [{"field": "Correlation-Id", "reason": "missing"}],
         },
     )
+
+
+def test_rejects_malformed_correlation_id_without_echoing_or_retaining_it(
+    client: Client,
+) -> None:
+    malformed_correlation_id = "SENTINEL-MALFORMED-CORRELATION-ID"
+    with capture_income_verification_logs() as stream:
+        response = client.post(
+            INCOME_VERIFICATION_PATH,
+            data=json.dumps(valid_request()),
+            content_type="application/json",
+            headers={"Correlation-Id": malformed_correlation_id},
+        )
+
+    assert_error_response(response, ErrorCode.INVALID_CORRELATION_ID, echoes_correlation_id=False)
+    record = json.loads(stream.getvalue())
+    assert record["error.code"] == ErrorCode.INVALID_CORRELATION_ID
+    assert "ivaas.correlation.id" not in record
+    assert malformed_correlation_id not in stream.getvalue()
 
 
 def test_accepts_correlation_id_without_client_ref(client: Client) -> None:
@@ -126,9 +226,11 @@ def test_rejects_both_ssn_forms(client: Client) -> None:
 
     response = post_verification(client, payload)
 
-    assert response.status_code == 400
-    assert response.headers["Correlation-Id"] == CORRELATION_ID
-    assert response.json()["code"] == "INVALID_REQUEST"
+    assert_error_response(
+        response,
+        ErrorCode.MULTIPLE_IDENTITY_IDENTIFIERS,
+        echoes_correlation_id=True,
+    )
 
 
 def test_logs_validation_count_without_rejected_value(client: Client) -> None:
@@ -139,7 +241,7 @@ def test_logs_validation_count_without_rejected_value(client: Client) -> None:
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
     handler.setFormatter(JsonLogFormatter())
-    api_logger = logging.getLogger("api")
+    api_logger = logging.getLogger("income_verification")
     original_handlers = api_logger.handlers
     api_logger.handlers = [handler]
 
@@ -152,7 +254,9 @@ def test_logs_validation_count_without_rejected_value(client: Client) -> None:
     record = json.loads(stream.getvalue())
     assert record["event.name"] == "income_verification.request.rejected"
     assert record["error.type"] == "validation_error"
+    assert record["error.code"] == ErrorCode.INVALID_FIRST_NAME
     assert record["validation.error.count"] == 1
+    assert record["validation.errors"] == [{"field": "firstName", "reason": "invalid"}]
     assert record["http.request.method"] == "POST"
     assert record["url.path"] == INCOME_VERIFICATION_PATH
     assert record["ivaas.correlation.id"] == CORRELATION_ID
@@ -164,7 +268,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(client: Client) 
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
     handler.setFormatter(JsonLogFormatter())
-    api_logger = logging.getLogger("api")
+    api_logger = logging.getLogger("income_verification")
     original_handlers = api_logger.handlers
     api_logger.handlers = [handler]
     payload = valid_request()
@@ -174,7 +278,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(client: Client) 
 
     try:
         response = post_verification(client, payload)
-        logging.getLogger("api.test").info(
+        logging.getLogger("income_verification.test").info(
             "outside request context",
             extra={
                 "event_name": "outside_request.test",
@@ -192,7 +296,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(client: Client) 
     assert len(records) == 2
     accepted, outside_request = records
     assert accepted["level"] == "INFO"
-    assert accepted["logger"] == "api.routes"
+    assert accepted["logger"] == "income_verification.routes"
     assert accepted["message"] == "income verification request accepted"
     assert accepted["event.name"] == "income_verification.request.accepted"
     assert accepted["ivaas.correlation.id"] == CORRELATION_ID
@@ -232,7 +336,7 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
         )
 
     try:
-        with patch("api.routes.logger.info", side_effect=emit_downstream_log):
+        with patch("income_verification.routes.logger.info", side_effect=emit_downstream_log):
             response = post_verification(client, valid_request())
     finally:
         adapter_logger.handlers = original_handlers
@@ -251,7 +355,7 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
     handler.setFormatter(JsonLogFormatter())
-    api_logger = logging.getLogger("api")
+    api_logger = logging.getLogger("income_verification")
     original_handlers = api_logger.handlers
     api_logger.handlers = [handler]
 
@@ -261,7 +365,7 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
         verification_id = request.headers["X-Verification-Id"]
         set_verification_log_context(application_id, verification_id)
         await asyncio.sleep(0)
-        logging.getLogger("api.concurrent").info("concurrent request")
+        logging.getLogger("income_verification.concurrent").info("concurrent request")
         return HttpResponse()
 
     middleware = RequestContextMiddleware(get_response)
@@ -292,7 +396,7 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
 
     try:
         asyncio.run(run_requests())
-        logging.getLogger("api.concurrent").info("after concurrent requests")
+        logging.getLogger("income_verification.concurrent").info("after concurrent requests")
     finally:
         api_logger.handlers = original_handlers
 
@@ -316,8 +420,73 @@ def test_rejects_reversed_lookback_period(client: Client) -> None:
 
     response = post_verification(client, payload)
 
+    assert_error_response(response, ErrorCode.INVALID_LOOKBACK_PERIOD, echoes_correlation_id=True)
+
+
+@pytest.mark.parametrize(
+    ("case", "sentinels"),
+    [
+        ("ssn", ("SENTINEL-SSN-98765",)),
+        ("last4Ssn", ("SENTINEL-LAST4",)),
+        ("firstName", ("SENTINEL-FIRST-PRIVATE",)),
+        ("lastName", ("SENTINEL-LAST-PRIVATE",)),
+        ("applicationId", ("SENTINEL-APPLICATION-PRIVATE",)),
+        ("lookbackPeriod", ("2099-12-31", "1901-01-01")),
+    ],
+)
+def test_rejected_request_logs_exclude_user_values(
+    client: Client,
+    case: str,
+    sentinels: tuple[str, ...],
+) -> None:
+    payload = valid_request()
+    if case == "ssn":
+        payload.pop("last4Ssn")
+        payload["ssn"] = sentinels[0]
+    elif case == "lookbackPeriod":
+        payload[case] = {"startDate": sentinels[0], "endDate": sentinels[1]}
+    else:
+        payload[case] = f"{sentinels[0]}\x00"
+
+    with capture_income_verification_logs() as stream:
+        response = post_verification(client, payload)
+
     assert response.status_code == 400
-    assert response.json()["code"] == "INVALID_REQUEST"
+    emitted = stream.getvalue()
+    record = json.loads(emitted)
+    assert record["event.name"] == "income_verification.request.rejected"
+    assert record["error.type"] == "validation_error"
+    assert record["http.request.method"] == "POST"
+    assert record["http.response.status_code"] == 400
+    assert record["url.path"] == INCOME_VERIFICATION_PATH
+    assert record["ivaas.correlation.id"] == CORRELATION_ID
+    assert record["validation.error.count"] >= 1
+    assert all(set(error) == {"field", "reason"} for error in record["validation.errors"])
+    assert "exception" not in record
+    assert "stack" not in record
+    for sentinel in sentinels:
+        assert sentinel not in emitted
+
+
+def test_multiple_validation_failures_use_fallback_without_logging_values(client: Client) -> None:
+    sentinels = (
+        "SENTINEL-MULTI-APP",
+        "SENTINEL-MULTI-FIRST",
+        "SENTINEL-MULTI-LAST4",
+    )
+    payload = valid_request()
+    payload["applicationId"] = f"{sentinels[0]}\x00"
+    payload["firstName"] = f"{sentinels[1]}\x00"
+    payload["last4Ssn"] = sentinels[2]
+
+    with capture_income_verification_logs() as stream:
+        response = post_verification(client, payload)
+
+    assert_error_response(response, ErrorCode.INVALID_REQUEST, echoes_correlation_id=True)
+    record = json.loads(stream.getvalue())
+    assert record["error.code"] == ErrorCode.INVALID_REQUEST
+    assert record["validation.error.count"] == 3
+    assert all(sentinel not in stream.getvalue() for sentinel in sentinels)
 
 
 def test_rejects_malformed_json(client: Client) -> None:
@@ -328,9 +497,7 @@ def test_rejects_malformed_json(client: Client) -> None:
         headers={"Correlation-Id": CORRELATION_ID},
     )
 
-    assert response.status_code == 400
-    assert response.headers["Correlation-Id"] == CORRELATION_ID
-    assert response.json()["code"] == "INVALID_REQUEST"
+    assert_error_response(response, ErrorCode.INVALID_REQUEST, echoes_correlation_id=True)
 
 
 def test_openapi_exposes_versioned_income_verification_path(client: Client) -> None:
@@ -341,7 +508,10 @@ def test_openapi_exposes_versioned_income_verification_path(client: Client) -> N
     assert versioned_path in schema["paths"]
     operation = schema["paths"][versioned_path]["post"]
     assert operation["parameters"][0]["name"] == "Correlation-Id"
-    assert "Correlation-Id" in operation["responses"]["200"]["headers"]
+    response_header = operation["responses"]["200"]["headers"]["Correlation-Id"]
+    assert response_header["schema"]["pattern"] == operation["parameters"][0]["schema"]["pattern"]
+    assert response_header["required"] is True
+    assert operation["responses"]["400"]["headers"]["Correlation-Id"]["required"] is False
     assert operation["requestBody"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/VerificationRequest"
     }
@@ -356,6 +526,9 @@ def test_openapi_exposes_versioned_income_verification_path(client: Client) -> N
     assert source_id_schema["type"] == "string"
     assert source_id_schema["minLength"] == 1
     assert "enum" not in source_id_schema
+    assert set(schema["components"]["schemas"]["ErrorCode"]["enum"]) == {
+        code.value for code in ErrorCode
+    }
     assert f"{API_ROOT}/health" not in schema["paths"]
 
 

@@ -3,7 +3,6 @@
 import inspect
 import json
 import logging
-import re
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -17,6 +16,7 @@ from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     validated_correlation_id,
 )
+
 
 @dataclass(frozen=True, slots=True)
 class RequestLogContext:
@@ -119,7 +119,9 @@ class RequestContextMiddleware:
 
         token = _request_log_context.set(
             RequestLogContext(
-                correlation_id=validated_correlation_id(request.headers.get(CORRELATION_ID_HEADER_NAME))
+                correlation_id=validated_correlation_id(
+                    request.headers.get(CORRELATION_ID_HEADER_NAME)
+                )
             )
         )
         try:
@@ -130,7 +132,9 @@ class RequestContextMiddleware:
     async def _async_call(self, request: HttpRequest) -> HttpResponse:
         token = _request_log_context.set(
             RequestLogContext(
-                correlation_id=validated_correlation_id(request.headers.get(CORRELATION_ID_HEADER_NAME))
+                correlation_id=validated_correlation_id(
+                    request.headers.get(CORRELATION_ID_HEADER_NAME)
+                )
             )
         )
         try:

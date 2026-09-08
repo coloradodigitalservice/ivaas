@@ -1,7 +1,7 @@
 """Stable error codes exposed by the IVaaS API."""
 
-from enum import StrEnum
 from dataclasses import dataclass
+from enum import StrEnum
 
 
 class ErrorCode(StrEnum):
@@ -29,7 +29,7 @@ class ErrorDefinition:
 
 
 ERRORS: dict[ErrorCode, ErrorDefinition] = {
-    # Blanket validation errors we can't or haven't yet been able to categorize more specifically .
+    # Blanket validation errors or failures that cannot be categorized more specifically.
     ErrorCode.INVALID_REQUEST: ErrorDefinition(
         status_code=400,
         message="Request failed validation.",
@@ -79,8 +79,6 @@ ERRORS: dict[ErrorCode, ErrorDefinition] = {
     ),
 }
 
-FIELD_ERROR_CODES = {
-    error.field: code
-    for code, error in ERRORS.items()
-    if error.field is not None
+FIELD_ERROR_CODES: dict[str, ErrorCode] = {
+    definition.field: code for code, definition in ERRORS.items() if definition.field is not None
 }

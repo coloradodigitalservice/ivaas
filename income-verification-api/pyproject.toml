@@ -90,7 +90,7 @@ testpaths = ["tests", "packages"]
 python_files = ["test_*.py"]
 
 [tool.coverage.run]
-source = ["api", "adapter_registry", "ivaas_core"]
+source = ["income_verification", "adapter_registry", "ivaas_core"]
 omit = ["*/migrations/*"]
 branch = true
 
