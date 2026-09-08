@@ -3,25 +3,33 @@
 import logging
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
+from http import HTTPStatus
 from typing import Any
 
 from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import HttpError, ValidationError
 
-from income_verification.api_error_codes import ERRORS, FIELD_ERROR_CODES, ErrorCode
+from income_verification.api_error_codes import (
+    ERRORS,
+    FIELD_ERROR_CODES,
+    ErrorCode,
+    RequestValidationErrorDefinition,
+)
 from income_verification.correlation_id import CORRELATION_ID_HEADER_NAME
 from income_verification.request_context import get_correlation_id
 
 logger = logging.getLogger(__name__)
 
+# Bound structured log volume while retaining the total error count.
 MAX_LOGGED_VALIDATION_ERRORS = 5
+GENERIC_HTTP_ERROR_MESSAGE = "The request could not be completed."
 
 
 class ValidationReason(StrEnum):
     """
-    IVaaS-owned vocabulary for validation telemetry. Ensures that a cusom pydantic validation
-    error won't accidentally leak sensitive information.
+    IVaaS-owned vocabulary for validation telemetry. Used to help ensure that a custom
+    pydantic validation error won't accidentally leak sensitive information.
     """
 
     MISSING = "missing"
@@ -30,7 +38,9 @@ class ValidationReason(StrEnum):
 
 def _validation_reason(error_type: object) -> ValidationReason:
     """Translate a framework validation type to a stable IVaaS reason."""
-    if error_type == "missing" or error_type == ErrorCode.MISSING_IDENTITY_IDENTIFIER.value:
+    if isinstance(error_type, str) and (
+        error_type == "missing" or error_type == ErrorCode.MISSING_IDENTITY_IDENTIFIER.value
+    ):
         return ValidationReason.MISSING
     return ValidationReason.INVALID
 
@@ -42,7 +52,7 @@ def _sanitized_validation_errors(
     sanitized_errors: list[dict[str, str]] = []
     for error in errors[:MAX_LOGGED_VALIDATION_ERRORS]:
         location = error.get("loc", ())
-        field = _field_for_location(location) if isinstance(location, (tuple, list)) else None
+        field = _field_for_location(location) if _is_location_sequence(location) else None
         sanitized_errors.append(
             {
                 "field": field or "request",
@@ -52,37 +62,49 @@ def _sanitized_validation_errors(
     return sanitized_errors
 
 
-def _normalized_field_name(value: object) -> str:
+def _normalized_field_name(value: str) -> str:
     """Normalize Python, JSON, and HTTP spellings for field matching."""
-    return "".join(character.lower() for character in str(value) if character.isalnum())
+    return "".join(character.lower() for character in value if character.isalnum())
 
 
-def _field_for_location(location: tuple[object, ...] | list[object]) -> str | None:
+_NORMALIZED_FIELD_NAMES = {_normalized_field_name(field): field for field in FIELD_ERROR_CODES}
+
+
+def _is_location_sequence(value: object) -> bool:
+    """Return whether a value is a non-string validation location sequence."""
+    return isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
+
+
+def _field_for_location(location: Sequence[object]) -> str | None:
     """Return an allowlisted public field name for a validation location."""
-    fields_by_normalized_name = {
-        _normalized_field_name(field): field for field in FIELD_ERROR_CODES
-    }
     for part in reversed(location):
-        if field := fields_by_normalized_name.get(_normalized_field_name(part)):
+        if not isinstance(part, str):
+            continue
+        if field := _NORMALIZED_FIELD_NAMES.get(_normalized_field_name(part)):
             return field
     return None
 
 
 def _code_for_validation_error(
-    error: dict[str, Any],
+    error: Mapping[str, Any],
 ) -> ErrorCode | None:
     """Translate one Ninja/Pydantic validation error to an IVaaS error code."""
-    error_type = str(error.get("type", ""))
+    raw_error_type = error.get("type")
+    error_type = raw_error_type if isinstance(raw_error_type, str) else ""
 
     # Custom validators emit stable IVaaS error codes directly.
     try:
-        return ErrorCode(error_type)
+        explicit_code = ErrorCode(error_type)
     except ValueError:
         pass
+    else:
+        if isinstance(ERRORS[explicit_code], RequestValidationErrorDefinition):
+            return explicit_code
+        return None
 
     # Generic Pydantic validation errors are mapped using their field location.
     location = error.get("loc", ())
-    if not isinstance(location, (tuple, list)):
+    if not _is_location_sequence(location):
         return None
 
     field = _field_for_location(location)
@@ -98,7 +120,7 @@ def _code_for_validation_error(
 
 
 def _code_for_validation_errors(
-    errors: list[dict[str, Any]],
+    errors: Sequence[Mapping[str, Any]],
 ) -> ErrorCode:
     """Choose the public error code for a set of validation failures."""
     # A single response code cannot represent several independent failures safely.
@@ -114,7 +136,8 @@ def _error_response(
     code: ErrorCode,
     *,
     error_type: str,
-    validation_errors: list[dict[str, Any]] | None = None,
+    exception_type: str | None = None,
+    validation_errors: Sequence[Mapping[str, Any]] | None = None,
 ) -> HttpResponse:
     """Create and safely log an IVaaS error response."""
     definition = ERRORS[code]
@@ -128,8 +151,18 @@ def _error_response(
         status=definition.status_code,
     )
 
+    is_internal_error = definition.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
+    log_message = (
+        "income verification request failed"
+        if is_internal_error
+        else "income verification request rejected"
+    )
     attributes: dict[str, object] = {
-        "event_name": "income_verification.request.rejected",
+        "event_name": (
+            "income_verification.request.failed"
+            if is_internal_error
+            else "income_verification.request.rejected"
+        ),
         "error_type": error_type,
         "error_code": code.value,
         "http_request_method": request.method or "UNKNOWN",
@@ -140,11 +173,11 @@ def _error_response(
     if validation_errors is not None:
         attributes["validation_error_count"] = len(validation_errors)
         attributes["validation_errors"] = _sanitized_validation_errors(validation_errors)
+    if exception_type is not None:
+        attributes["exception_type"] = exception_type
 
-    logger.warning(
-        "income verification request rejected",
-        extra=attributes,
-    )
+    log_method = logger.error if is_internal_error else logger.warning
+    log_method(log_message, extra=attributes)
 
     correlation_id = get_correlation_id()
     if correlation_id is not None:
@@ -161,6 +194,7 @@ def register_exception_handlers(api: NinjaAPI) -> None:
         request: HttpRequest,
         exc: ValidationError,
     ) -> HttpResponse:
+        # Determine the appropriate error code for the validation errors.
         code = _code_for_validation_errors(exc.errors)
 
         return _error_response(
@@ -176,7 +210,7 @@ def register_exception_handlers(api: NinjaAPI) -> None:
         request: HttpRequest,
         exc: HttpError,
     ) -> HttpResponse:
-        if exc.status_code == 400:
+        if exc.status_code == HTTPStatus.BAD_REQUEST:
             return _error_response(
                 api,
                 request,
@@ -184,7 +218,18 @@ def register_exception_handlers(api: NinjaAPI) -> None:
                 error_type="bad_request",
             )
 
-        logger.warning(
+        if exc.status_code == HTTPStatus.INTERNAL_SERVER_ERROR:
+            return _error_response(
+                api,
+                request,
+                ErrorCode.INTERNAL_ERROR,
+                error_type="internal_error",
+                exception_type=type(exc).__name__,
+            )
+
+        is_server_error = HTTPStatus.INTERNAL_SERVER_ERROR <= exc.status_code <= 599
+        log_method = logger.error if is_server_error else logger.warning
+        log_method(
             "API request failed",
             extra={
                 "event_name": "api.request.failed",
@@ -192,11 +237,30 @@ def register_exception_handlers(api: NinjaAPI) -> None:
                 "http_request_method": request.method or "UNKNOWN",
                 "http_response_status_code": exc.status_code,
                 "url_path": request.path,
+                "exception_type": type(exc).__name__,
             },
         )
 
-        return api.create_response(
+        # Transitional framework fallback; known failures should use the IVaaS catalog.
+        response = api.create_response(
             request,
-            {"detail": exc.message},
+            {"detail": GENERIC_HTTP_ERROR_MESSAGE},
             status=exc.status_code,
+        )
+        correlation_id = get_correlation_id()
+        if correlation_id is not None:
+            response[CORRELATION_ID_HEADER_NAME] = correlation_id
+        return response
+
+    @api.exception_handler(Exception)
+    def unexpected_exception(
+        request: HttpRequest,
+        exc: Exception,
+    ) -> HttpResponse:
+        return _error_response(
+            api,
+            request,
+            ErrorCode.INTERNAL_ERROR,
+            error_type="internal_error",
+            exception_type=type(exc).__name__,
         )

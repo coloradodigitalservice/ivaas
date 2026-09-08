@@ -34,9 +34,9 @@ mise install
    you will need to first download/build each configured adapter according to its own documentation (See [Adapter installation](../configuration/ivaas-configuration.md#adapter-installation))
 
 2. Use the setup command to install project dependencies:
-    ```shell
-    make setup
-    ```
+   ```shell
+   make setup
+   ```
 
 ### Initialize the database
 
@@ -79,6 +79,9 @@ The application will be available at:
 - OpenAPI documentation: http://127.0.0.1:8000/api/docs
 - OpenAPI document: http://127.0.0.1:8000/api/openapi.json
 
+For interactive development and contract testing, import the
+[IVaaS Postman collection](postman/IVaaS.postman_collection.json).
+
 > [!NOTE]
 > `make run` starts PostgreSQL automatically if it is not already running.
 
@@ -117,4 +120,4 @@ make help
 
 ## Custom development
 
-* [Adapter Development](../configuration/ivaas-configuration.md#adapter-development)
+- [Adapter Development](../configuration/ivaas-configuration.md#adapter-development)

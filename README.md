@@ -45,15 +45,3 @@ For local development, see [ivaas-development](docs/development/ivaas-developmen
 ## Configuration
 
 For documentation related to configuring ivaas, see [ivaas-configuration](docs/configuration/ivaas-configuration.md).
-
-## Local endpoints
-
-After starting the application with `make run` or `make up`, the default local endpoints are:
-
-- Health check: http://127.0.0.1:8000/api/health
-- Income verification: http://127.0.0.1:8000/api/v1/income-verification
-- OpenAPI documentation: http://127.0.0.1:8000/api/docs
-- OpenAPI document: http://127.0.0.1:8000/api/openapi.json
-
-For interactive development and contract testing, import the
-[IVaaS Postman collection](postman/IVaaS.postman_collection.json).

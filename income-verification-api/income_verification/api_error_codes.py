@@ -1,7 +1,9 @@
 """Stable error codes exposed by the IVaaS API."""
 
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from enum import StrEnum
+from http import HTTPStatus
 
 
 class ErrorCode(StrEnum):
@@ -20,65 +22,71 @@ class ErrorCode(StrEnum):
     INVALID_APPLICATION_ID = "INVALID_APPLICATION_ID"
     INVALID_LOOKBACK_PERIOD = "INVALID_LOOKBACK_PERIOD"
 
+    INTERNAL_ERROR = "INTERNAL_ERROR"
 
-@dataclass(frozen=True, slots=True)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ErrorDefinition:
     message: str
-    status_code: int
+    status_code: HTTPStatus
     field: str | None = None
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RequestValidationErrorDefinition(ErrorDefinition):
+    status_code: HTTPStatus = dataclass_field(
+        default=HTTPStatus.BAD_REQUEST,
+        init=False,  # This ensures the status_code cannot be overridden during initialization
+    )
+
+
 ERRORS: dict[ErrorCode, ErrorDefinition] = {
-    # Blanket validation errors or failures that cannot be categorized more specifically.
-    ErrorCode.INVALID_REQUEST: ErrorDefinition(
-        status_code=400,
+    # Blanket validation errors that cannot be categorized more specifically.
+    ErrorCode.INVALID_REQUEST: RequestValidationErrorDefinition(
         message="Request failed validation.",
     ),
-    ErrorCode.MISSING_IDENTITY_IDENTIFIER: ErrorDefinition(
-        status_code=400,
+    ErrorCode.MISSING_IDENTITY_IDENTIFIER: RequestValidationErrorDefinition(
         message="Either ssn or last4Ssn must be provided.",
     ),
-    ErrorCode.MULTIPLE_IDENTITY_IDENTIFIERS: ErrorDefinition(
-        status_code=400,
+    ErrorCode.MULTIPLE_IDENTITY_IDENTIFIERS: RequestValidationErrorDefinition(
         message="Only one of ssn or last4Ssn may be provided.",
     ),
-    ErrorCode.INVALID_SSN_FORMAT: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_SSN_FORMAT: RequestValidationErrorDefinition(
         message="ssn must contain nine digits.",
         field="ssn",
     ),
-    ErrorCode.INVALID_LAST4_SSN_FORMAT: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_LAST4_SSN_FORMAT: RequestValidationErrorDefinition(
         message="last4Ssn must contain four digits.",
         field="last4Ssn",
     ),
-    ErrorCode.INVALID_CORRELATION_ID: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_CORRELATION_ID: RequestValidationErrorDefinition(
         message="Correlation-Id is invalid.",
         field="Correlation-Id",
     ),
-    ErrorCode.INVALID_APPLICATION_ID: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_APPLICATION_ID: RequestValidationErrorDefinition(
         message="applicationId is invalid.",
         field="applicationId",
     ),
-    ErrorCode.INVALID_FIRST_NAME: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_FIRST_NAME: RequestValidationErrorDefinition(
         message="firstName is invalid.",
         field="firstName",
     ),
-    ErrorCode.INVALID_LAST_NAME: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_LAST_NAME: RequestValidationErrorDefinition(
         message="lastName is invalid.",
         field="lastName",
     ),
-    ErrorCode.INVALID_LOOKBACK_PERIOD: ErrorDefinition(
-        status_code=400,
+    ErrorCode.INVALID_LOOKBACK_PERIOD: RequestValidationErrorDefinition(
         message="lookbackPeriod is invalid.",
         field="lookbackPeriod",
+    ),
+    ErrorCode.INTERNAL_ERROR: ErrorDefinition(
+        message="An internal server error occurred.",
+        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
     ),
 }
 
 FIELD_ERROR_CODES: dict[str, ErrorCode] = {
-    definition.field: code for code, definition in ERRORS.items() if definition.field is not None
+    definition.field: code
+    for code, definition in ERRORS.items()
+    if isinstance(definition, RequestValidationErrorDefinition) and definition.field is not None
 }

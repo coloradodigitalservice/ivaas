@@ -39,6 +39,7 @@ _STRUCTURED_FIELD_NAMES = {
     "http_request_method": "http.request.method",
     "http_response_status_code": "http.response.status_code",
     "url_path": "url.path",
+    "exception_type": "exception.type",
     "ivaas_correlation_id": "ivaas.correlation.id",
     "ivaas_application_id": "ivaas.application.id",
     "ivaas_verification_id": "ivaas.verification.id",
@@ -80,7 +81,7 @@ class RequestContextFilter(logging.Filter):
 
 
 class JsonLogFormatter(logging.Formatter):
-    """Serialize one enriched Python log record as one JSON object."""
+    """Serialize allowlisted fields; application messages must already be PII-safe."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
@@ -94,11 +95,14 @@ class JsonLogFormatter(logging.Formatter):
         for record_name, json_name in _STRUCTURED_FIELD_NAMES.items():
             if hasattr(record, record_name):
                 payload[json_name] = getattr(record, record_name)
-        if record.exc_info:
-            payload["exception"] = self.formatException(record.exc_info)
-        if record.stack_info:
-            payload["stack"] = self.formatStack(record.stack_info)
-        return json.dumps(payload, default=str, ensure_ascii=False, separators=(",", ":"))
+        if record.exc_info and record.exc_info[0] is not None:
+            payload["exception.type"] = record.exc_info[0].__name__
+        # Exception messages, tracebacks, and raw stack_info are intentionally omitted.
+        return json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
 
 
 class RequestContextMiddleware:
