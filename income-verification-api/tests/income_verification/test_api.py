@@ -11,7 +11,6 @@ import pytest
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.test import Client, RequestFactory
-from ivaas_core import NAME_MAX_LENGTH, SSN_PATTERN
 
 from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.request_context import (
