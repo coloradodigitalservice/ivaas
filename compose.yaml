@@ -22,6 +22,12 @@ services:
       - ./income-verification-api/${ADAPTERS_ENV:-.envs/.local/.adapters}
     environment:
       POSTGRES_HOST: postgres
+      # Inside the container, localhost is the container itself; the local
+      # mock publishes on the host, reachable as host.docker.internal.
+      CDLE_ACCOUNT_URL: http://host.docker.internal:8890
+    extra_hosts:
+      # Provides host.docker.internal on Linux engines too (native on Docker Desktop).
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
