@@ -3,5 +3,5 @@
 
 ## Colorado CDLE
 CDLE_ADAPTER_ENABLED=True
-CDLE_ACCOUNT_URL=https://cdle.snowflake.url.test
+CDLE_ACCOUNT_URL=http://localhost:8890
 CDLE_TIMEOUT_SECONDS=3

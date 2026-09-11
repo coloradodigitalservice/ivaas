@@ -1,6 +1,6 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
-ADAPTERS_ENV ?= .envs/.local/.adapters # CI overrides this with .envs/.ci/.adapters
+ADAPTERS_ENV ?= .envs/.local/.adapters# CI overrides this with .envs/.ci/.adapters
 ENV := \
 	--env-file .envs/.local/.django \
 	--env-file .envs/.local/.postgres \
@@ -89,6 +89,10 @@ run: db-up ## run the local development server
 		--reload \
 		--host 127.0.0.1 \
 		--port 8000
+
+.PHONY: shell
+shell: db-up ## Django shell with local env files
+	$(MANAGE) shell
 
 .PHONY: migrate
 migrate: db-up ## apply database migrations

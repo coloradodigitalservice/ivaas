@@ -1,0 +1,8 @@
+# Platform constraints for adapter dependencies.
+#
+# IVaaS runs in a single .venv, so IVaaS and all its adapters must land on exactly one valid, pinned
+# version where the dependency is shared.
+#
+# Entries in this file bound versions of packages that adapter wheels install, and they do not govern
+# IVaaS's own environment.
+httpx>=0.28.1
