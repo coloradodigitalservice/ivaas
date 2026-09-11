@@ -14,7 +14,7 @@ class IncomeSourceAdapter(ABC):
     """Provenance identifier for this source."""
 
     @abstractmethod
-    async def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest) -> SourceIncome:
         """Perform income verification routine, based on the requested parameters.
 
         Should raise only contract exception types (``ivaas_core.exceptions``);

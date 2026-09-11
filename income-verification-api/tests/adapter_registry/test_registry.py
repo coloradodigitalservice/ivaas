@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import Iterator
 from importlib import metadata
 from unittest.mock import MagicMock
@@ -144,7 +143,7 @@ class TestProcessRegistry:
 
             assert isinstance(source, IncomeSourceAdapter)
             with pytest.raises(SubjectNotFound):
-                asyncio.run(source.verify(verification_request))
+                source.verify(verification_request)
 
     def test_empty_declarations_enable_nothing(self) -> None:
         with override_settings(**{INCOME_SOURCE_ADAPTERS: {}}):
