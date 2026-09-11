@@ -1,0 +1,127 @@
+"""Validated policies and adapter records used by the registry."""
+
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from typing import cast
+
+import pybreaker
+from django.core.exceptions import ImproperlyConfigured
+from ivaas_core import IncomeSourceAdapter, SourceTimeout, SourceUnavailable
+from tenacity import (
+    Retrying,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential_jitter,
+    wait_fixed,
+)
+
+RETRYABLE = (SourceTimeout, SourceUnavailable)
+
+
+@dataclass(frozen=True)
+class FixedBackoff:
+    seconds: float
+
+    def __post_init__(self) -> None:
+        if self.seconds < 0:
+            raise ValueError("seconds must be greater than or equal to 0")
+
+
+@dataclass(frozen=True)
+class ExponentialBackoff:
+    initial_seconds: float
+    max_seconds: float
+
+    def __post_init__(self) -> None:
+        if self.initial_seconds <= 0:
+            raise ValueError("initial_seconds must be greater than 0")
+        if self.max_seconds < self.initial_seconds:
+            raise ValueError("max_seconds must be greater than or equal to initial_seconds")
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    max_attempts: int
+    backoff: FixedBackoff | ExponentialBackoff
+
+    def __post_init__(self) -> None:
+        if type(self.max_attempts) is not int or self.max_attempts < 1:
+            raise ValueError("max_attempts must be an integer greater than or equal to 1")
+
+    def build(self) -> Retrying:
+        backoff = self.backoff
+        wait = (
+            wait_fixed(backoff.seconds)
+            if isinstance(backoff, FixedBackoff)
+            else wait_exponential_jitter(
+                initial=backoff.initial_seconds,
+                max=backoff.max_seconds,
+            )
+        )
+        return Retrying(
+            stop=stop_after_attempt(self.max_attempts),
+            wait=wait,
+            retry=retry_if_exception_type(RETRYABLE),
+            reraise=True,
+        )
+
+
+@dataclass(frozen=True)
+class CircuitBreakerPolicy:
+    failure_threshold: int
+    reset_timeout_seconds: float
+
+    def __post_init__(self) -> None:
+        if type(self.failure_threshold) is not int or self.failure_threshold < 1:
+            raise ValueError("failure_threshold must be an integer greater than or equal to 1")
+        if self.reset_timeout_seconds <= 0:
+            raise ValueError("reset_timeout_seconds must be greater than 0")
+
+    def build(self) -> pybreaker.CircuitBreaker:
+        return pybreaker.CircuitBreaker(
+            fail_max=self.failure_threshold,
+            reset_timeout=self.reset_timeout_seconds,
+            exclude=[lambda error: not isinstance(error, RETRYABLE)],
+            throw_new_error_on_trip=False,  # the tripping call keeps its own exception
+        )
+
+
+@dataclass(frozen=True)
+class InitializedAdapter:
+    adapter: IncomeSourceAdapter
+    retrying: Retrying | None
+    circuit_breaker: pybreaker.CircuitBreaker | None
+
+
+type BackoffFactory = Callable[..., FixedBackoff | ExponentialBackoff]
+_BACKOFF_TYPES: dict[str, BackoffFactory] = {
+    "fixed": FixedBackoff,
+    "exponential": ExponentialBackoff,
+}
+
+
+def parse_retry_policy(name: str, raw_value: object) -> RetryPolicy | None:
+    if raw_value is None:
+        return None
+    try:
+        values = {**cast(Mapping[str, object], raw_value)}
+        backoff_values = {**cast(Mapping[str, object], values.pop("backoff"))}
+        backoff_type = _BACKOFF_TYPES[cast(str, backoff_values.pop("strategy"))]
+        backoff = backoff_type(**backoff_values)
+        return RetryPolicy(backoff=backoff, **values)  # type: ignore[arg-type]
+    except (KeyError, TypeError, ValueError) as error:
+        raise ImproperlyConfigured(
+            f"income source adapter {name!r} retry_policy is invalid: {error}"
+        ) from error
+
+
+def parse_circuit_breaker_policy(name: str, raw_value: object) -> CircuitBreakerPolicy | None:
+    if raw_value is None:
+        return None
+    try:
+        values = {**cast(Mapping[str, object], raw_value)}
+        return CircuitBreakerPolicy(**values)  # type: ignore[arg-type]
+    except (KeyError, TypeError, ValueError) as error:
+        raise ImproperlyConfigured(
+            f"income source adapter {name!r} circuit_breaker is invalid: {error}"
+        ) from error

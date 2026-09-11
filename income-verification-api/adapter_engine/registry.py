@@ -15,6 +15,12 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
 from ivaas_core import IncomeSourceAdapter
 
+from adapter_engine.policies import (
+    InitializedAdapter,
+    parse_circuit_breaker_policy,
+    parse_retry_policy,
+)
+
 logger = logging.getLogger(__name__)
 
 # The settings name adapters are declared under
@@ -25,7 +31,7 @@ class AdapterRegistry:
     """The enabled adapters, keyed by their settings declaration name."""
 
     def __init__(self) -> None:
-        self._adapters: dict[str, IncomeSourceAdapter] = {}
+        self._adapters: dict[str, InitializedAdapter] = {}
 
     @classmethod
     def from_settings(cls) -> Self:
@@ -46,6 +52,14 @@ class AdapterRegistry:
                     f"{name!r} adapter settings property 'enabled' must be a bool. "
                     f"Value was {enabled!r}"
                 )
+
+            for policy_name in ("retry_policy", "circuit_breaker"):
+                if policy_name not in declaration:
+                    raise ImproperlyConfigured(
+                        f"income source adapter {name!r} settings must declare {policy_name!r}"
+                    )
+            retry_policy = parse_retry_policy(name, declaration["retry_policy"])
+            circuit_breaker = parse_circuit_breaker_policy(name, declaration["circuit_breaker"])
             if not enabled:
                 logger.debug("income source adapter %r is disabled; skipping", name)
                 continue
@@ -103,7 +117,11 @@ class AdapterRegistry:
                 )
             seen_source_ids[source_id] = name
 
-            registry_from_settings._adapters[name] = instance
+            registry_from_settings._adapters[name] = InitializedAdapter(
+                adapter=instance,
+                retrying=retry_policy.build() if retry_policy else None,
+                circuit_breaker=circuit_breaker.build() if circuit_breaker else None,
+            )
         return registry_from_settings
 
     def refresh_from_settings(self) -> None:
@@ -113,7 +131,7 @@ class AdapterRegistry:
         self._adapters.update(rebuilt._adapters)
         self.log_summary()
 
-    def get_adapter(self, name: str) -> IncomeSourceAdapter:
+    def get_adapter(self, name: str) -> InitializedAdapter:
         try:
             return self._adapters[name]
         except KeyError:
@@ -123,7 +141,7 @@ class AdapterRegistry:
             ) from None
 
     @property
-    def adapters(self) -> Mapping[str, IncomeSourceAdapter]:
+    def adapters(self) -> Mapping[str, InitializedAdapter]:
         """Read-only view of the enabled adapters."""
         return MappingProxyType(self._adapters)
 
@@ -135,14 +153,17 @@ class AdapterRegistry:
             package_map = metadata.packages_distributions()
         except Exception:  # startup logging must never fail
             package_map = {}
-        for adapter_settings_key, adapter in self._adapters.items():
-            log_adapter_summary(adapter_settings_key, adapter, package_map)
+        for adapter_settings_key, initialized_adapter in self._adapters.items():
+            log_adapter_summary(adapter_settings_key, initialized_adapter, package_map)
 
 
 def log_adapter_summary(
-    settings_key: str, adapter: IncomeSourceAdapter, package_map: Mapping[str, list[str]]
+    settings_key: str,
+    initialized_adapter: InitializedAdapter,
+    package_map: Mapping[str, list[str]],
 ) -> None:
     """Stateless per-adapter startup line; independent of any registry instance."""
+    adapter = initialized_adapter.adapter
     module = type(adapter).__module__.partition(".")[0]
     distributions = package_map.get(module, [])
     try:

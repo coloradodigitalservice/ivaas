@@ -6,7 +6,7 @@ from typing import Any
 from django.conf import settings
 from django.core import checks
 
-from adapter_registry.registry import INCOME_SOURCE_ADAPTERS
+from adapter_engine.registry import INCOME_SOURCE_ADAPTERS
 
 
 def unreferenced_adapter_wheels(
@@ -35,7 +35,7 @@ def unreferenced_adapter_wheels(
                 "Half-finished adapter add? Declare it in settings "
                 f"({INCOME_SOURCE_ADAPTERS}) or remove the file."
             ),
-            id="adapter_registry.W001",
+            id="adapter_engine.W001",
         )
         for wheel in sorted(wheels_dir.glob("*.whl"))
         if wheel.name.split("-")[0] not in declared_modules

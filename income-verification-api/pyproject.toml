@@ -10,6 +10,8 @@ dependencies = [
     "django-ninja>=1.6.2",
     "ivaas-core",
     "psycopg[binary]==3.3.4",
+    "pybreaker>=1.4.1",
+    "tenacity>=9.1.4",
     "uvicorn[standard]==0.52.2",
 ]
 
@@ -90,7 +92,7 @@ testpaths = ["tests", "packages"]
 python_files = ["test_*.py"]
 
 [tool.coverage.run]
-source = ["api", "adapter_registry", "ivaas_core"]
+source = ["api", "adapter_engine", "ivaas_core"]
 omit = ["*/migrations/*"]
 branch = true
 
