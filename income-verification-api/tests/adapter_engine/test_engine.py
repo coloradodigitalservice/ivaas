@@ -222,17 +222,40 @@ def test_failure_in_half_open_reopens_breaker(
     assert adapter.call_count == 2
 
 
-def test_exponential_backoff_policy_calls_adapter(
-    verification_request: VerificationRequest,
+def test_fixed_backoff_sleeps_the_configured_seconds_between_attempts(
+    verification_request: VerificationRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr("time.sleep", sleeps.append)
     expected = _source_income()
     adapter_engine, adapter, _initialized_adapter = _engine(
-        [expected],
-        retry_policy=RetryPolicy(2, ExponentialBackoff(0.01, 0.1)),
+        [SourceTimeout("timeout"), SourceTimeout("timeout"), expected],
+        retry_policy=RetryPolicy(3, FixedBackoff(1.5)),
     )
 
     assert adapter_engine.verify("stub", verification_request) == expected
-    assert adapter.call_count == 1
+    assert adapter.call_count == 3
+    assert sleeps == [1.5, 1.5]
+
+
+def test_exponential_backoff_grows_within_bounds_between_attempts(
+    verification_request: VerificationRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr("time.sleep", sleeps.append)
+    expected = _source_income()
+    adapter_engine, adapter, _initialized_adapter = _engine(
+        [SourceTimeout("timeout"), SourceTimeout("timeout"), SourceTimeout("timeout"), expected],
+        retry_policy=RetryPolicy(4, ExponentialBackoff(1, 3)),
+    )
+
+    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter.call_count == 4
+    # tenacity: min(initial * 2**n + jitter, max), jitter in [0, 1], n from 0
+    first_sleep, second_sleep, third_sleep = sleeps
+    assert 1 <= first_sleep <= 2
+    assert 2 <= second_sleep <= 3
+    assert third_sleep == 3
 
 
 def test_django_engine_uses_refreshed_registry(
