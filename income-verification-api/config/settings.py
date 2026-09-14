@@ -115,7 +115,7 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
         "config": {
             "account_url": env("CDLE_ACCOUNT_URL", default=None),
             "environment": env("CDLE_ENVIRONMENT", default=None),
-            "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=10),
+            "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=5),
         },
         "retry_policy": {
             "max_attempts": env.int("CDLE_RETRY_POLICY_MAX_ATTEMPTS", default=3),

@@ -33,6 +33,8 @@ def _attempt_verification_request(
 ) -> SourceIncome:
     """Make one call to the adapter, through its circuit breaker when it has one."""
     if initialized_adapter.circuit_breaker is not None:
+        # PyBreaker holds a lock for the whole call, so one call per breaker at a time.
+        # Revisit if calling view becomes async.
         return initialized_adapter.circuit_breaker.call(initialized_adapter.adapter.verify, request)
     return initialized_adapter.adapter.verify(request)
 
