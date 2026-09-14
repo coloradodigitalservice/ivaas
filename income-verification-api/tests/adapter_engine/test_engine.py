@@ -1,4 +1,3 @@
-import time
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -50,7 +49,7 @@ def _engine(
     *,
     retry_policy: RetryPolicy | None = None,
     circuit_breaker: CircuitBreakerPolicy | None = None,
-) -> tuple[AdapterEngine, ScriptedAdapter]:
+) -> tuple[AdapterEngine, ScriptedAdapter, InitializedAdapter]:
     adapter = ScriptedAdapter(outcomes)
     initialized_adapter = InitializedAdapter(
         adapter,
@@ -59,14 +58,14 @@ def _engine(
     )
     registry_mock = MagicMock(spec=AdapterRegistry)
     registry_mock.get_adapter.return_value = initialized_adapter
-    return AdapterEngine(registry_mock), adapter
+    return AdapterEngine(registry_mock), adapter, initialized_adapter
 
 
 def test_without_policies_calls_adapter_once(
     verification_request: VerificationRequest,
 ) -> None:
     expected = _source_income()
-    adapter_engine, adapter = _engine([expected])
+    adapter_engine, adapter, _initialized_adapter = _engine([expected])
 
     assert adapter_engine.verify("stub", verification_request) == expected
     assert adapter.call_count == 1
@@ -76,7 +75,7 @@ def test_without_policies_preserves_exception(
     verification_request: VerificationRequest,
 ) -> None:
     error = SourceTimeout("timed out")
-    adapter_engine, adapter = _engine([error])
+    adapter_engine, adapter, _initialized_adapter = _engine([error])
 
     with pytest.raises(SourceTimeout) as exc_info:
         adapter_engine.verify("stub", verification_request)
@@ -92,7 +91,9 @@ def test_retries_retryable_errors_until_success(
 ) -> None:
     expected = _source_income()
     policy = RetryPolicy(3, FixedBackoff(0))
-    adapter_engine, adapter = _engine([error_type(), error_type(), expected], retry_policy=policy)
+    adapter_engine, adapter, _initialized_adapter = _engine(
+        [error_type(), error_type(), expected], retry_policy=policy
+    )
 
     assert adapter_engine.verify("stub", verification_request) == expected
     assert adapter.call_count == 3
@@ -105,7 +106,7 @@ def test_retry_exhaustion_preserves_last_error(
 ) -> None:
     last_error = error_type("last")
     policy = RetryPolicy(2, FixedBackoff(0))
-    adapter_engine, adapter = _engine(
+    adapter_engine, adapter, _initialized_adapter = _engine(
         [error_type("first"), last_error],
         retry_policy=policy,
     )
@@ -123,7 +124,7 @@ def test_final_errors_are_not_retried_or_counted_by_breaker(
     verification_request: VerificationRequest,
 ) -> None:
     expected = _source_income()
-    adapter_engine, adapter = _engine(
+    adapter_engine, adapter, _initialized_adapter = _engine(
         [error_type(), expected],
         retry_policy=RetryPolicy(3, FixedBackoff(0)),
         circuit_breaker=CircuitBreakerPolicy(1, 30),
@@ -141,7 +142,7 @@ def test_tripping_call_preserves_adapter_error(
 ) -> None:
     first_error = SourceUnavailable("first")
     tripping_error = SourceTimeout("second")
-    adapter_engine, adapter = _engine(
+    adapter_engine, adapter, _initialized_adapter = _engine(
         [first_error, tripping_error],
         circuit_breaker=CircuitBreakerPolicy(2, 30),
     )
@@ -159,7 +160,7 @@ def test_tripping_call_preserves_adapter_error(
 def test_open_breaker_stops_retry_without_calling_adapter(
     verification_request: VerificationRequest,
 ) -> None:
-    adapter_engine, adapter = _engine(
+    adapter_engine, adapter, _initialized_adapter = _engine(
         [SourceUnavailable("failure")],
         retry_policy=RetryPolicy(3, FixedBackoff(0)),
         circuit_breaker=CircuitBreakerPolicy(1, 30),
@@ -173,20 +174,47 @@ def test_open_breaker_stops_retry_without_calling_adapter(
     assert adapter.call_count == 1
 
 
-def test_success_after_reset_timeout_closes_breaker(
+def test_success_in_half_open_closes_breaker(
     verification_request: VerificationRequest,
 ) -> None:
     expected = _source_income()
-    adapter_engine, adapter = _engine(
+    adapter_engine, adapter, initialized_adapter = _engine(
         [SourceUnavailable("failure"), expected],
         circuit_breaker=CircuitBreakerPolicy(1, 0.01),
     )
+    circuit_breaker = initialized_adapter.circuit_breaker
+    assert circuit_breaker is not None
 
     with pytest.raises(SourceUnavailable, match="failure"):
         adapter_engine.verify("stub", verification_request)
-    time.sleep(0.02)
+    assert circuit_breaker.current_state == "open"
+    circuit_breaker.half_open()
 
     assert adapter_engine.verify("stub", verification_request) == expected
+    assert circuit_breaker.current_state == "closed"
+    assert adapter.call_count == 2
+
+
+def test_failure_in_half_open_reopens_breaker(
+    verification_request: VerificationRequest,
+) -> None:
+    half_open_error = SourceUnavailable("half-open failure")
+    adapter_engine, adapter, initialized_adapter = _engine(
+        [SourceUnavailable("first failure"), half_open_error],
+        circuit_breaker=CircuitBreakerPolicy(1, 30),
+    )
+    circuit_breaker = initialized_adapter.circuit_breaker
+    assert circuit_breaker is not None
+
+    with pytest.raises(SourceUnavailable, match="first failure"):
+        adapter_engine.verify("stub", verification_request)
+    circuit_breaker.half_open()
+
+    with pytest.raises(SourceUnavailable) as exc_info:
+        adapter_engine.verify("stub", verification_request)
+
+    assert exc_info.value is half_open_error
+    assert circuit_breaker.current_state == "open"
     assert adapter.call_count == 2
 
 
@@ -194,7 +222,7 @@ def test_exponential_backoff_policy_calls_adapter(
     verification_request: VerificationRequest,
 ) -> None:
     expected = _source_income()
-    adapter_engine, adapter = _engine(
+    adapter_engine, adapter, _initialized_adapter = _engine(
         [expected],
         retry_policy=RetryPolicy(2, ExponentialBackoff(0.01, 0.1)),
     )
