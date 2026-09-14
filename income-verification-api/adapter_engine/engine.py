@@ -17,7 +17,7 @@ class AdapterEngine:
         """Verify income through one registered adapter."""
         initialized_adapter = self._registry.get_adapter(name)
         try:
-            if initialized_adapter.retrying:
+            if initialized_adapter.retrying is not None:
                 return initialized_adapter.retrying(
                     self._attempt_verification_request, initialized_adapter, request
                 )
@@ -29,7 +29,7 @@ class AdapterEngine:
     def _attempt_verification_request(
         initialized_adapter: InitializedAdapter, request: VerificationRequest
     ) -> SourceIncome:
-        if initialized_adapter.circuit_breaker:
+        if initialized_adapter.circuit_breaker is not None:
             return initialized_adapter.circuit_breaker.call(
                 initialized_adapter.adapter.verify, request
             )
