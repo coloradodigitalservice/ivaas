@@ -14,26 +14,25 @@ class AdapterEngine:
         self._registry = registry
 
     def verify(self, name: str, request: VerificationRequest) -> SourceIncome:
-        """Verify income through one registered adapter."""
+        """Verify income through one registered adapter, retrying as necessary."""
         initialized_adapter = self._registry.get_adapter(name)
         try:
             if initialized_adapter.retrying is not None:
                 return initialized_adapter.retrying(
-                    self._attempt_verification_request, initialized_adapter, request
+                    _attempt_verification_request, initialized_adapter, request
                 )
-            return self._attempt_verification_request(initialized_adapter, request)
+            return _attempt_verification_request(initialized_adapter, request)
         except pybreaker.CircuitBreakerError:
             raise SourceUnavailable(f"{name} circuit breaker is open") from None
 
-    @staticmethod
-    def _attempt_verification_request(
-        initialized_adapter: InitializedAdapter, request: VerificationRequest
-    ) -> SourceIncome:
-        if initialized_adapter.circuit_breaker is not None:
-            return initialized_adapter.circuit_breaker.call(
-                initialized_adapter.adapter.verify, request
-            )
-        return initialized_adapter.adapter.verify(request)
+
+def _attempt_verification_request(
+    initialized_adapter: InitializedAdapter, request: VerificationRequest
+) -> SourceIncome:
+    """Make one call to the adapter, through its circuit breaker when it has one."""
+    if initialized_adapter.circuit_breaker is not None:
+        return initialized_adapter.circuit_breaker.call(initialized_adapter.adapter.verify, request)
+    return initialized_adapter.adapter.verify(request)
 
 
 engine = AdapterEngine(registry)
