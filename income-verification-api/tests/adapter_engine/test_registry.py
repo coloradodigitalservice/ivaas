@@ -1,4 +1,3 @@
-from collections.abc import Iterator
 from importlib import metadata
 from unittest.mock import MagicMock
 
@@ -37,16 +36,6 @@ def build_from_settings(adapter_settings: object) -> AdapterRegistry:
     """Mimic the INCOME_SOURCE_ADAPTERS setting, then build a registry from it."""
     with override_settings(**{INCOME_SOURCE_ADAPTERS: adapter_settings}):
         return AdapterRegistry.from_settings()
-
-
-@pytest.fixture(autouse=True)
-def isolated_registry() -> Iterator[None]:
-    """Give every test a deterministic EMPTY registry baseline, independent of
-    the machine's environment (local env files may enable real adapters)."""
-    with override_settings(**{INCOME_SOURCE_ADAPTERS: {}}):
-        registry.refresh_from_settings()
-        yield
-        registry.refresh_from_settings()
 
 
 class TestFromSettings:

@@ -250,6 +250,3 @@ def test_django_engine_uses_refreshed_registry(
         registry.refresh_from_settings()
         with pytest.raises(SubjectNotFound):
             engine.verify("stub", verification_request)
-
-    with override_settings(**{INCOME_SOURCE_ADAPTERS: {}}):
-        registry.refresh_from_settings()
