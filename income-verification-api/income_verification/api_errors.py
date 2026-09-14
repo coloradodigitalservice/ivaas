@@ -112,9 +112,7 @@ def _code_for_validation_error(
 
     code = FIELD_ERROR_CODES[field]
     if code is ErrorCode.INVALID_CORRELATION_ID and error_type == "missing":
-        # A required header that was not sent is a generic incomplete request.
-        # INVALID_CORRELATION_ID is reserved for a supplied malformed value.
-        return None
+        return ErrorCode.MISSING_CORRELATION_ID
     return code
 
 

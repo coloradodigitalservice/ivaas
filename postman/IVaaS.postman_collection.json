@@ -237,8 +237,8 @@
                   "pm.test('returns 400', () => pm.response.to.have.status(400));",
                   "pm.test('returns the documented error envelope', () => {",
                   "  pm.expect(pm.response.json()).to.deep.equal({",
-                  "    code: 'INVALID_REQUEST',",
-                  "    message: 'Request failed validation.'",
+                  "    code: 'MISSING_CORRELATION_ID',",
+                  "    message: 'Correlation-Id header is required.'",
                   "  });",
                   "});"
                 ]

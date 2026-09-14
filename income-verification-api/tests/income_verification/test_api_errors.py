@@ -204,7 +204,7 @@ def test_http_errors_use_the_stable_error_contract(
             ErrorCode.INVALID_CORRELATION_ID,
         ),
         (("header", "correlation_id"), "string_too_long", ErrorCode.INVALID_CORRELATION_ID),
-        (("header", "Correlation-Id"), "missing", None),
+        (("header", "Correlation-Id"), "missing", ErrorCode.MISSING_CORRELATION_ID),
         (("body", "payload", "unknown"), "string_type", None),
     ],
 )

@@ -18,6 +18,7 @@ class ErrorCode(StrEnum):
     INVALID_FIRST_NAME = "INVALID_FIRST_NAME"
     INVALID_LAST_NAME = "INVALID_LAST_NAME"
 
+    MISSING_CORRELATION_ID = "MISSING_CORRELATION_ID"
     INVALID_CORRELATION_ID = "INVALID_CORRELATION_ID"
     INVALID_APPLICATION_ID = "INVALID_APPLICATION_ID"
     INVALID_LOOKBACK_PERIOD = "INVALID_LOOKBACK_PERIOD"
@@ -61,6 +62,9 @@ ERRORS: dict[ErrorCode, ErrorDefinition] = {
     ErrorCode.INVALID_LAST4_SSN_FORMAT: RequestValidationErrorDefinition(
         message="last4Ssn must contain four digits.",
         field="last4Ssn",
+    ),
+    ErrorCode.MISSING_CORRELATION_ID: RequestValidationErrorDefinition(
+        message="Correlation-Id header is required.",
     ),
     ErrorCode.INVALID_CORRELATION_ID: RequestValidationErrorDefinition(
         message="Correlation-Id is invalid.",

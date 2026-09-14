@@ -171,13 +171,13 @@ def test_rejects_missing_correlation_id(client: Client) -> None:
             content_type="application/json",
         )
 
-    assert_error_response(response, ErrorCode.INVALID_REQUEST, echoes_correlation_id=False)
+    assert_error_response(response, ErrorCode.MISSING_CORRELATION_ID, echoes_correlation_id=False)
     logger.warning.assert_called_once_with(
         "income verification request rejected",
         extra={
             LogField.EVENT_NAME.value: "income_verification.request.rejected",
             LogField.ERROR_TYPE.value: "validation_error",
-            LogField.ERROR_CODE.value: ErrorCode.INVALID_REQUEST.value,
+            LogField.ERROR_CODE.value: ErrorCode.MISSING_CORRELATION_ID.value,
             LogField.HTTP_REQUEST_METHOD.value: "POST",
             LogField.HTTP_RESPONSE_STATUS_CODE.value: 400,
             LogField.URL_PATH.value: INCOME_VERIFICATION_PATH,
