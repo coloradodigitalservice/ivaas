@@ -166,9 +166,13 @@ def test_open_breaker_stops_retry_without_calling_adapter(
         circuit_breaker=CircuitBreakerPolicy(1, 30),
     )
 
-    with pytest.raises(SourceUnavailable, match="stub circuit breaker is open"):
+    with pytest.raises(
+        SourceUnavailable, match="income source adapter 'stub' circuit breaker is open"
+    ):
         adapter_engine.verify("stub", verification_request)
-    with pytest.raises(SourceUnavailable, match="stub circuit breaker is open"):
+    with pytest.raises(
+        SourceUnavailable, match="income source adapter 'stub' circuit breaker is open"
+    ):
         adapter_engine.verify("stub", verification_request)
 
     assert adapter.call_count == 1

@@ -23,7 +23,9 @@ class AdapterEngine:
                 )
             return _attempt_verification_request(initialized_adapter, request)
         except pybreaker.CircuitBreakerError:
-            raise SourceUnavailable(f"{name} circuit breaker is open") from None
+            raise SourceUnavailable(
+                f"income source adapter {name!r} circuit breaker is open"
+            ) from None
 
 
 def _attempt_verification_request(
