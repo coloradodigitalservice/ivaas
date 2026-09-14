@@ -1,3 +1,5 @@
+"""Runs income verification calls through each adapter's retry and circuit breaker policies."""
+
 import pybreaker
 from ivaas_core import SourceIncome, SourceUnavailable, VerificationRequest
 

@@ -20,6 +20,8 @@ RETRYABLE = (SourceTimeout, SourceUnavailable)
 
 @dataclass(frozen=True)
 class FixedBackoff:
+    """The same pause before every retry."""
+
     seconds: float
 
     def __post_init__(self) -> None:
@@ -29,6 +31,8 @@ class FixedBackoff:
 
 @dataclass(frozen=True)
 class ExponentialBackoff:
+    """A pause that doubles after each retry, with jitter (a small random extra), up to a cap."""
+
     initial_seconds: float
     max_seconds: float
 
@@ -41,6 +45,8 @@ class ExponentialBackoff:
 
 @dataclass(frozen=True)
 class RetryPolicy:
+    """How many times to call an adapter and how long to pause between calls."""
+
     max_attempts: int
     backoff: FixedBackoff | ExponentialBackoff
 
@@ -68,6 +74,8 @@ class RetryPolicy:
 
 @dataclass(frozen=True)
 class CircuitBreakerPolicy:
+    """When to stop calling an adapter and when to try it again."""
+
     failure_threshold: int
     reset_timeout_seconds: float
 
@@ -88,6 +96,8 @@ class CircuitBreakerPolicy:
 
 @dataclass(frozen=True)
 class InitializedAdapter:
+    """An enabled adapter with its retry loop and circuit breaker built, or None where off."""
+
     adapter: IncomeSourceAdapter
     retrying: Retrying | None
     circuit_breaker: pybreaker.CircuitBreaker | None
@@ -101,6 +111,7 @@ _BACKOFF_TYPES: dict[str, BackoffFactory] = {
 
 
 def parse_retry_policy(name: str, raw_value: object) -> RetryPolicy | None:
+    """Turn one adapter's retry_policy setting into a RetryPolicy; None means off."""
     if raw_value is None:
         return None
     try:
@@ -116,6 +127,7 @@ def parse_retry_policy(name: str, raw_value: object) -> RetryPolicy | None:
 
 
 def parse_circuit_breaker_policy(name: str, raw_value: object) -> CircuitBreakerPolicy | None:
+    """Turn one adapter's circuit_breaker setting into a CircuitBreakerPolicy; None means off."""
     if raw_value is None:
         return None
     try:
