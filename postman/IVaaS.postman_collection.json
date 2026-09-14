@@ -91,7 +91,7 @@
                   "  const document = pm.response.json();",
                   "  const version = pm.collectionVariables.get('apiVersion');",
                   "  pm.expect(document.info.version).to.equal(version);",
-                  "  pm.expect(document.paths).to.have.property(`/${version}/income-verification`);",
+                  "  pm.expect(document.paths).to.have.property(`/api/${version}/income-verification`);",
                   "});"
                 ]
               }
