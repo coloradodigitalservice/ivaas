@@ -32,6 +32,14 @@ _HTTP_ERROR_CODES: dict[int, ErrorCode] = {
     HTTPStatus.SERVICE_UNAVAILABLE: ErrorCode.SERVICE_UNAVAILABLE,
 }
 
+_FIRST_PARTY_MODULE_NAMESPACES = frozenset(
+    {
+        "adapter_registry",
+        "income_verification",
+        "ivaas_core",
+    }
+)
+
 
 class ValidationReason(StrEnum):
     """
@@ -41,6 +49,41 @@ class ValidationReason(StrEnum):
 
     MISSING = "missing"
     INVALID = "invalid"
+
+
+def _is_first_party_module(module_name: str) -> bool:
+    """Return whether a module belongs to an application-owned namespace."""
+    return module_name.partition(".")[0] in _FIRST_PARTY_MODULE_NAMESPACES
+
+
+def _unexpected_exception_diagnostics(exc: Exception) -> dict[LogField, object]:
+    """Extract PII-safe structural diagnostics from an unexpected exception."""
+    exception_class = type(exc)
+    origin: tuple[str, str, int] | None = None
+
+    current_traceback = exc.__traceback__
+    while current_traceback is not None:
+        frame = current_traceback.tb_frame
+        module_name = frame.f_globals.get("__name__")
+        if isinstance(module_name, str) and _is_first_party_module(module_name):
+            origin = (module_name, frame.f_code.co_qualname, current_traceback.tb_lineno)
+        current_traceback = current_traceback.tb_next
+
+    diagnostics: dict[LogField, object] = {
+        LogField.EXCEPTION_TYPE: (f"{exception_class.__module__}.{exception_class.__qualname__}"),
+    }
+
+    if origin is not None:
+        module_name, function_name, line_number = origin
+        diagnostics.update(
+            {
+                LogField.EXCEPTION_ORIGIN_MODULE: module_name,
+                LogField.EXCEPTION_ORIGIN_FUNCTION: function_name,
+                LogField.EXCEPTION_ORIGIN_LINE: line_number,
+            }
+        )
+
+    return diagnostics
 
 
 def _validation_reason(error_type: object) -> ValidationReason:
@@ -133,7 +176,7 @@ def _error_response(
     code: ErrorCode,
     *,
     error_type: str,
-    exception_type: str | None = None,
+    exception_diagnostics: Mapping[LogField, object] | None = None,
     validation_errors: Sequence[Mapping[str, Any]] | None = None,
 ) -> HttpResponse:
     """Create and safely log an IVaaS error response."""
@@ -175,8 +218,8 @@ def _error_response(
         attributes[LogField.VALIDATION_ERRORS.value] = _sanitized_validation_errors(
             validation_errors
         )
-    if exception_type is not None:
-        attributes[LogField.EXCEPTION_TYPE.value] = exception_type
+    if exception_diagnostics is not None:
+        attributes.update({field.value: value for field, value in exception_diagnostics.items()})
 
     log_method = logger.error if is_internal_error else logger.warning
     log_method(log_message, extra=attributes)
@@ -228,7 +271,9 @@ def register_exception_handlers(api: NinjaAPI) -> None:
             request,
             code,
             error_type=error_type,
-            exception_type=type(exc).__name__,
+            exception_diagnostics=(
+                _unexpected_exception_diagnostics(exc) if code is ErrorCode.INTERNAL_ERROR else None
+            ),
         )
 
     @api.exception_handler(Exception)
@@ -241,5 +286,5 @@ def register_exception_handlers(api: NinjaAPI) -> None:
             request,
             ErrorCode.INTERNAL_ERROR,
             error_type="internal_error",
-            exception_type=type(exc).__name__,
+            exception_diagnostics=_unexpected_exception_diagnostics(exc),
         )
