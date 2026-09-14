@@ -117,3 +117,7 @@ quality-check: ## run all required checks
 	$(RUN_NO_SYNC) ruff check .
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .
+
+.PHONY: django-secret-key
+django-secret-key: ## generate string for DJANGO_SECRET_KEY
+	$(UV) run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
