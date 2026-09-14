@@ -103,8 +103,7 @@ class InitializedAdapter:
     circuit_breaker: pybreaker.CircuitBreaker | None
 
 
-type BackoffFactory = Callable[..., FixedBackoff | ExponentialBackoff]
-_BACKOFF_TYPES: dict[str, BackoffFactory] = {
+_BACKOFF_TYPES: dict[str, Callable[..., FixedBackoff | ExponentialBackoff]] = {
     "fixed": FixedBackoff,
     "exponential": ExponentialBackoff,
 }
