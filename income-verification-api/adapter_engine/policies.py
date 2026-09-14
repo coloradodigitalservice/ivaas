@@ -25,8 +25,8 @@ class FixedBackoff:
     seconds: float
 
     def __post_init__(self) -> None:
-        if self.seconds < 0:
-            raise ValueError("seconds must be greater than or equal to 0")
+        if type(self.seconds) not in (int, float) or self.seconds < 0:
+            raise ValueError("seconds must be a number greater than or equal to 0")
 
 
 @dataclass(frozen=True)
@@ -37,10 +37,12 @@ class ExponentialBackoff:
     max_seconds: float
 
     def __post_init__(self) -> None:
-        if self.initial_seconds <= 0:
-            raise ValueError("initial_seconds must be greater than 0")
-        if self.max_seconds < self.initial_seconds:
-            raise ValueError("max_seconds must be greater than or equal to initial_seconds")
+        if type(self.initial_seconds) not in (int, float) or self.initial_seconds <= 0:
+            raise ValueError("initial_seconds must be a number greater than 0")
+        if type(self.max_seconds) not in (int, float) or self.max_seconds < self.initial_seconds:
+            raise ValueError(
+                "max_seconds must be a number greater than or equal to initial_seconds"
+            )
 
 
 @dataclass(frozen=True)
@@ -82,8 +84,8 @@ class CircuitBreakerPolicy:
     def __post_init__(self) -> None:
         if type(self.failure_threshold) is not int or self.failure_threshold < 1:
             raise ValueError("failure_threshold must be an integer greater than or equal to 1")
-        if self.reset_timeout_seconds <= 0:
-            raise ValueError("reset_timeout_seconds must be greater than 0")
+        if type(self.reset_timeout_seconds) not in (int, float) or self.reset_timeout_seconds <= 0:
+            raise ValueError("reset_timeout_seconds must be a number greater than 0")
 
     def build(self) -> pybreaker.CircuitBreaker:
         return pybreaker.CircuitBreaker(

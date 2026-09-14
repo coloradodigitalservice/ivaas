@@ -73,6 +73,32 @@ def test_parses_exponential_retry_policy() -> None:
             "seconds",
         ),
         (
+            {"max_attempts": 1, "backoff": {"strategy": "fixed", "seconds": True}},
+            "seconds",
+        ),
+        (
+            {
+                "max_attempts": 1,
+                "backoff": {
+                    "strategy": "exponential",
+                    "initial_seconds": True,
+                    "max_seconds": 1,
+                },
+            },
+            "initial_seconds",
+        ),
+        (
+            {
+                "max_attempts": 1,
+                "backoff": {
+                    "strategy": "exponential",
+                    "initial_seconds": 0.5,
+                    "max_seconds": True,
+                },
+            },
+            "max_seconds",
+        ),
+        (
             {
                 "max_attempts": 1,
                 "backoff": {
@@ -145,6 +171,7 @@ def test_parses_circuit_breaker_policy() -> None:
         ({"reset_timeout_seconds": 1}, "failure_threshold"),
         ({"failure_threshold": 1}, "reset_timeout_seconds"),
         ({"failure_threshold": 1, "reset_timeout_seconds": False}, "reset_timeout_seconds"),
+        ({"failure_threshold": 1, "reset_timeout_seconds": True}, "reset_timeout_seconds"),
         ({"failure_threshold": 1, "reset_timeout_seconds": 0}, "reset_timeout_seconds"),
         (
             {"failure_threshold": 1, "reset_timeout_seconds": 1, "typo": True},
