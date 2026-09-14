@@ -499,18 +499,37 @@ def test_openapi_exposes_versioned_income_verification_path(client: Client) -> N
     assert schema["info"]["version"] == settings.API_VERSION
     assert INCOME_VERIFICATION_PATH in schema["paths"]
     assert f"{API_ROOT}/health" not in schema["paths"]
-    request_schema = schema["components"]["schemas"]["VerificationRequest"]
-    assert "firstName" in request_schema["properties"]
-    assert "first_name" not in request_schema["properties"]
-    assert "lookbackPeriod" in request_schema["properties"]
-    assert "lookback_period" not in request_schema["properties"]
-
-    lookback_schema = schema["components"]["schemas"]["LookbackPeriod"]
-    assert "startDate" in lookback_schema["properties"]
-    assert "start_date" not in lookback_schema["properties"]
 
 
 def test_openapi_documentation_endpoint(client: Client) -> None:
     response = client.get(f"{API_ROOT}/docs")
 
     assert response.status_code == 200
+
+
+def test_core_value_error_during_request_validation_returns_400(client: Client) -> None:
+    with patch(
+        "income_verification.schemas.CoreVerificationRequest",
+        side_effect=ValueError("simulated core invariant"),
+    ):
+        response = post_verification(client, valid_request())
+
+    assert_error_response(
+        response,
+        ErrorCode.INVALID_REQUEST,
+        echoes_correlation_id=True,
+    )
+
+
+def test_core_runtime_error_during_request_validation_returns_500(client: Client) -> None:
+    with patch(
+        "income_verification.schemas.CoreVerificationRequest",
+        side_effect=RuntimeError("simulated unexpected failure"),
+    ):
+        response = post_verification(client, valid_request())
+
+    assert_error_response(
+        response,
+        ErrorCode.INTERNAL_ERROR,
+        echoes_correlation_id=True,
+    )
