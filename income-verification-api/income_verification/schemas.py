@@ -23,9 +23,13 @@ from income_verification.dtos import VerificationRequestEnvelope
 
 
 class ApiSchema(Schema):
-    """Expose Python field names as the camel-case names in the API contract."""
+    """Accept only camel-case API aliases while exposing snake-case attributes."""
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        validate_by_alias=True,
+        validate_by_name=False,
+    )
 
 
 class VerificationRequest(ApiSchema):
@@ -73,6 +77,8 @@ class VerificationRequest(ApiSchema):
                 ERRORS[code].message,
             )
 
+        # Constructing the core request here keeps core invariant failures in the
+        # request-validation path, where Ninja returns the public 400 contract.
         self._to_core_request()
         return self
 

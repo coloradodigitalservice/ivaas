@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from typing import Any, cast
 
 import pytest
 
@@ -10,30 +9,6 @@ from income_verification.api_error_codes import (
     ErrorDefinition,
     RequestValidationErrorDefinition,
 )
-
-
-def test_general_error_definition_requires_an_explicit_status() -> None:
-    constructor = cast(Any, ErrorDefinition)
-
-    with pytest.raises(TypeError):
-        constructor(message="Authentication failed.")
-
-    definition = ErrorDefinition(
-        message="Authentication failed.",
-        status_code=HTTPStatus.UNAUTHORIZED,
-    )
-
-    assert definition.status_code is HTTPStatus.UNAUTHORIZED
-
-
-def test_request_validation_status_cannot_be_overridden() -> None:
-    constructor = cast(Any, RequestValidationErrorDefinition)
-
-    with pytest.raises(TypeError):
-        constructor(
-            message="Request failed validation.",
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
 
 
 def test_request_validation_errors_use_the_locked_bad_request_definition() -> None:

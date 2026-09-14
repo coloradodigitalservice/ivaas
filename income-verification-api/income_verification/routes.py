@@ -11,7 +11,7 @@ from income_verification.correlation_id import (
     CORRELATION_ID_MAX_LENGTH,
     CORRELATION_ID_PATTERN,
 )
-from income_verification.request_context import set_verification_log_context
+from income_verification.request_context import LogField, set_verification_log_context
 from income_verification.schemas import Error, VerificationRequest, VerificationResponse
 
 logger = logging.getLogger(__name__)
@@ -78,10 +78,12 @@ def income_verification(
     logger.info(
         "income verification request accepted",
         extra={
-            "event_name": "income_verification.request.accepted",
-            "http_request_method": request.method or "UNKNOWN",
-            "url_path": request.path,
+            LogField.EVENT_NAME.value: "income_verification.request.accepted",
+            LogField.HTTP_REQUEST_METHOD.value: request.method or "UNKNOWN",
+            LogField.URL_PATH.value: request.path,
         },
     )
 
-    return VerificationResponse(verification_id=envelope.verification_id)
+    return VerificationResponse.model_validate(
+        {"verificationId": envelope.verification_id},
+    )

@@ -1,15 +1,15 @@
 """Request-scoped context exposed to application logging."""
 
-import inspect
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
+from inspect import iscoroutinefunction, markcoroutinefunction
 from typing import cast
 
-from asgiref.sync import markcoroutinefunction
 from django.http import HttpRequest, HttpResponse
 
 from income_verification.correlation_id import (
@@ -30,23 +30,25 @@ _request_log_context: ContextVar[RequestLogContext] = ContextVar(
     "ivaas_request_log_context", default=_empty_request_log_context
 )
 
-_STRUCTURED_FIELD_NAMES = {
-    "event_name": "event.name",
-    "error_type": "error.type",
-    "error_code": "error.code",
-    "validation_error_count": "validation.error.count",
-    "validation_errors": "validation.errors",
-    "http_request_method": "http.request.method",
-    "http_response_status_code": "http.response.status_code",
-    "url_path": "url.path",
-    "exception_type": "exception.type",
-    "ivaas_correlation_id": "ivaas.correlation.id",
-    "ivaas_application_id": "ivaas.application.id",
-    "ivaas_verification_id": "ivaas.verification.id",
-}
-
 SyncGetResponse = Callable[[HttpRequest], HttpResponse]
 AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponse]]
+
+
+class LogField(StrEnum):
+    """The only structured `extra` keys emitted by the JSON formatter."""
+
+    EVENT_NAME = "event.name"
+    ERROR_TYPE = "error.type"
+    ERROR_CODE = "error.code"
+    VALIDATION_ERROR_COUNT = "validation.error.count"
+    VALIDATION_ERRORS = "validation.errors"
+    HTTP_REQUEST_METHOD = "http.request.method"
+    HTTP_RESPONSE_STATUS_CODE = "http.response.status_code"
+    URL_PATH = "url.path"
+    EXCEPTION_TYPE = "exception.type"
+    CORRELATION_ID = "ivaas.correlation.id"
+    APPLICATION_ID = "ivaas.application.id"
+    VERIFICATION_ID = "ivaas.verification.id"
 
 
 def get_correlation_id() -> str | None:
@@ -66,17 +68,26 @@ def set_verification_log_context(application_id: str, verification_id: str) -> N
     )
 
 
+def _bind_request_log_context(request: HttpRequest) -> Token[RequestLogContext]:
+    """Start a fresh request log context; reset it with the returned token."""
+    return _request_log_context.set(
+        RequestLogContext(
+            correlation_id=validated_correlation_id(request.headers.get(CORRELATION_ID_HEADER_NAME))
+        )
+    )
+
+
 class RequestContextFilter(logging.Filter):
     """Add allowlisted request context to each application log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         context = _request_log_context.get()
         if context.correlation_id is not None:
-            record.ivaas_correlation_id = context.correlation_id
+            setattr(record, LogField.CORRELATION_ID.value, context.correlation_id)
         if context.application_id is not None:
-            record.ivaas_application_id = context.application_id
+            setattr(record, LogField.APPLICATION_ID.value, context.application_id)
         if context.verification_id is not None:
-            record.ivaas_verification_id = context.verification_id
+            setattr(record, LogField.VERIFICATION_ID.value, context.verification_id)
         return True
 
 
@@ -92,11 +103,11 @@ class JsonLogFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        for record_name, json_name in _STRUCTURED_FIELD_NAMES.items():
-            if hasattr(record, record_name):
-                payload[json_name] = getattr(record, record_name)
+        for field in LogField:
+            if hasattr(record, field.value):
+                payload[field.value] = getattr(record, field.value)
         if record.exc_info and record.exc_info[0] is not None:
-            payload["exception.type"] = record.exc_info[0].__name__
+            payload[LogField.EXCEPTION_TYPE.value] = record.exc_info[0].__name__
         # Exception messages, tracebacks, and raw stack_info are intentionally omitted.
         return json.dumps(
             payload,
@@ -113,7 +124,7 @@ class RequestContextMiddleware:
 
     def __init__(self, get_response: SyncGetResponse | AsyncGetResponse) -> None:
         self.get_response = get_response
-        self.async_mode = inspect.iscoroutinefunction(get_response)
+        self.async_mode = iscoroutinefunction(get_response)
         if self.async_mode:
             markcoroutinefunction(self)
 
@@ -121,26 +132,14 @@ class RequestContextMiddleware:
         if self.async_mode:
             return self._async_call(request)
 
-        token = _request_log_context.set(
-            RequestLogContext(
-                correlation_id=validated_correlation_id(
-                    request.headers.get(CORRELATION_ID_HEADER_NAME)
-                )
-            )
-        )
+        token = _bind_request_log_context(request)
         try:
             return cast(SyncGetResponse, self.get_response)(request)
         finally:
             _request_log_context.reset(token)
 
     async def _async_call(self, request: HttpRequest) -> HttpResponse:
-        token = _request_log_context.set(
-            RequestLogContext(
-                correlation_id=validated_correlation_id(
-                    request.headers.get(CORRELATION_ID_HEADER_NAME)
-                )
-            )
-        )
+        token = _bind_request_log_context(request)
         try:
             return await cast(AsyncGetResponse, self.get_response)(request)
         finally:

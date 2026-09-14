@@ -15,6 +15,7 @@ from django.test import Client, RequestFactory
 from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.request_context import (
     JsonLogFormatter,
+    LogField,
     RequestContextFilter,
     RequestContextMiddleware,
     set_verification_log_context,
@@ -91,9 +92,9 @@ def test_accepts_verification_request(client: Client) -> None:
     logger.info.assert_called_once_with(
         "income verification request accepted",
         extra={
-            "event_name": "income_verification.request.accepted",
-            "http_request_method": "POST",
-            "url_path": INCOME_VERIFICATION_PATH,
+            LogField.EVENT_NAME.value: "income_verification.request.accepted",
+            LogField.HTTP_REQUEST_METHOD.value: "POST",
+            LogField.URL_PATH.value: INCOME_VERIFICATION_PATH,
         },
     )
 
@@ -174,14 +175,14 @@ def test_rejects_missing_correlation_id(client: Client) -> None:
     logger.warning.assert_called_once_with(
         "income verification request rejected",
         extra={
-            "event_name": "income_verification.request.rejected",
-            "error_type": "validation_error",
-            "error_code": ErrorCode.INVALID_REQUEST.value,
-            "http_request_method": "POST",
-            "http_response_status_code": 400,
-            "url_path": INCOME_VERIFICATION_PATH,
-            "validation_error_count": 1,
-            "validation_errors": [{"field": "Correlation-Id", "reason": "missing"}],
+            LogField.EVENT_NAME.value: "income_verification.request.rejected",
+            LogField.ERROR_TYPE.value: "validation_error",
+            LogField.ERROR_CODE.value: ErrorCode.INVALID_REQUEST.value,
+            LogField.HTTP_REQUEST_METHOD.value: "POST",
+            LogField.HTTP_RESPONSE_STATUS_CODE.value: 400,
+            LogField.URL_PATH.value: INCOME_VERIFICATION_PATH,
+            LogField.VALIDATION_ERROR_COUNT.value: 1,
+            LogField.VALIDATION_ERRORS.value: [{"field": "Correlation-Id", "reason": "missing"}],
         },
     )
 
@@ -231,25 +232,18 @@ def test_rejects_both_ssn_forms(client: Client) -> None:
     )
 
 
-def test_logs_validation_count_without_rejected_value(client: Client) -> None:
+def test_logs_validation_count_without_rejected_value(
+    client: Client,
+    captured_income_verification_logs: StringIO,
+) -> None:
     rejected_name = "sensitive-name-value" * 20
     payload = valid_request()
     payload["firstName"] = rejected_name
-    stream = StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.addFilter(RequestContextFilter())
-    handler.setFormatter(JsonLogFormatter())
-    api_logger = logging.getLogger("income_verification")
-    original_handlers = api_logger.handlers
-    api_logger.handlers = [handler]
 
-    try:
-        response = post_verification(client, payload)
-    finally:
-        api_logger.handlers = original_handlers
+    response = post_verification(client, payload)
 
     assert response.status_code == 400
-    record = json.loads(stream.getvalue())
+    record = json.loads(captured_income_verification_logs.getvalue())
     assert record["event.name"] == "income_verification.request.rejected"
     assert record["error.type"] == "validation_error"
     assert record["error.code"] == ErrorCode.INVALID_FIRST_NAME
@@ -258,39 +252,34 @@ def test_logs_validation_count_without_rejected_value(client: Client) -> None:
     assert record["http.request.method"] == "POST"
     assert record["url.path"] == INCOME_VERIFICATION_PATH
     assert record["ivaas.correlation.id"] == CORRELATION_ID
-    assert rejected_name not in stream.getvalue()
+    assert rejected_name not in captured_income_verification_logs.getvalue()
 
 
-def test_stdout_is_structured_and_request_context_does_not_leak(client: Client) -> None:
-    stream = StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.addFilter(RequestContextFilter())
-    handler.setFormatter(JsonLogFormatter())
-    api_logger = logging.getLogger("income_verification")
-    original_handlers = api_logger.handlers
-    api_logger.handlers = [handler]
+def test_stdout_is_structured_and_request_context_does_not_leak(
+    client: Client,
+    captured_income_verification_logs: StringIO,
+) -> None:
     payload = valid_request()
     payload["firstName"] = "SensitiveGivenName"
     payload["lastName"] = "SensitiveFamilyName"
     payload["last4Ssn"] = "9876"
 
-    try:
-        response = post_verification(client, payload)
-        logging.getLogger("income_verification.test").info(
-            "outside request context",
-            extra={
-                "event_name": "outside_request.test",
-                "custom_count": 2,
-                "custom_details": {"status": "ok"},
-                "request": "raw-sensitive-request",
-                "request_payload": {"firstName": "never-serialize-this"},
-            },
-        )
-    finally:
-        api_logger.handlers = original_handlers
+    response = post_verification(client, payload)
+    logging.getLogger("income_verification.test").info(
+        "outside request context",
+        extra={
+            LogField.EVENT_NAME.value: "outside_request.test",
+            "custom_count": 2,
+            "custom_details": {"status": "ok"},
+            "request": "raw-sensitive-request",
+            "request_payload": {"firstName": "never-serialize-this"},
+        },
+    )
 
     assert response.status_code == 200
-    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    records = [
+        json.loads(line) for line in captured_income_verification_logs.getvalue().splitlines()
+    ]
     assert len(records) == 2
     accepted, outside_request = records
     assert accepted["level"] == "INFO"
@@ -330,7 +319,10 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
     def emit_downstream_log(message: str, *, extra: dict[str, object]) -> None:
         logging.getLogger("adapter_registry.downstream").info(
             "downstream verification processing",
-            extra={"event_name": "income_verification.downstream.test", "attempt": 1},
+            extra={
+                LogField.EVENT_NAME.value: "income_verification.downstream.test",
+                "attempt": 1,
+            },
         )
 
     try:
@@ -507,6 +499,15 @@ def test_openapi_exposes_versioned_income_verification_path(client: Client) -> N
     assert schema["info"]["version"] == settings.API_VERSION
     assert INCOME_VERIFICATION_PATH in schema["paths"]
     assert f"{API_ROOT}/health" not in schema["paths"]
+    request_schema = schema["components"]["schemas"]["VerificationRequest"]
+    assert "firstName" in request_schema["properties"]
+    assert "first_name" not in request_schema["properties"]
+    assert "lookbackPeriod" in request_schema["properties"]
+    assert "lookback_period" not in request_schema["properties"]
+
+    lookback_schema = schema["components"]["schemas"]["LookbackPeriod"]
+    assert "startDate" in lookback_schema["properties"]
+    assert "start_date" not in lookback_schema["properties"]
 
 
 def test_openapi_documentation_endpoint(client: Client) -> None:

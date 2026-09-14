@@ -17,7 +17,7 @@ from income_verification.api_error_codes import (
     RequestValidationErrorDefinition,
 )
 from income_verification.correlation_id import CORRELATION_ID_HEADER_NAME
-from income_verification.request_context import get_correlation_id
+from income_verification.request_context import LogField, get_correlation_id
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +58,8 @@ def _sanitized_validation_errors(
     """Return validation metadata that is safe to include in application logs."""
     sanitized_errors: list[dict[str, str]] = []
     for error in errors[:MAX_LOGGED_VALIDATION_ERRORS]:
-        location = error.get("loc", ())
-        field = _field_for_location(location) if _is_location_sequence(location) else None
+        location: tuple[int | str, ...] = error.get("loc", ())
+        field = _field_for_location(location)
         sanitized_errors.append(
             {
                 "field": field or "request",
@@ -77,12 +77,7 @@ def _normalized_field_name(value: str) -> str:
 _NORMALIZED_FIELD_NAMES = {_normalized_field_name(field): field for field in FIELD_ERROR_CODES}
 
 
-def _is_location_sequence(value: object) -> bool:
-    """Return whether a value is a non-string validation location sequence."""
-    return isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
-
-
-def _field_for_location(location: Sequence[object]) -> str | None:
+def _field_for_location(location: tuple[int | str, ...]) -> str | None:
     """Return an allowlisted public field name for a validation location."""
     for part in reversed(location):
         if not isinstance(part, str):
@@ -110,10 +105,7 @@ def _code_for_validation_error(
         return None
 
     # Generic Pydantic validation errors are mapped using their field location.
-    location = error.get("loc", ())
-    if not _is_location_sequence(location):
-        return None
-
+    location: tuple[int | str, ...] = error.get("loc", ())
     field = _field_for_location(location)
     if field is None:
         return None
@@ -168,23 +160,25 @@ def _error_response(
 
     # Build safe structured metadata
     attributes: dict[str, object] = {
-        "event_name": (
+        LogField.EVENT_NAME.value: (
             "income_verification.request.failed"
             if is_internal_error
             else "income_verification.request.rejected"
         ),
-        "error_type": error_type,
-        "error_code": code.value,
-        "http_request_method": request.method or "UNKNOWN",
-        "http_response_status_code": definition.status_code,
-        "url_path": request.path,
+        LogField.ERROR_TYPE.value: error_type,
+        LogField.ERROR_CODE.value: code.value,
+        LogField.HTTP_REQUEST_METHOD.value: request.method or "UNKNOWN",
+        LogField.HTTP_RESPONSE_STATUS_CODE.value: definition.status_code,
+        LogField.URL_PATH.value: request.path,
     }
 
     if validation_errors is not None:
-        attributes["validation_error_count"] = len(validation_errors)
-        attributes["validation_errors"] = _sanitized_validation_errors(validation_errors)
+        attributes[LogField.VALIDATION_ERROR_COUNT.value] = len(validation_errors)
+        attributes[LogField.VALIDATION_ERRORS.value] = _sanitized_validation_errors(
+            validation_errors
+        )
     if exception_type is not None:
-        attributes["exception_type"] = exception_type
+        attributes[LogField.EXCEPTION_TYPE.value] = exception_type
 
     log_method = logger.error if is_internal_error else logger.warning
     log_method(log_message, extra=attributes)

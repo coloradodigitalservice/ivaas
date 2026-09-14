@@ -80,7 +80,7 @@ The application will be available at:
 - OpenAPI document: http://127.0.0.1:8000/api/openapi.json
 
 For interactive development and contract testing, import the
-[IVaaS Postman collection](postman/IVaaS.postman_collection.json).
+[IVaaS Postman collection](../../postman/IVaaS.postman_collection.json).
 
 > [!NOTE]
 > `make run` starts PostgreSQL automatically if it is not already running.
