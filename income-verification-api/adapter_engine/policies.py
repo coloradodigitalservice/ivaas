@@ -92,7 +92,6 @@ class CircuitBreakerPolicy:
             fail_max=self.failure_threshold,
             reset_timeout=self.reset_timeout_seconds,
             exclude=[lambda error: not isinstance(error, RETRYABLE)],
-            throw_new_error_on_trip=False,  # the tripping call keeps its own exception
         )
 
 

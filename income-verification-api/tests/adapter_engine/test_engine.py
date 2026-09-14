@@ -137,24 +137,28 @@ def test_final_errors_are_not_retried_or_counted_by_breaker(
     assert adapter.call_count == 2
 
 
-def test_tripping_call_preserves_adapter_error(
-    verification_request: VerificationRequest,
+def test_tripping_call_reports_open_breaker_and_logs_the_cause(
+    verification_request: VerificationRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    first_error = SourceUnavailable("first")
+    mock_logger = MagicMock()
+    monkeypatch.setattr("adapter_engine.engine.logger", mock_logger)
+    first_error = SourceTimeout("first")
     tripping_error = SourceTimeout("second")
     adapter_engine, adapter, _initialized_adapter = _engine(
         [first_error, tripping_error],
         circuit_breaker=CircuitBreakerPolicy(2, 30),
     )
 
-    with pytest.raises(SourceUnavailable) as first_exc:
+    with pytest.raises(SourceTimeout) as first_exc:
         adapter_engine.verify("stub", verification_request)
-    with pytest.raises(SourceTimeout) as second_exc:
+    with pytest.raises(SourceUnavailable, match="circuit breaker is open") as second_exc:
         adapter_engine.verify("stub", verification_request)
 
     assert first_exc.value is first_error
-    assert second_exc.value is tripping_error
+    assert second_exc.value.__cause__ is tripping_error
     assert adapter.call_count == 2
+    mock_logger.warning.assert_called_once()
+    assert mock_logger.warning.call_args.args[1:] == ("stub", "SourceTimeout", tripping_error)
 
 
 def test_open_breaker_stops_retry_without_calling_adapter(
@@ -189,7 +193,7 @@ def test_success_in_half_open_closes_breaker(
     circuit_breaker = initialized_adapter.circuit_breaker
     assert circuit_breaker is not None
 
-    with pytest.raises(SourceUnavailable, match="failure"):
+    with pytest.raises(SourceUnavailable, match="circuit breaker is open"):
         adapter_engine.verify("stub", verification_request)
     assert circuit_breaker.current_state == "open"
     circuit_breaker.half_open()
@@ -210,14 +214,14 @@ def test_failure_in_half_open_reopens_breaker(
     circuit_breaker = initialized_adapter.circuit_breaker
     assert circuit_breaker is not None
 
-    with pytest.raises(SourceUnavailable, match="first failure"):
+    with pytest.raises(SourceUnavailable, match="circuit breaker is open"):
         adapter_engine.verify("stub", verification_request)
     circuit_breaker.half_open()
 
-    with pytest.raises(SourceUnavailable) as exc_info:
+    with pytest.raises(SourceUnavailable, match="circuit breaker is open") as exc_info:
         adapter_engine.verify("stub", verification_request)
 
-    assert exc_info.value is half_open_error
+    assert exc_info.value.__cause__ is half_open_error
     assert circuit_breaker.current_state == "open"
     assert adapter.call_count == 2
 

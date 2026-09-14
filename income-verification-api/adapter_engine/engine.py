@@ -1,10 +1,14 @@
 """Runs income verification calls through each adapter's retry and circuit breaker policies."""
 
+import logging
+
 import pybreaker
 from ivaas_core import SourceIncome, SourceUnavailable, VerificationRequest
 
 from adapter_engine.policies import InitializedAdapter
 from adapter_engine.registry import AdapterRegistry, registry
+
+logger = logging.getLogger(__name__)
 
 
 class AdapterEngine:
@@ -22,10 +26,20 @@ class AdapterEngine:
                     _attempt_verification_request, initialized_adapter, request
                 )
             return _attempt_verification_request(initialized_adapter, request)
-        except pybreaker.CircuitBreakerError:
+        except pybreaker.CircuitBreakerError as error:
+            # On the call that trips the breaker, pybreaker raises its own error with the
+            # adapter's exception as __context__; a call rejected while already open has none.
+            cause = error.__context__
+            if cause is not None:
+                logger.warning(
+                    "income source adapter %r circuit breaker opened by %s: %s",
+                    name,
+                    type(cause).__name__,
+                    cause,
+                )
             raise SourceUnavailable(
                 f"income source adapter {name!r} circuit breaker is open"
-            ) from None
+            ) from cause
 
 
 def _attempt_verification_request(
