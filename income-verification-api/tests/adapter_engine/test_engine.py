@@ -53,7 +53,7 @@ def _engine(
     adapter = ScriptedAdapter(outcomes)
     initialized_adapter = InitializedAdapter(
         adapter,
-        retry_policy.build() if retry_policy else None,
+        retry_policy.build("stub") if retry_policy else None,
         circuit_breaker.build() if circuit_breaker else None,
     )
     registry_mock = MagicMock(spec=AdapterRegistry)
@@ -88,15 +88,24 @@ def test_without_policies_preserves_exception(
 def test_retries_retryable_errors_until_success(
     error_type: type[IncomeSourceError],
     verification_request: VerificationRequest,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    mock_logger = MagicMock()
+    monkeypatch.setattr("adapter_engine.policies.logger", mock_logger)
     expected = _source_income()
     policy = RetryPolicy(3, FixedBackoff(0))
+    first_error, second_error = error_type("first"), error_type("second")
     adapter_engine, adapter, _initialized_adapter = _engine(
-        [error_type(), error_type(), expected], retry_policy=policy
+        [first_error, second_error, expected], retry_policy=policy
     )
 
     assert adapter_engine.verify(verification_request) == expected
     assert adapter.call_count == 3
+    logged_attempts = [call.args[1:] for call in mock_logger.warning.call_args_list]
+    assert logged_attempts == [
+        ("stub", 1, 3, error_type.__name__, first_error),
+        ("stub", 2, 3, error_type.__name__, second_error),
+    ]
 
 
 @pytest.mark.parametrize("error_type", [SourceTimeout, SourceUnavailable])

@@ -1,5 +1,6 @@
 """Validated policies and adapter records used by the registry."""
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import cast
@@ -8,12 +9,15 @@ import pybreaker
 from django.core.exceptions import ImproperlyConfigured
 from ivaas_core import IncomeSourceAdapter, SourceTimeout, SourceUnavailable
 from tenacity import (
+    RetryCallState,
     Retrying,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential_jitter,
     wait_fixed,
 )
+
+logger = logging.getLogger(__name__)
 
 RETRYABLE = (SourceTimeout, SourceUnavailable)
 
@@ -56,7 +60,20 @@ class RetryPolicy:
         if type(self.max_attempts) is not int or self.max_attempts < 1:
             raise ValueError("max_attempts must be an integer greater than or equal to 1")
 
-    def build(self) -> Retrying:
+    def build(self, name: str) -> Retrying:
+        """Build the retry loop for the adapter named `name`, logging every failed attempt."""
+
+        def log_failed_attempt(retry_state: RetryCallState) -> None:
+            failure = retry_state.outcome.exception() if retry_state.outcome is not None else None
+            logger.warning(
+                "income source adapter %r attempt %d of %d failed: %s: %s",
+                name,
+                retry_state.attempt_number,
+                self.max_attempts,
+                type(failure).__name__,
+                failure,
+            )
+
         backoff = self.backoff
         wait = (
             wait_fixed(backoff.seconds)
@@ -71,6 +88,7 @@ class RetryPolicy:
             wait=wait,
             retry=retry_if_exception_type(RETRYABLE),
             reraise=True,
+            after=log_failed_attempt,
         )
 
 

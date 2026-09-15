@@ -119,7 +119,7 @@ class AdapterRegistry:
 
             registry_from_settings._adapters[name] = InitializedAdapter(
                 adapter=instance,
-                retrying=retry_policy.build() if retry_policy else None,
+                retrying=retry_policy.build(name) if retry_policy else None,
                 circuit_breaker=circuit_breaker.build() if circuit_breaker else None,
             )
         return registry_from_settings
