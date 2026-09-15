@@ -4,6 +4,13 @@ Everything the application and adapters share lives here, and nothing else.
 """
 
 from ivaas_core.adapter import IncomeSourceAdapter
+from ivaas_core.constraints import (
+    LAST4_SSN_PATTERN,
+    NAME_MAX_LENGTH,
+    NAME_MIN_LENGTH,
+    NAME_PATTERN,
+    SSN_PATTERN,
+)
 from ivaas_core.exceptions import (
     IncomeSourceError,
     SourceResponseInvalid,
@@ -18,6 +25,11 @@ from ivaas_core.models import (
 )
 
 __all__ = [
+    "LAST4_SSN_PATTERN",
+    "NAME_MAX_LENGTH",
+    "NAME_MIN_LENGTH",
+    "NAME_PATTERN",
+    "SSN_PATTERN",
     "IncomeSourceAdapter",
     "IncomeSourceError",
     "LookbackPeriod",

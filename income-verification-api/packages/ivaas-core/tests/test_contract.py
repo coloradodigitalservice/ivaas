@@ -10,6 +10,11 @@ from datetime import UTC, date, datetime
 
 import pytest
 from ivaas_core import (
+    LAST4_SSN_PATTERN,
+    NAME_MAX_LENGTH,
+    NAME_MIN_LENGTH,
+    NAME_PATTERN,
+    SSN_PATTERN,
     IncomeSourceAdapter,
     IncomeSourceError,
     LookbackPeriod,
@@ -22,6 +27,14 @@ from ivaas_core import (
 )
 
 MakeRequest = Callable[..., VerificationRequest]
+
+
+def test_portable_validation_constraints_are_public() -> None:
+    assert NAME_MIN_LENGTH == 1
+    assert NAME_MAX_LENGTH == 256
+    assert NAME_PATTERN == r"^[^\x00-\x1F\x7F]+$"
+    assert SSN_PATTERN == r"^[0-9]{9}$"
+    assert LAST4_SSN_PATTERN == r"^[0-9]{4}$"
 
 
 @pytest.fixture
