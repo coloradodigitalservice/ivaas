@@ -18,12 +18,24 @@ from income_verification.request_context import (
     LogField,
     RequestContextFilter,
     RequestContextMiddleware,
+    set_agency_log_context,
     set_verification_log_context,
 )
+
+pytestmark = pytest.mark.usefixtures("configured_api_authentication")
 
 CORRELATION_ID = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471"
 API_ROOT = "/api"
 INCOME_VERIFICATION_PATH = f"{API_ROOT}/{settings.API_VERSION}/income-verification"
+TEST_ACCESS_TOKEN = "test-access-token"  # noqa: S105 - deterministic test credential
+TEST_AGENCY_ID = "test-agency"
+
+
+def authenticated_headers(**headers: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {TEST_ACCESS_TOKEN}",
+        **headers,
+    }
 
 
 def valid_request() -> dict[str, object]:
@@ -44,7 +56,7 @@ def post_verification(client: Client, payload: object) -> Any:
         INCOME_VERIFICATION_PATH,
         data=json.dumps(payload),
         content_type="application/json",
-        headers={"Correlation-Id": CORRELATION_ID},
+        headers=authenticated_headers(**{"Correlation-Id": CORRELATION_ID}),
     )
 
 
@@ -169,6 +181,7 @@ def test_rejects_missing_correlation_id(client: Client) -> None:
             INCOME_VERIFICATION_PATH,
             data=json.dumps(valid_request()),
             content_type="application/json",
+            headers=authenticated_headers(),
         )
 
     assert_error_response(response, ErrorCode.MISSING_CORRELATION_ID, echoes_correlation_id=False)
@@ -196,7 +209,7 @@ def test_rejects_malformed_correlation_id_without_echoing_or_retaining_it(
         INCOME_VERIFICATION_PATH,
         data=json.dumps(valid_request()),
         content_type="application/json",
-        headers={"Correlation-Id": malformed_correlation_id},
+        headers=authenticated_headers(**{"Correlation-Id": malformed_correlation_id}),
     )
 
     assert_error_response(response, ErrorCode.INVALID_CORRELATION_ID, echoes_correlation_id=False)
@@ -212,7 +225,7 @@ def test_accepts_correlation_id_without_client_ref(client: Client) -> None:
         INCOME_VERIFICATION_PATH,
         data=json.dumps(valid_request()),
         content_type="application/json",
-        headers={"Correlation-Id": uuid__only_correlation_id},
+        headers=authenticated_headers(**{"Correlation-Id": uuid__only_correlation_id}),
     )
 
     assert response.status_code == 200
@@ -287,6 +300,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(
     assert accepted["message"] == "income verification request accepted"
     assert accepted["event.name"] == "income_verification.request.accepted"
     assert accepted["ivaas.correlation.id"] == CORRELATION_ID
+    assert accepted["ivaas.agency.id"] == TEST_AGENCY_ID
     assert accepted["ivaas.application.id"] == "APP-2026-004471"
     assert accepted["ivaas.verification.id"] == response.json()["verificationId"]
     assert accepted["timestamp"].endswith("Z")
@@ -296,6 +310,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(
     assert "custom_count" not in outside_request
     assert "custom_details" not in outside_request
     assert "ivaas.correlation.id" not in outside_request
+    assert "ivaas.agency.id" not in outside_request
     assert "ivaas.application.id" not in outside_request
     assert "ivaas.verification.id" not in outside_request
 
@@ -336,6 +351,7 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
     assert record["event.name"] == "income_verification.downstream.test"
     assert "attempt" not in record
     assert record["ivaas.correlation.id"] == CORRELATION_ID
+    assert record["ivaas.agency.id"] == TEST_AGENCY_ID
     assert record["ivaas.application.id"] == "APP-2026-004471"
     assert record["ivaas.verification.id"] == response.json()["verificationId"]
 
@@ -349,10 +365,15 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
     original_handlers = api_logger.handlers
     api_logger.handlers = [handler]
 
+    context_by_path = {
+        "/one": ("agency-one", "application-one", "verification-one"),
+        "/two": ("agency-two", "application-two", "verification-two"),
+    }
+
     async def get_response(request: HttpRequest) -> HttpResponse:
         await asyncio.sleep(0)
-        application_id = request.headers["X-Application-Id"]
-        verification_id = request.headers["X-Verification-Id"]
+        agency_id, application_id, verification_id = context_by_path[request.path]
+        set_agency_log_context(agency_id)
         set_verification_log_context(application_id, verification_id)
         await asyncio.sleep(0)
         logging.getLogger("income_verification.concurrent").info("concurrent request")
@@ -362,19 +383,15 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
     request_factory = RequestFactory()
     requests = [
         request_factory.get(
-            "/",
+            "/one",
             headers={
                 "Correlation-Id": "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:one",
-                "X-Application-Id": "application-one",
-                "X-Verification-Id": "verification-one",
             },
         ),
         request_factory.get(
-            "/",
+            "/two",
             headers={
                 "Correlation-Id": "4b459959-cdd4-4a77-ae2f-56b57c012028:two",
-                "X-Application-Id": "application-two",
-                "X-Verification-Id": "verification-two",
             },
         ),
     ]
@@ -393,10 +410,13 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
     records = [json.loads(line) for line in stream.getvalue().splitlines()]
     request_records = {record["ivaas.application.id"]: record for record in records[:2]}
     assert request_records["application-one"]["ivaas.correlation.id"].endswith(":one")
+    assert request_records["application-one"]["ivaas.agency.id"] == "agency-one"
     assert request_records["application-one"]["ivaas.verification.id"] == "verification-one"
     assert request_records["application-two"]["ivaas.correlation.id"].endswith(":two")
+    assert request_records["application-two"]["ivaas.agency.id"] == "agency-two"
     assert request_records["application-two"]["ivaas.verification.id"] == "verification-two"
     assert "ivaas.correlation.id" not in records[2]
+    assert "ivaas.agency.id" not in records[2]
     assert "ivaas.application.id" not in records[2]
     assert "ivaas.verification.id" not in records[2]
 
@@ -487,7 +507,7 @@ def test_rejects_malformed_json(client: Client) -> None:
         INCOME_VERIFICATION_PATH,
         data="{",
         content_type="application/json",
-        headers={"Correlation-Id": CORRELATION_ID},
+        headers=authenticated_headers(**{"Correlation-Id": CORRELATION_ID}),
     )
 
     assert_error_response(response, ErrorCode.INVALID_REQUEST, echoes_correlation_id=True)

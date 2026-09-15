@@ -18,6 +18,12 @@ from income_verification.api_error_codes import (
 )
 from income_verification.correlation_id import CORRELATION_ID_HEADER_NAME
 from income_verification.request_context import LogField, get_correlation_id
+from income_verification.security import (
+    AuthenticationFailure,
+    AuthenticationInfrastructureFailure,
+    AuthFailureReason,
+    AuthorizationFailure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +36,11 @@ _HTTP_ERROR_CODES: dict[int, ErrorCode] = {
     HTTPStatus.FORBIDDEN: ErrorCode.FORBIDDEN,
     HTTPStatus.INTERNAL_SERVER_ERROR: ErrorCode.INTERNAL_ERROR,
     HTTPStatus.SERVICE_UNAVAILABLE: ErrorCode.SERVICE_UNAVAILABLE,
+}
+
+_AUTHENTICATION_ERROR_CODES: dict[AuthFailureReason, ErrorCode] = {
+    AuthFailureReason.MISSING_CREDENTIALS: ErrorCode.AUTHENTICATION_REQUIRED,
+    AuthFailureReason.EXPIRED_TOKEN: ErrorCode.ACCESS_TOKEN_EXPIRED,
 }
 
 _FIRST_PARTY_MODULE_NAMESPACES = frozenset(
@@ -176,6 +187,7 @@ def _error_response(
     code: ErrorCode,
     *,
     error_type: str,
+    auth_failure_reason: AuthFailureReason | None = None,
     exception_diagnostics: Mapping[LogField, object] | None = None,
     validation_errors: Sequence[Mapping[str, Any]] | None = None,
 ) -> HttpResponse:
@@ -190,6 +202,10 @@ def _error_response(
         },
         status=definition.status_code,
     )
+    # https://www.rfc-editor.org/rfc/rfc6750.html#section-3.
+    #  Every 401 retains the same static Bearer challenge; diagnostic detail belongs in the body.
+    if definition.status_code == HTTPStatus.UNAUTHORIZED:
+        response["WWW-Authenticate"] = 'Bearer realm="income-verification-api"'
 
     # Identify whether it was a client or server error
     is_internal_error = definition.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
@@ -220,6 +236,8 @@ def _error_response(
         )
     if exception_diagnostics is not None:
         attributes.update({field.value: value for field, value in exception_diagnostics.items()})
+    if auth_failure_reason is not None:
+        attributes[LogField.AUTH_FAILURE_REASON.value] = auth_failure_reason.value
 
     log_method = logger.error if is_internal_error else logger.warning
     log_method(log_message, extra=attributes)
@@ -233,6 +251,48 @@ def _error_response(
 
 def register_exception_handlers(api: NinjaAPI) -> None:
     """Register IVaaS exception handling policy with the Ninja API."""
+
+    @api.exception_handler(AuthenticationFailure)
+    def authentication_error(
+        request: HttpRequest,
+        exc: AuthenticationFailure,
+    ) -> HttpResponse:
+        return _error_response(
+            api,
+            request,
+            _AUTHENTICATION_ERROR_CODES.get(
+                exc.reason,
+                ErrorCode.INVALID_AUTHENTICATION,
+            ),
+            error_type="authentication_error",
+            auth_failure_reason=exc.reason,
+        )
+
+    @api.exception_handler(AuthenticationInfrastructureFailure)
+    def authentication_infrastructure_error(
+        request: HttpRequest,
+        exc: AuthenticationInfrastructureFailure,
+    ) -> HttpResponse:
+        return _error_response(
+            api,
+            request,
+            ErrorCode.SERVICE_UNAVAILABLE,
+            error_type="authentication_infrastructure_error",
+            auth_failure_reason=exc.reason,
+        )
+
+    @api.exception_handler(AuthorizationFailure)
+    def authorization_error(
+        request: HttpRequest,
+        exc: AuthorizationFailure,
+    ) -> HttpResponse:
+        return _error_response(
+            api,
+            request,
+            ErrorCode.FORBIDDEN,
+            error_type="authorization_error",
+            auth_failure_reason=exc.reason,
+        )
 
     @api.exception_handler(ValidationError)
     def validation_error(

@@ -29,6 +29,19 @@ DEBUG: bool = env.bool("DJANGO_DEBUG")
 # NOTE: this value controls both the URL prefix and the version advertised in OpenAPI.
 API_VERSION: str = env.str("API_VERSION", default="v1")
 
+# Program-facing machine authentication. The application always verifies signed access tokens;
+# environments select the issuer and key endpoint without selecting a different code path.
+DEPLOYMENT_ENVIRONMENT: str = env.str("DEPLOYMENT_ENVIRONMENT", default="production")
+API_AUTHENTICATION: Mapping[str, object] = {
+    "ISSUER": env.str("AUTH_ISSUER", default=""),
+    "JWKS_URL": env.str("AUTH_JWKS_URL", default=""),
+    "TOKEN_URL": env.str("AUTH_TOKEN_URL", default=""),
+    "REQUIRED_SCOPE": env.str("AUTH_REQUIRED_SCOPE", default="ivaas/income.verify"),
+    "CLIENT_AGENCY_MAP": env.json("AUTH_CLIENT_AGENCY_MAP", default={}),
+    "JWKS_CACHE_SECONDS": env.float("AUTH_JWKS_CACHE_SECONDS", default=300.0),
+    "JWKS_TIMEOUT_SECONDS": env.float("AUTH_JWKS_TIMEOUT_SECONDS", default=5.0),
+}
+
 
 # Application definition
 

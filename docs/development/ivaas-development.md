@@ -76,14 +76,20 @@ The application will be available at:
 
 - Health check: http://127.0.0.1:8000/api/health
 - Income verification: http://127.0.0.1:8000/api/v1/income-verification
+- Test connection: http://127.0.0.1:8000/api/v1/test-connection
 - OpenAPI documentation: http://127.0.0.1:8000/api/docs
 - OpenAPI document: http://127.0.0.1:8000/api/openapi.json
 
 For interactive development and contract testing, import the
 [IVaaS Postman collection](../../postman/IVaaS.postman_collection.json).
 
+The local environment uses the bundled OAuth/JWKS server. The Postman collection exchanges its
+committed local-only client credentials for a signed access token before protected requests, and
+IVaaS verifies that token through the same authentication path used in deployed environments.
+This requires no AWS credentials or external identity-provider access.
+
 > [!NOTE]
-> `make run` starts PostgreSQL automatically if it is not already running.
+> `make run` starts PostgreSQL and the local OAuth/JWKS server automatically if needed.
 
 ## Run project checks
 

@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar, Token
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from inspect import iscoroutinefunction, markcoroutinefunction
@@ -21,6 +21,7 @@ from income_verification.correlation_id import (
 @dataclass(frozen=True, slots=True)
 class RequestLogContext:
     correlation_id: str | None = None
+    agency_id: str | None = None
     application_id: str | None = None
     verification_id: str | None = None
 
@@ -42,6 +43,7 @@ class LogField(StrEnum):
     ERROR_CODE = "error.code"
     VALIDATION_ERROR_COUNT = "validation.error.count"
     VALIDATION_ERRORS = "validation.errors"
+    AUTH_FAILURE_REASON = "auth.failure.reason"
     HTTP_REQUEST_METHOD = "http.request.method"
     HTTP_RESPONSE_STATUS_CODE = "http.response.status_code"
     URL_PATH = "url.path"
@@ -50,6 +52,7 @@ class LogField(StrEnum):
     EXCEPTION_ORIGIN_FUNCTION = "exception.origin.function"
     EXCEPTION_ORIGIN_LINE = "exception.origin.line"
     CORRELATION_ID = "ivaas.correlation.id"
+    AGENCY_ID = "ivaas.agency.id"
     APPLICATION_ID = "ivaas.application.id"
     VERIFICATION_ID = "ivaas.verification.id"
 
@@ -61,14 +64,18 @@ def get_correlation_id() -> str | None:
 
 def set_verification_log_context(application_id: str, verification_id: str) -> None:
     """Add identifiers that only become available after request validation."""
-    current = _request_log_context.get()
     _request_log_context.set(
-        RequestLogContext(
-            correlation_id=current.correlation_id,
+        replace(
+            _request_log_context.get(),
             application_id=application_id,
             verification_id=verification_id,
         )
     )
+
+
+def set_agency_log_context(agency_id: str) -> None:
+    """Add the non-PII IVaaS agency identity resolved during authentication."""
+    _request_log_context.set(replace(_request_log_context.get(), agency_id=agency_id))
 
 
 def _bind_request_log_context(request: HttpRequest) -> Token[RequestLogContext]:
@@ -87,6 +94,8 @@ class RequestContextFilter(logging.Filter):
         context = _request_log_context.get()
         if context.correlation_id is not None:
             setattr(record, LogField.CORRELATION_ID.value, context.correlation_id)
+        if context.agency_id is not None:
+            setattr(record, LogField.AGENCY_ID.value, context.agency_id)
         if context.application_id is not None:
             setattr(record, LogField.APPLICATION_ID.value, context.application_id)
         if context.verification_id is not None:

@@ -22,8 +22,8 @@ servers:
     description: 'TBD: Production'
 
 security:
-  - agencyAssertionTest: []
-  - agencyAssertionProd: []
+  - AgencyOAuth2ClientCredentialsTest: [ivaas/income.verify]
+  - AgencyOAuth2ClientCredentialsProduction: [ivaas/income.verify]
 
 paths:
   /api/v1/income-verification:
@@ -109,28 +109,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/TestConnectionResponse'
         '401':
-          description: |
-            For example purposes.
-            If infrastructure before the web application intercepts and rejects the request, the response shape will be
-            that of the component that generates the response, rather than the application's Error response format
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
         '500':
-          description: |
-            For example purposes.
-            If infrastructure before the web application intercepts and rejects the request, the response shape will be
-            that of the component that generates the response, rather than the application's Error response format
+          $ref: '#/components/responses/Error'
+        '503':
           $ref: '#/components/responses/Error'
 
 components:
 
   securitySchemes:
-    agencyAssertionTest:
+    AgencyOAuth2ClientCredentialsTest:
       type: oauth2
       description: |
-        TBD: Auth ADR, likely Cognito client credentials flow.
-
         **Test environment.** Tokens are issued by the test Cognito user pool and are accepted only
-        by the test environment API.
+        by the test IVaaS environment.
 
         Machine-to-machine access using an Amazon Cognito access token, obtained through the
         `client_credentials` grant. An agency is issued an app client id and secret at onboarding,
@@ -142,12 +138,13 @@ components:
         | Claim | Expectation |
         |---|---|
         | `iss` | `https://cognito-idp.{region}.amazonaws.com/{userPoolId}` for the destination environment |
-        | `sub` | The agency's app client id |
-        | `client_id` | The agency's app client id. Equal to `sub` on a client-credentials token |
+        | `client_id` | The machine identity, mapped by IVaaS to an onboarded agency |
         | `token_use` | `access` |
-        | `scope` | TBD: the scopes granted to an agency at onboarding, a cognito configuration |
-        | `iat` / `exp` | Issued-at and expiry. Lifetime is configured on the app client in cognito|
-        | `jti` | Unique per token |
+        | `scope` | Must include `ivaas/income.verify` |
+        | `exp` | Must be in the future |
+
+        An `aud` claim is not required because Cognito client-credentials access tokens are not
+        guaranteed to provide one in the current configuration.
 
         ## Signature
 
@@ -155,26 +152,27 @@ components:
 
         ## Identity
 
-        `client_id` is the agency identity for this API. It selects the data sources configured for
-        that agency, which in turn determines which request fields that agency must send.
+        The verified `client_id` is resolved through the IVaaS onboarding configuration to an
+        IVaaS-owned agency identity. The `iss` identifies Cognito, not the calling agency.
       flows:
         clientCredentials:
           tokenUrl: 'https://TBD-test.auth.us-west-2.amazoncognito.com/oauth2/token'
-          scopes: {}
+          scopes:
+            ivaas/income.verify: Submit income verification requests.
 
-    agencyAssertionProd:
+    AgencyOAuth2ClientCredentialsProduction:
       type: oauth2
       description: |
         **Production environment.** Tokens are issued by the production Cognito user pool and are
-        accepted only by the production API.
+        accepted only by the production IVaaS environment.
 
-        Claims, signature verification, and identity semantics are identical to
-        `agencyAssertionTest`
-        Token endpoint, `iss`, and the issuing user pool differ.
+        Token validation, required claims, scope, signature, and identity resolution are identical
+        to `AgencyOAuth2ClientCredentialsTest`; the token endpoint, issuer, and user pool differ.
       flows:
         clientCredentials:
           tokenUrl: 'https://TBD-prod.auth.us-west-2.amazoncognito.com/oauth2/token'
-          scopes: {}
+          scopes:
+            ivaas/income.verify: Submit income verification requests.
 
   parameters:
     CorrelationId:
@@ -192,6 +190,10 @@ components:
         are deliberately reusable across retries, must exist even when authentication fails,
         and must never carry credential material.
 
+        Authentication is evaluated before route validation. If authentication and this header
+        are both invalid, the authentication error takes precedence and the malformed identifier
+        is neither retained nor echoed.
+
         The reference segment is deliberately limited to `A-Z a-z 0-9 . _ ~ / -` for compatibility with logging and http headers alone.
       schema:
         type: string
@@ -208,27 +210,32 @@ components:
         maxLength: 128
         pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
 
+    OptionalCorrelationId:
+      description: |
+        Echo of a valid request `Correlation-Id`, when one was supplied. Missing or malformed
+        identifiers cannot be echoed.
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
+
   responses:
     Error:
       description: Error. Body carries a machine-readable `code` and a human-readable `message`.
       headers:
         Correlation-Id:
-          $ref: '#/components/headers/CorrelationId'
+          $ref: '#/components/headers/OptionalCorrelationId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
 
     Unauthorized:
-      description: |
-        The assertion was absent, malformed, expired, signed by an unregistered key,
-        addressed to a different audience, replayed, etc.
-
-        The response body does not distinguish between these cases.
-        The specific reason is logged server-side against the Correlation-Id to assist with support.
+      description: Authentication failed.
       headers:
         Correlation-Id:
-          $ref: '#/components/headers/CorrelationId'
+          $ref: '#/components/headers/OptionalCorrelationId'
       content:
         application/json:
           schema:
@@ -361,10 +368,9 @@ components:
         authenticatedAs:
           type: string
           description: |
-            The agency identity the server resolved from the assertion (the token `iss`)
+            The IVaaS agency identity resolved from the verified token `client_id`.
         environment:
           type: string
-          enum: [test, production]
           description: |
             Used to verify that the intended environment was reached
 

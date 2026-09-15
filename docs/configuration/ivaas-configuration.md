@@ -5,6 +5,37 @@
 `API_VERSION` controls the program-facing API's URL prefix and the version advertised by its
 generated OpenAPI document. It defaults to `v1`, which exposes API endpoints under `/api/v1`.
 
+### Authentication
+
+Program-facing routes use OAuth2 machine authentication by default; `/api/health` is public.
+Every environment uses the same signed-access-token verification path. Configure:
+
+- `AUTH_ISSUER`: exact issuer required in access tokens.
+- `AUTH_JWKS_URL`: endpoint from which IVaaS retrieves the issuer's public signing keys.
+- `AUTH_TOKEN_URL`: client-credentials token endpoint advertised in generated OpenAPI.
+- `AUTH_REQUIRED_SCOPE`: scope required by program-facing operations; defaults to
+  `ivaas/income.verify`.
+- `AUTH_CLIENT_AGENCY_MAP`: JSON object mapping verified OAuth client IDs to IVaaS agency IDs.
+- `AUTH_JWKS_CACHE_SECONDS`: local JWKS document cache lifetime; defaults to 300 seconds.
+- `AUTH_JWKS_TIMEOUT_SECONDS`: JWKS request timeout; defaults to five seconds.
+- `DEPLOYMENT_ENVIRONMENT`: environment name returned by `/api/v1/test-connection`; defaults to
+  `production`.
+
+IVaaS accepts only RS256 access tokens with the configured issuer, a future expiration, an
+`access` token use, the required scope, and a client ID present in `AUTH_CLIENT_AGENCY_MAP`.
+It validates tokens using public signing keys and never needs consuming agencies' client secrets.
+Both JWKS duration settings must be greater than zero, and the client-to-agency map must contain at
+least one entry. Invalid authentication configuration fails application startup rather than
+falling back to unauthenticated behavior.
+
+The client-to-agency map is deployment-time onboarding configuration. Adding or changing an entry
+requires deploying or restarting IVaaS; there is currently no runtime onboarding API or durable
+onboarding store.
+
+For local development, `make run` and `make up` start the bundled OAuth/JWKS server. The committed
+local settings point IVaaS and the Postman collection at that server, so local requests exercise
+the same signed-token verification path without AWS credentials or an external identity provider.
+
 ## Adapters
 
 To fetch data from specific/proprietary income sources, IVaaS uses "adapters".

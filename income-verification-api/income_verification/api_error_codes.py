@@ -23,6 +23,9 @@ class ErrorCode(StrEnum):
     INVALID_APPLICATION_ID = "INVALID_APPLICATION_ID"
     INVALID_LOOKBACK_PERIOD = "INVALID_LOOKBACK_PERIOD"
 
+    AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
+    ACCESS_TOKEN_EXPIRED = "ACCESS_TOKEN_EXPIRED"  # noqa: S105 - API code, not a token
+    INVALID_AUTHENTICATION = "INVALID_AUTHENTICATION"
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -89,6 +92,18 @@ ERRORS: dict[ErrorCode, ErrorDefinition] = {
     ErrorCode.INTERNAL_ERROR: ErrorDefinition(
         message="An internal server error occurred.",
         status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+    ),
+    ErrorCode.AUTHENTICATION_REQUIRED: ErrorDefinition(
+        message="A Bearer access token is required.",
+        status_code=HTTPStatus.UNAUTHORIZED,
+    ),
+    ErrorCode.ACCESS_TOKEN_EXPIRED: ErrorDefinition(
+        message="The Bearer access token has expired.",
+        status_code=HTTPStatus.UNAUTHORIZED,
+    ),
+    ErrorCode.INVALID_AUTHENTICATION: ErrorDefinition(
+        message="The supplied authentication credentials are invalid.",
+        status_code=HTTPStatus.UNAUTHORIZED,
     ),
     ErrorCode.UNAUTHORIZED: ErrorDefinition(
         message="Authentication is required.",

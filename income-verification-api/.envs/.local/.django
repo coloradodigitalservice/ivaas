@@ -4,3 +4,14 @@ DJANGO_DEBUG=True
 DJANGO_SECRET_KEY=unsafe-local-development-key
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 DJANGO_LOG_LEVEL=DEBUG
+
+# Local OAuth server. The application uses the same signed-token verification path as production;
+# only the issuer, endpoints, and onboarding configuration differ.
+DEPLOYMENT_ENVIRONMENT=local
+AUTH_ISSUER=http://127.0.0.1:8090/default
+AUTH_JWKS_URL=http://127.0.0.1:8090/default/jwks
+AUTH_REQUIRED_SCOPE=ivaas/income.verify
+AUTH_TOKEN_URL=http://127.0.0.1:8090/default/token
+AUTH_CLIENT_AGENCY_MAP='{"local-client":"local-agency"}'
+AUTH_JWKS_CACHE_SECONDS=300
+AUTH_JWKS_TIMEOUT_SECONDS=5
