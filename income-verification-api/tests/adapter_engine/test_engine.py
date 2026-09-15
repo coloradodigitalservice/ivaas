@@ -57,7 +57,7 @@ def _engine(
         circuit_breaker.build() if circuit_breaker else None,
     )
     registry_mock = MagicMock(spec=AdapterRegistry)
-    registry_mock.get_adapter.return_value = initialized_adapter
+    registry_mock.adapters = {"stub": initialized_adapter}
     return AdapterEngine(registry_mock), adapter, initialized_adapter
 
 
@@ -67,7 +67,7 @@ def test_without_policies_calls_adapter_once(
     expected = _source_income()
     adapter_engine, adapter, _initialized_adapter = _engine([expected])
 
-    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter_engine.verify(verification_request) == expected
     assert adapter.call_count == 1
 
 
@@ -78,7 +78,7 @@ def test_without_policies_preserves_exception(
     adapter_engine, adapter, _initialized_adapter = _engine([error])
 
     with pytest.raises(SourceTimeout) as exc_info:
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
 
     assert exc_info.value is error
     assert adapter.call_count == 1
@@ -95,7 +95,7 @@ def test_retries_retryable_errors_until_success(
         [error_type(), error_type(), expected], retry_policy=policy
     )
 
-    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter_engine.verify(verification_request) == expected
     assert adapter.call_count == 3
 
 
@@ -112,7 +112,7 @@ def test_retry_exhaustion_preserves_last_error(
     )
 
     with pytest.raises(error_type) as exc_info:
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
 
     assert exc_info.value is last_error
     assert adapter.call_count == 2
@@ -131,9 +131,9 @@ def test_final_errors_are_not_retried_or_counted_by_breaker(
     )
 
     with pytest.raises(error_type):
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
 
-    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter_engine.verify(verification_request) == expected
     assert adapter.call_count == 2
 
 
@@ -150,9 +150,9 @@ def test_tripping_call_reports_open_breaker_and_logs_the_cause(
     )
 
     with pytest.raises(SourceTimeout) as first_exc:
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
     with pytest.raises(SourceUnavailable, match="circuit breaker is open") as second_exc:
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
 
     assert first_exc.value is first_error
     assert second_exc.value.__cause__ is tripping_error
@@ -173,11 +173,11 @@ def test_open_breaker_stops_retry_without_calling_adapter(
     with pytest.raises(
         SourceUnavailable, match="income source adapter 'stub' circuit breaker is open"
     ):
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
     with pytest.raises(
         SourceUnavailable, match="income source adapter 'stub' circuit breaker is open"
     ):
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
 
     assert adapter.call_count == 1
 
@@ -194,11 +194,11 @@ def test_success_in_half_open_closes_breaker(
     assert circuit_breaker is not None
 
     with pytest.raises(SourceUnavailable, match="circuit breaker is open"):
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
     assert circuit_breaker.current_state == "open"
     circuit_breaker.half_open()
 
-    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter_engine.verify(verification_request) == expected
     assert circuit_breaker.current_state == "closed"
     assert adapter.call_count == 2
 
@@ -215,11 +215,11 @@ def test_failure_in_half_open_reopens_breaker(
     assert circuit_breaker is not None
 
     with pytest.raises(SourceUnavailable, match="circuit breaker is open"):
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
     circuit_breaker.half_open()
 
     with pytest.raises(SourceUnavailable, match="circuit breaker is open") as exc_info:
-        adapter_engine.verify("stub", verification_request)
+        adapter_engine.verify(verification_request)
 
     assert exc_info.value.__cause__ is half_open_error
     assert circuit_breaker.current_state == "open"
@@ -237,7 +237,7 @@ def test_fixed_backoff_sleeps_the_configured_seconds_between_attempts(
         retry_policy=RetryPolicy(3, FixedBackoff(1.5)),
     )
 
-    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter_engine.verify(verification_request) == expected
     assert adapter.call_count == 3
     assert sleeps == [1.5, 1.5]
 
@@ -253,7 +253,7 @@ def test_exponential_backoff_grows_within_bounds_between_attempts(
         retry_policy=RetryPolicy(4, ExponentialBackoff(1, 3)),
     )
 
-    assert adapter_engine.verify("stub", verification_request) == expected
+    assert adapter_engine.verify(verification_request) == expected
     assert adapter.call_count == 4
     # tenacity: min(initial * 2**n + jitter, max), jitter in [0, 1], n from 0
     first_sleep, second_sleep, third_sleep = sleeps
@@ -276,4 +276,24 @@ def test_django_engine_uses_refreshed_registry(
     with override_settings(**{INCOME_SOURCE_ADAPTERS: declarations}):
         registry.refresh_from_settings()
         with pytest.raises(SubjectNotFound):
-            engine.verify("stub", verification_request)
+            engine.verify(verification_request)
+
+
+def test_uses_the_first_enabled_adapter(verification_request: VerificationRequest) -> None:
+    expected = _source_income()
+    first_adapter = ScriptedAdapter([expected])
+    second_adapter = ScriptedAdapter([_source_income()])
+    registry_mock = MagicMock(spec=AdapterRegistry)
+    registry_mock.adapters = {
+        "first": InitializedAdapter(first_adapter, None, None),
+        "second": InitializedAdapter(second_adapter, None, None),
+    }
+
+    assert AdapterEngine(registry_mock).verify(verification_request) == expected
+    assert first_adapter.call_count == 1
+    assert second_adapter.call_count == 0
+
+
+def test_no_enabled_adapters_is_an_error(verification_request: VerificationRequest) -> None:
+    with pytest.raises(LookupError, match="no income source adapters are enabled"):
+        engine.verify(verification_request)

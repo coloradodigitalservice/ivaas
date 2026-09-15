@@ -17,9 +17,13 @@ class AdapterEngine:
     def __init__(self, registry: AdapterRegistry) -> None:
         self._registry = registry
 
-    def verify(self, name: str, request: VerificationRequest) -> SourceIncome:
-        """Verify income through one registered adapter, retrying as necessary."""
-        initialized_adapter = self._registry.get_adapter(name)
+    def verify(self, request: VerificationRequest) -> SourceIncome:
+        """Verify income through adapters, retrying as configured."""
+        # TODO: Wire up to income request, invoke from Django view
+        # TODO: Call adapters via clientId configuration. For now, get the first configured adapter.
+        if not self._registry.adapters:
+            raise LookupError("no income source adapters are enabled")
+        name, initialized_adapter = next(iter(self._registry.adapters.items()))
         try:
             if initialized_adapter.retrying is not None:
                 return initialized_adapter.retrying(
@@ -45,7 +49,7 @@ class AdapterEngine:
 def _attempt_verification_request(
     initialized_adapter: InitializedAdapter, request: VerificationRequest
 ) -> SourceIncome:
-    """Make one call to the adapter, through its circuit breaker when it has one."""
+    """Make one call via the adapter, through its circuit breaker as configured."""
     if initialized_adapter.circuit_breaker is not None:
         # PyBreaker holds a lock for the whole call, so one call per breaker at a time.
         # Revisit if calling view becomes async.
