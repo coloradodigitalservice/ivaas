@@ -58,8 +58,9 @@ This approach is suitable for adapters with private source code, even if an IVaa
 #### Best practices
 
 Adapter development requires only that the resulting adapter implement the contracts defined by the [ivaas-core package](../../income-verification-api/packages/ivaas-core):
-* Adapters should be implementations of the [IncomeSourceAdapter](../../income-verification-api/packages/ivaas-core/src/ivaas_core/adapter.py) abstract base class.
-* Proper error handling by IVaaS requires exceptions raised by adapters to be implementations of [IncomeSourceError](../../income-verification-api/packages/ivaas-core/src/ivaas_core/exceptions.py).
+
+- Adapters should be implementations of the [IncomeSourceAdapter](../../income-verification-api/packages/ivaas-core/src/ivaas_core/adapter.py) abstract base class.
+- Proper error handling by IVaaS requires exceptions raised by adapters to be implementations of [IncomeSourceError](../../income-verification-api/packages/ivaas-core/src/ivaas_core/exceptions.py).
 
 The adapter must be built into a wheel and dropped into the designated "landing-zone". See [adapter installation](#adapter-installation)
 
@@ -131,14 +132,14 @@ How IVaaS retries a call to the adapter that fails because the data source timed
 Set to `None` to disable retries for the adapter. Otherwise provide:
 
 | Key            | Purpose                                                                               |
-|----------------|---------------------------------------------------------------------------------------|
+| -------------- | ------------------------------------------------------------------------------------- |
 | `max_attempts` | Total maximum allowable call attempts for a single request, counting the first.       |
 | `backoff`      | The pause between attempts. Following either a fixed or exponential backoff strategy. |
 
 Backoff shapes:
 
 | `strategy`    | Keys                             | Behavior                                                                                                |
-|---------------|----------------------------------|---------------------------------------------------------------------------------------------------------|
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `fixed`       | `seconds`                        | The same pause before every retry.                                                                      |
 | `exponential` | `initial_seconds`, `max_seconds` | The pause doubles after each retry, plus a small random amount (jitter), never exceeding `max_seconds`. |
 
@@ -149,7 +150,7 @@ Protects IVaaS and the data source when the source is down. Each retry attempt t
 Set to `None` to disable the breaker for the adapter. Otherwise provide:
 
 | Key                     | Purpose                                                                                                                                                                            |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `failure_threshold`     | Number of _consecutive_ failures that open the breaker. It is recommended to keep it above `max_attempts` so that one request's own retries cannot open the circuit breaker alone. |
 | `reset_timeout_seconds` | How long the breaker stays open before allowing a trial call.                                                                                                                      |
 
