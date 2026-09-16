@@ -34,7 +34,7 @@ _HTTP_ERROR_CODES: dict[int, ErrorCode] = {
 
 _FIRST_PARTY_MODULE_NAMESPACES = frozenset(
     {
-        "adapter_registry",
+        "adapter_engine",
         "income_verification",
         "ivaas_core",
     }

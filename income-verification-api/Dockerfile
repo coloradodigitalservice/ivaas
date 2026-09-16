@@ -78,7 +78,7 @@ COPY --from=builder \
 
 COPY --chown=django:django income_verification /api/income_verification
 COPY --chown=django:django config /api/config
-COPY --chown=django:django adapter_registry /api/adapter_registry
+COPY --chown=django:django adapter_engine /api/adapter_engine
 COPY --chown=django:django manage.py /api/manage.py
 
 USER django

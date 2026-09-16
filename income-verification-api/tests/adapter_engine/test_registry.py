@@ -1,27 +1,33 @@
-import asyncio
-from collections.abc import Iterator
 from importlib import metadata
 from unittest.mock import MagicMock
 
+import pybreaker
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 from ivaas_core import IncomeSourceAdapter, SubjectNotFound, VerificationRequest
+from tenacity import Retrying
 
-from adapter_registry.registry import (
+from adapter_engine.policies import InitializedAdapter
+from adapter_engine.registry import (
     INCOME_SOURCE_ADAPTERS,
     AdapterRegistry,
     log_adapter_summary,
     registry,
 )
-from tests.adapter_registry.fixtures import StubSource
+from tests.adapter_engine.fixtures import StubSource
 
-STUB = "tests.adapter_registry.fixtures.StubSource"
-LOGGER = "adapter_registry.registry.logger"
+STUB = "tests.adapter_engine.fixtures.StubSource"
+LOGGER = "adapter_engine.registry.logger"
 
 
 def adapter_settings_entry(**overrides: object) -> dict[str, dict[str, object]]:
-    entry: dict[str, object] = {"class": STUB, "enabled": True}
+    entry: dict[str, object] = {
+        "class": STUB,
+        "enabled": True,
+        "retry_policy": None,
+        "circuit_breaker": None,
+    }
     entry.update(overrides)
     return {"stub": entry}
 
@@ -32,16 +38,6 @@ def build_from_settings(adapter_settings: object) -> AdapterRegistry:
         return AdapterRegistry.from_settings()
 
 
-@pytest.fixture(autouse=True)
-def isolated_registry() -> Iterator[None]:
-    """Give every test a deterministic EMPTY registry baseline, independent of
-    the machine's environment (local env files may enable real adapters)."""
-    with override_settings(**{INCOME_SOURCE_ADAPTERS: {}}):
-        registry.refresh_from_settings()
-        yield
-        registry.refresh_from_settings()
-
-
 class TestFromSettings:
     def test_disabled_entries_are_skipped(self) -> None:
         assert build_from_settings(adapter_settings_entry(enabled=False)).adapters == {}
@@ -49,9 +45,31 @@ class TestFromSettings:
     def test_enabled_entry_is_instantiated_with_config(self) -> None:
         built = build_from_settings(adapter_settings_entry(config={"greeting": "hi"}))
 
-        source = built.get_adapter("stub")
-        assert isinstance(source, IncomeSourceAdapter)
-        assert getattr(source, "greeting", None) == "hi"
+        initialized_adapter = built.get_adapter("stub")
+        assert isinstance(initialized_adapter.adapter, IncomeSourceAdapter)
+        assert getattr(initialized_adapter.adapter, "greeting", None) == "hi"
+        assert initialized_adapter.retrying is None
+        assert initialized_adapter.circuit_breaker is None
+
+    def test_enabled_entry_registers_execution_policies(self) -> None:
+        built = build_from_settings(
+            adapter_settings_entry(
+                retry_policy={
+                    "max_attempts": 3,
+                    "backoff": {"strategy": "fixed", "seconds": 1},
+                },
+                circuit_breaker={
+                    "failure_threshold": 5,
+                    "reset_timeout_seconds": 30,
+                },
+            )
+        )
+
+        initialized_adapter = built.get_adapter("stub")
+        assert isinstance(initialized_adapter.retrying, Retrying)
+        assert isinstance(initialized_adapter.circuit_breaker, pybreaker.CircuitBreaker)
+        assert initialized_adapter.circuit_breaker.fail_max == 5
+        assert initialized_adapter.circuit_breaker.reset_timeout == 30
 
     def test_missing_config_value_fails_fast_naming_the_key(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="greeting"):
@@ -63,20 +81,38 @@ class TestFromSettings:
 
     def test_missing_class_declaration_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="'class'"):
-            build_from_settings({"stub": {"enabled": True}})
+            build_from_settings(
+                {
+                    "stub": {
+                        "enabled": True,
+                        "retry_policy": None,
+                        "circuit_breaker": None,
+                    }
+                }
+            )
+
+    @pytest.mark.parametrize("policy_name", ["retry_policy", "circuit_breaker"])
+    def test_missing_policy_declaration_fails_fast(self, policy_name: str) -> None:
+        declaration = adapter_settings_entry()["stub"]
+        del declaration[policy_name]
+
+        with pytest.raises(ImproperlyConfigured, match=policy_name):
+            build_from_settings({"stub": declaration})
+
+    def test_disabled_adapter_policy_is_still_validated(self) -> None:
+        with pytest.raises(ImproperlyConfigured, match="retry_policy"):
+            build_from_settings(adapter_settings_entry(enabled=False, retry_policy="invalid"))
 
     def test_non_income_source_class_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="does not implement IncomeSourceAdapter"):
             build_from_settings(
-                adapter_settings_entry(**{"class": "tests.adapter_registry.fixtures.NotASource"})
+                adapter_settings_entry(**{"class": "tests.adapter_engine.fixtures.NotASource"})
             )
 
     def test_missing_source_id_fails_fast(self) -> None:
         with pytest.raises(ImproperlyConfigured, match="source_id"):
             build_from_settings(
-                adapter_settings_entry(
-                    **{"class": "tests.adapter_registry.fixtures.MissingSourceId"}
-                )
+                adapter_settings_entry(**{"class": "tests.adapter_engine.fixtures.MissingSourceId"})
             )
 
     @pytest.mark.parametrize("adapter_settings", [None, [], "cdle"])
@@ -105,17 +141,17 @@ class TestFromSettings:
     def test_omitted_config_is_valid(self) -> None:
         built = build_from_settings(adapter_settings_entry())
 
-        assert getattr(built.get_adapter("stub"), "greeting", None) == "hello"
+        assert getattr(built.get_adapter("stub").adapter, "greeting", None) == "hello"
 
     def test_explicit_none_config_is_treated_as_omitted(self) -> None:
         built = build_from_settings(adapter_settings_entry(config=None))
 
-        assert getattr(built.get_adapter("stub"), "greeting", None) == "hello"
+        assert getattr(built.get_adapter("stub").adapter, "greeting", None) == "hello"
 
     def test_duplicate_source_ids_fail_fast(self) -> None:
         adapter_settings = {
-            "one": {"class": STUB, "enabled": True},
-            "two": {"class": STUB, "enabled": True},
+            "one": adapter_settings_entry()["stub"],
+            "two": adapter_settings_entry()["stub"],
         }
 
         with pytest.raises(ImproperlyConfigured, match="source ids must be unique"):
@@ -140,11 +176,11 @@ class TestProcessRegistry:
         """The WP3 gate: load via settings, call it, catch the contract type."""
         with override_settings(**{INCOME_SOURCE_ADAPTERS: adapter_settings_entry()}):
             registry.refresh_from_settings()
-            source = registry.get_adapter("stub")
+            initialized_adapter = registry.get_adapter("stub")
 
-            assert isinstance(source, IncomeSourceAdapter)
+            assert isinstance(initialized_adapter.adapter, IncomeSourceAdapter)
             with pytest.raises(SubjectNotFound):
-                asyncio.run(source.verify(verification_request))
+                initialized_adapter.adapter.verify(verification_request)
 
     def test_empty_declarations_enable_nothing(self) -> None:
         with override_settings(**{INCOME_SOURCE_ADAPTERS: {}}):
@@ -182,7 +218,9 @@ class TestProcessRegistry:
         monkeypatch.setattr(LOGGER, mock_logger)
         monkeypatch.setattr(metadata, "version", lambda dist: {"stub-adapter": "1.2.3"}[dist])
 
-        log_adapter_summary("stub", StubSource(), {"tests": ["stub-adapter"]})
+        log_adapter_summary(
+            "stub", InitializedAdapter(StubSource(), None, None), {"tests": ["stub-adapter"]}
+        )
 
         assert mock_logger.info.call_args.args[3] == "1.2.3"
 
@@ -191,7 +229,7 @@ class TestProcessRegistry:
         monkeypatch.setattr(LOGGER, mock_logger)
         monkeypatch.setattr(metadata, "version", lambda dist: {"tests": "9.9.9"}[dist])
 
-        log_adapter_summary("stub", StubSource(), {})
+        log_adapter_summary("stub", InitializedAdapter(StubSource(), None, None), {})
 
         assert mock_logger.info.call_args.args[3] == "9.9.9"
 
@@ -205,7 +243,7 @@ class TestProcessRegistry:
         monkeypatch.setattr(LOGGER, mock_logger)
         monkeypatch.setattr(metadata, "version", broken)
 
-        log_adapter_summary("stub", StubSource(), {})
+        log_adapter_summary("stub", InitializedAdapter(StubSource(), None, None), {})
 
         assert mock_logger.info.call_args.args[3] == "unknown"
 

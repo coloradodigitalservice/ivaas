@@ -312,12 +312,12 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
     handler.setFormatter(JsonLogFormatter())
-    adapter_logger = logging.getLogger("adapter_registry")
+    adapter_logger = logging.getLogger("adapter_engine")
     original_handlers = adapter_logger.handlers
     adapter_logger.handlers = [handler]
 
     def emit_downstream_log(message: str, *, extra: dict[str, object]) -> None:
-        logging.getLogger("adapter_registry.downstream").info(
+        logging.getLogger("adapter_engine.downstream").info(
             "downstream verification processing",
             extra={
                 LogField.EVENT_NAME.value: "income_verification.downstream.test",

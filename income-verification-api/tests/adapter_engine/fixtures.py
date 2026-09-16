@@ -16,12 +16,12 @@ class StubSource(IncomeSourceAdapter):
     def __init__(self, *, greeting: str = "hello") -> None:
         self.greeting = greeting
 
-    async def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest) -> SourceIncome:
         raise SubjectNotFound("stub holds no records")
 
 
 class MissingSourceId(IncomeSourceAdapter):
-    async def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest) -> SourceIncome:
         return SourceIncome(retrieved_at=datetime.now(tz=UTC), raw_income={})
 
 

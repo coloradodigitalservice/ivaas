@@ -1,8 +1,8 @@
 from django.apps import AppConfig
 
 
-class AdapterRegistryConfig(AppConfig):
-    name = "adapter_registry"
+class AdapterEngineConfig(AppConfig):
+    name = "adapter_engine"
 
     def ready(self) -> None:
         """Assemble the adapter registry from settings.
@@ -15,8 +15,8 @@ class AdapterRegistryConfig(AppConfig):
         """
         from django.core import checks
 
-        from adapter_registry.checks import unreferenced_adapter_wheels
-        from adapter_registry.registry import registry
+        from adapter_engine.checks import unreferenced_adapter_wheels
+        from adapter_engine.registry import registry
 
         checks.register(unreferenced_adapter_wheels)
         registry.refresh_from_settings()

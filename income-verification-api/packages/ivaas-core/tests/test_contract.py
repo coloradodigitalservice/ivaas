@@ -3,7 +3,6 @@
 Exercises contract the way the application will use it.
 """
 
-import asyncio
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError, asdict
 from datetime import UTC, date, datetime
@@ -59,7 +58,7 @@ class StubSource(IncomeSourceAdapter):
         self.subject_exists = subject_exists
         self.times_out = times_out
 
-    async def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest) -> SourceIncome:
         if self.times_out:
             raise SourceTimeout("stub timed out")
         if not self.subject_exists:
@@ -79,7 +78,7 @@ class TestIncomeSourceAdapterInterface:
             IncomeSourceAdapter()  # type: ignore[abstract]
 
     def test_verify_returns_source_income(self, make_request: MakeRequest) -> None:
-        result = asyncio.run(StubSource().verify(make_request()))
+        result = StubSource().verify(make_request())
 
         assert isinstance(result, SourceIncome)
         assert result.raw_income["entries"] == [
@@ -88,13 +87,13 @@ class TestIncomeSourceAdapterInterface:
 
     def test_contract_exceptions_are_caught_by_identity(self, make_request: MakeRequest) -> None:
         with pytest.raises(SubjectNotFound):
-            asyncio.run(StubSource(subject_exists=False).verify(make_request()))
+            StubSource(subject_exists=False).verify(make_request())
         with pytest.raises(SourceTimeout):
-            asyncio.run(StubSource(times_out=True).verify(make_request()))
+            StubSource(times_out=True).verify(make_request())
 
     def test_contract_exceptions_share_a_base(self, make_request: MakeRequest) -> None:
         with pytest.raises(IncomeSourceError):
-            asyncio.run(StubSource(times_out=True).verify(make_request()))
+            StubSource(times_out=True).verify(make_request())
 
     def test_invalid_response_exception_maps_to_error_status(self) -> None:
         assert issubclass(SourceResponseInvalid, IncomeSourceError)

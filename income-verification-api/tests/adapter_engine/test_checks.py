@@ -2,11 +2,16 @@ from pathlib import Path
 
 from django.test import override_settings
 
-from adapter_registry.checks import unreferenced_adapter_wheels
-from adapter_registry.registry import INCOME_SOURCE_ADAPTERS
+from adapter_engine.checks import unreferenced_adapter_wheels
+from adapter_engine.registry import INCOME_SOURCE_ADAPTERS
 
 STUB_DECLARATIONS = {
-    "stub": {"class": "stub_adapter.StubAdapter", "enabled": False},
+    "stub": {
+        "class": "stub_adapter.StubAdapter",
+        "enabled": False,
+        "retry_policy": None,
+        "circuit_breaker": None,
+    },
 }
 
 
@@ -34,7 +39,7 @@ def test_undeclared_wheel_warns(tmp_path: Path) -> None:
     with override_settings(**{"BASE_DIR": base_dir, INCOME_SOURCE_ADAPTERS: STUB_DECLARATIONS}):
         messages = unreferenced_adapter_wheels()
 
-    assert [message.id for message in messages] == ["adapter_registry.W001"]
+    assert [message.id for message in messages] == ["adapter_engine.W001"]
     assert "stray_adapter-9.9.9" in messages[0].msg
 
 
