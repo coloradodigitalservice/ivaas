@@ -119,6 +119,10 @@ quality-check: ## run all required checks
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .
 
+.PHONY: django-secret-key
+django-secret-key: ## generate string for DJANGO_SECRET_KEY
+	$(UV) run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+
 .PHONY: docker-base-image-update-check
 docker-base-image-update-check: ## check for available updates in base docker image
 	docker image build --no-cache --target base --tag $(DOCKER_BASE_STAGE_TAG) $(API_DIR)

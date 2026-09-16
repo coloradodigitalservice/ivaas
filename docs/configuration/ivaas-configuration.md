@@ -1,5 +1,10 @@
 # Configuring IVaaS
 
+## API
+
+`API_VERSION` controls the program-facing API's URL prefix and the version advertised by its
+generated OpenAPI document. It defaults to `v1`, which exposes API endpoints under `/api/v1`.
+
 ## Adapters
 
 To fetch data from specific/proprietary income sources, IVaaS uses "adapters".
