@@ -1,10 +1,29 @@
-# python:3.14.6-slim-trixie
-ARG PYTHON_IMAGE=python@sha256:7bec7ddcddeff7975d6ba9b4be7dd6f6b2f55e7491539145e2978f7f97ce9144
+# python:3.14.7-slim-trixie
+ARG PYTHON_IMAGE=python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
 # ghcr.io/astral-sh/uv:0.11.29
 ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:eb2843a1e56fd9e30c7276ce1a52cba86e64c7b385f5e3279a0e08e02dd058fc
 
+FROM ${PYTHON_IMAGE} AS base
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade \
+        base-files=13.8+deb13u7 \
+        bash=5.2.37-2+b10 \
+        gzip=1.13-1+deb13u1 \
+        libaudit-common=1:4.0.2-2+deb13u1 \
+        libaudit1=1:4.0.2-2+deb13u1 \
+        libc-bin=2.41-12+deb13u4 \
+        libc6=2.41-12+deb13u4 \
+        libcap2=1:2.75-10+deb13u1+b3 \
+        libpcre2-8-0=10.46-1~deb13u2 \
+        libsqlite3-0=3.46.1-7+deb13u2 \
+        perl-base=5.40.1-6+deb13u1 \
+        tzdata=2026c-0+deb13u1 \
+  && rm -rf /var/lib/apt/lists/*
+
 FROM ${UV_IMAGE} AS uv
-FROM ${PYTHON_IMAGE} AS builder
+
+FROM base AS builder
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
@@ -31,7 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY custom-adapters/ custom-adapters/
 RUN custom-adapters/install.sh
 
-FROM ${PYTHON_IMAGE} AS runtime
+FROM base AS runtime
 
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
