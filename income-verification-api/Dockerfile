@@ -1,7 +1,7 @@
 # python:3.14.7-slim-trixie
 ARG PYTHON_IMAGE=python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
-# ghcr.io/astral-sh/uv:0.11.29
-ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:eb2843a1e56fd9e30c7276ce1a52cba86e64c7b385f5e3279a0e08e02dd058fc
+# ghcr.io/astral-sh/uv:0.12.15
+ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:62f8c047d0a0e9ece6b53fc63df902585a67a47a7f318ddec4a37db586edc8e3
 
 FROM ${PYTHON_IMAGE} AS base
 
