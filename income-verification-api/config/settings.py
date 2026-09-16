@@ -24,15 +24,21 @@ SECRET_KEY: str = env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS: list[str] = env.list("DJANGO_ALLOWED_HOSTS")
 DEBUG: bool = env.bool("DJANGO_DEBUG")
 
+# Program-facing API version
+#
+# NOTE: this value controls both the URL prefix and the version advertised in OpenAPI.
+API_VERSION: str = env.str("API_VERSION", default="v1")
+
 
 # Application definition
 
 INSTALLED_APPS = [
-    "api",
+    "income_verification",
     "adapter_engine",
 ]
 
 MIDDLEWARE = [
+    "income_verification.request_context.RequestContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -88,13 +94,29 @@ USE_TZ = True
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "request_context": {"()": "income_verification.request_context.RequestContextFilter"},
+    },
     "formatters": {
-        "console": {"format": "%(levelname)s:     %(name)s: %(message)s"},
+        "console": {
+            "()": "income_verification.request_context.JsonLogFormatter",
+        },
     },
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "console"},
+        # Write the logs to stdout and apply the filters to each log.
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_context"],
+            "formatter": "console",
+            "stream": "ext://sys.stdout",
+        },
     },
     "loggers": {
+        "income_verification": {
+            "handlers": ["console"],
+            "level": env.str("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
         "adapter_engine": {
             "handlers": ["console"],
             "level": env.str("DJANGO_LOG_LEVEL", default="INFO"),

@@ -1,5 +1,6 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
+DOCKER_BASE_STAGE_TAG := ivaas-$(DOCKER_API_NAME):base
 ADAPTERS_ENV ?= .envs/.local/.adapters# CI overrides this with .envs/.ci/.adapters
 ENV := \
 	--env-file .envs/.local/.django \
@@ -117,3 +118,12 @@ quality-check: ## run all required checks
 	$(RUN_NO_SYNC) ruff check .
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .
+
+.PHONY: django-secret-key
+django-secret-key: ## generate string for DJANGO_SECRET_KEY
+	$(UV) run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+
+.PHONY: docker-base-image-update-check
+docker-base-image-update-check: ## check for available updates in base docker image
+	docker image build --no-cache --target base --tag $(DOCKER_BASE_STAGE_TAG) $(API_DIR)
+	docker container run --rm -it $(DOCKER_BASE_STAGE_TAG) sh -c "apt-get update -qq && apt list --upgradable"

@@ -21,6 +21,11 @@ members = ["packages/*"]
 [tool.uv.sources]
 ivaas-core = { workspace = true }
 
+[tool.uv]
+# sqlparse is a django dependency. This constraint can be removed once the django
+# dependency constraint for sqlparse catches up.
+constraint-dependencies = ["sqlparse>=0.6.0"]
+
 [dependency-groups]
 dev = [
     {include-group = "quality"},
@@ -92,7 +97,7 @@ testpaths = ["tests", "packages"]
 python_files = ["test_*.py"]
 
 [tool.coverage.run]
-source = ["api", "adapter_engine", "ivaas_core"]
+source = ["income_verification", "adapter_engine", "ivaas_core"]
 omit = ["*/migrations/*"]
 branch = true
 

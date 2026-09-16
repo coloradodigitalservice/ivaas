@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.urls import path
 
-from api.api import api
+from income_verification.api import api
 
 urlpatterns = [
     path("api/", api.urls),
