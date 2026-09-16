@@ -35,6 +35,7 @@ class AdapterEngine:
             # adapter's exception as __context__; a call rejected while already open has none.
             cause = error.__context__
             if cause is not None:
+                # TODO: use static string with structured keys for dynamic context
                 logger.warning(
                     "income source adapter %r circuit breaker opened by %s: %s",
                     name,
