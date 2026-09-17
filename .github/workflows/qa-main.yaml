@@ -34,6 +34,7 @@ jobs:
         with:
           enable-cache: true
           cache-python: true
+          version-file: ".tool-versions"
 
       # TODO: This currently build a generic version of the app (no adapters)
       #       Would need to checkout and build adapter repositories for integration tests
@@ -57,7 +58,6 @@ jobs:
 
       - name: Health check
         run: curl --fail --silent --show-error http://127.0.0.1:8000/api/health
-
 
       - name: Tear down
         if: always()
