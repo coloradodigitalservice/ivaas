@@ -32,7 +32,7 @@ The client-to-agency map is deployment-time onboarding configuration. Adding or 
 requires deploying or restarting IVaaS; there is currently no runtime onboarding API or durable
 onboarding store.
 
-For local development, `make run` and `make up` start the bundled OAuth/JWKS server. The committed
+For local development, `make run` and `make up` start a containerized OAuth/JWKS server. The committed
 local settings point IVaaS and the Postman collection at that server, so local requests exercise
 the same signed-token verification path without AWS credentials or an external identity provider.
 
