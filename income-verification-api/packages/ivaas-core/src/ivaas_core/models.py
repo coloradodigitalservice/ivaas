@@ -17,6 +17,8 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from enum import StrEnum
+from uuid import UUID
 
 from ivaas_core.constraints import (
     LAST4_SSN_PATTERN,
@@ -63,6 +65,20 @@ class LookbackPeriod:
             raise ValueError("end_date must not precede start_date")
 
 
+class SourceStatus(StrEnum):
+    """The outcome of one datasource lookup, in the API's per-source `status` vocabulary.
+
+    ivaas reports it on each source result. Each contract exception declares the
+    status it maps to, so an adapter that records outcomes at the datasource
+    reports the same status ivaas will.
+    """
+
+    OK = "OK"
+    NO_DATA = "NO_DATA"
+    UNAVAILABLE = "UNAVAILABLE"
+    ERROR = "ERROR"
+
+
 @dataclass(frozen=True, slots=True)
 class VerificationRequest:
     """What an income datasource needs to look up a subject.
@@ -72,6 +88,9 @@ class VerificationRequest:
     request objects can be logged safely.
     """
 
+    verification_id: UUID
+    program_id: str
+    requestor_id: str
     first_name: str
     last_name: str
     lookback_period: LookbackPeriod
@@ -79,6 +98,13 @@ class VerificationRequest:
     last4_ssn: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
+        if not self.program_id:
+            raise ValueError("program_id must not be empty")
+        if not self.requestor_id:
+            # TODO: It is not clear at the time of writing whether this identifier will be something
+            #       every program can make available.
+            #       As a result, this could be made optional or removed entirely.
+            raise ValueError("requestor_id must not be empty")
         _validate_name(self.first_name, "first_name")
         _validate_name(self.last_name, "last_name")
         _validate_ssn_fields(self.ssn, self.last4_ssn)

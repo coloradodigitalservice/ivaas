@@ -6,6 +6,7 @@ Exercises contract the way the application will use it.
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError, asdict
 from datetime import UTC, date, datetime
+from uuid import uuid4
 
 import pytest
 from ivaas_core import (
@@ -19,6 +20,7 @@ from ivaas_core import (
     LookbackPeriod,
     SourceIncome,
     SourceResponseInvalid,
+    SourceStatus,
     SourceTimeout,
     SourceUnavailable,
     SubjectNotFound,
@@ -40,6 +42,9 @@ def test_portable_validation_constraints_are_public() -> None:
 def make_request(last_calendar_month: LookbackPeriod) -> MakeRequest:
     def _make_request(**overrides: object) -> VerificationRequest:
         fields: dict[str, object] = {
+            "verification_id": uuid4(),
+            "program_id": "TEST_PROGRAM",
+            "requestor_id": "APP-2026-004471",
             "first_name": "John",
             "last_name": "Doe",
             "lookback_period": last_calendar_month,
@@ -95,12 +100,39 @@ class TestIncomeSourceAdapterInterface:
         with pytest.raises(IncomeSourceError):
             StubSource(times_out=True).verify(make_request())
 
-    def test_invalid_response_exception_maps_to_error_status(self) -> None:
-        assert issubclass(SourceResponseInvalid, IncomeSourceError)
-        assert not issubclass(SourceResponseInvalid, SourceUnavailable)
+    @pytest.mark.parametrize(
+        ("exception_type", "status"),
+        [
+            (IncomeSourceError, SourceStatus.ERROR),
+            (SourceResponseInvalid, SourceStatus.ERROR),
+            (SourceTimeout, SourceStatus.UNAVAILABLE),
+            (SourceUnavailable, SourceStatus.UNAVAILABLE),
+            (SubjectNotFound, SourceStatus.NO_DATA),
+        ],
+    )
+    def test_each_exception_declares_its_api_status(
+        self, exception_type: type[IncomeSourceError], status: SourceStatus
+    ) -> None:
+        assert exception_type.status is status
+        assert exception_type("").status is status
+
+    def test_status_values_are_the_api_vocabulary(self) -> None:
+        assert [status.value for status in SourceStatus] == [
+            "OK",
+            "NO_DATA",
+            "UNAVAILABLE",
+            "ERROR",
+        ]
 
 
 class TestVerificationRequest:
+    @pytest.mark.parametrize("field_name", ["program_id", "requestor_id"])
+    def test_rejects_empty_audit_identifiers(
+        self, make_request: MakeRequest, field_name: str
+    ) -> None:
+        with pytest.raises(ValueError, match=f"{field_name} must not be empty"):
+            make_request(**{field_name: ""})
+
     def test_accepts_last4_ssn(self, make_request: MakeRequest) -> None:
         assert make_request().last4_ssn == "1234"
 

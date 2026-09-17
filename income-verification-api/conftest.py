@@ -1,6 +1,7 @@
 """Shared test fixtures for all test suites in this project."""
 
 from datetime import date, timedelta
+from uuid import uuid4
 
 import pytest
 from ivaas_core import LookbackPeriod, VerificationRequest
@@ -22,6 +23,9 @@ def last_calendar_month() -> LookbackPeriod:
 def verification_request(last_calendar_month: LookbackPeriod) -> VerificationRequest:
     """A standard, valid request for exercising any adapter."""
     return VerificationRequest(
+        verification_id=uuid4(),
+        program_id="TEST_PROGRAM",
+        requestor_id="APP-2026-004471",
         first_name="John",
         last_name="Doe",
         lookback_period=last_calendar_month,

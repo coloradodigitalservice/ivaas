@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Literal, Self
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from ivaas_core import (
     LAST4_SSN_PATTERN,
@@ -77,13 +77,15 @@ class VerificationRequest(ApiSchema):
                 ERRORS[code].message,
             )
 
-        # Constructing the core request here keeps core invariant failures in the
-        # request-validation path, where Ninja returns the public 400 contract.
-        self._to_core_request()
         return self
 
-    def _to_core_request(self) -> CoreVerificationRequest:
+    def _to_core_request(
+        self, *, verification_id: UUID, program_id: str
+    ) -> CoreVerificationRequest:
         return CoreVerificationRequest(
+            verification_id=verification_id,
+            program_id=program_id,
+            requestor_id=self.application_id,
             first_name=self.first_name,
             last_name=self.last_name,
             ssn=self.ssn,
@@ -91,11 +93,16 @@ class VerificationRequest(ApiSchema):
             lookback_period=self.lookback_period,
         )
 
-    def to_envelope(self, correlation_id: str) -> VerificationRequestEnvelope:
+    def to_envelope(self, correlation_id: str, *, program_id: str) -> VerificationRequestEnvelope:
+        """Issue this verification its id and build the request the adapters receive."""
+        verification_id = uuid4()
         return VerificationRequestEnvelope(
             application_id=self.application_id,
             correlation_id=correlation_id,
-            core_request=self._to_core_request(),
+            verification_id=verification_id,
+            core_request=self._to_core_request(
+                verification_id=verification_id, program_id=program_id
+            ),
         )
 
 
