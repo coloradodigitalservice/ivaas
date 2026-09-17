@@ -404,11 +404,8 @@ dependencies = [
     { name = "ivaas-core" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pybreaker" },
-    { name = "tenacity" },
     { name = "pyjwt", extra = ["crypto"] },
-    { name = "pybreaker" },
     { name = "tenacity" },
-    { name = "pyjwt", extra = ["crypto"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -441,11 +438,8 @@ requires-dist = [
     { name = "ivaas-core", editable = "packages/ivaas-core" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.4" },
     { name = "pybreaker", specifier = ">=1.4.1" },
-    { name = "tenacity", specifier = ">=9.1.4" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.13.0" },
-    { name = "pybreaker", specifier = ">=1.4.1" },
     { name = "tenacity", specifier = ">=9.1.4" },
-    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.13.0" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.52.2" },
 ]
 
@@ -665,23 +659,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/e6/5fff07a70d1f945ed90ae131c3bd76cab32beff7c58c6db15ad5820b6d1f/psycopg_binary-3.3.4-cp314-cp314-win_amd64.whl", hash = "sha256:c37e024c07308cd06cf3ec51bfd0e7f6157585a4d84d1bce4a7f5f7913719bf8", size = 3666849, upload-time = "2026-05-01T23:31:51.165Z" },
 ]
 
-[[package]]
-name = "pybreaker"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f2/89/fbf98e383f1ec6d117af2cd983efdb3eb7018b63834c427025764194cac2/pybreaker-1.4.1.tar.gz", hash = "sha256:8df2d245c73ba40c8242c56ffb4f12138fbadc23e296224740c2028ea9dc1178", size = 15555, upload-time = "2025-09-21T15:12:04.499Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/75/e64d3d40a741e2be21d69154f4e5c43a66f0c603c5ef11f49e01429a5932/pybreaker-1.4.1-py3-none-any.whl", hash = "sha256:b4dab4a05195b7f2a64a6c1a6c4ba7a96534ef56ea7210e6bcb59f28897160e0", size = 12915, upload-time = "2025-09-21T15:12:02.284Z" },
-]
-
-[[package]]
-name = "pycparser"
-version = "3.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz", hash = "sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29", size = 103492, upload-time = "2026-01-21T14:26:51.89Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl", hash = "sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992", size = 48172, upload-time = "2026-01-21T14:26:50.693Z" },
-]
 
 [[package]]
 name = "pybreaker"
