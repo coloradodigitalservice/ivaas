@@ -108,11 +108,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TestConnectionResponse'
+        '400':
+          $ref: '#/components/responses/Error'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Error'
-        '400':
           $ref: '#/components/responses/Error'
         '500':
           $ref: '#/components/responses/Error'
