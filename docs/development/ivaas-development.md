@@ -83,7 +83,7 @@ The application will be available at:
 For interactive development and contract testing, import the
 [IVaaS Postman collection](../../postman/IVaaS.postman_collection.json).
 
-The local environment uses the bundled OAuth/JWKS server. The Postman collection exchanges its
+The local environment uses a containerized OAuth/JWKS server. The Postman collection exchanges its
 committed local-only client credentials for a signed access token before protected requests, and
 IVaaS verifies that token through the same authentication path used in deployed environments.
 This requires no AWS credentials or external identity-provider access.
