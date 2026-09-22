@@ -44,6 +44,7 @@ API_ROOT = "/api"
 INCOME_VERIFICATION_PATH = f"{API_ROOT}/{settings.API_VERSION}/income-verification"
 TEST_CONNECTION_PATH = f"{API_ROOT}/{settings.API_VERSION}/test-connection"
 CORRELATION_ID = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:auth-test"
+TEST_CLIENT_ID = "test-client"
 TEST_AGENCY_ID = "test-agency"
 
 
@@ -117,6 +118,7 @@ def test_test_connection_returns_resolved_agency_and_environment(client: Client)
     assert record["http.request.method"] == "GET"
     assert record["url.path"] == TEST_CONNECTION_PATH
     assert record["ivaas.correlation.id"] == CORRELATION_ID
+    assert record["auth.client.id"] == TEST_CLIENT_ID
     assert record["ivaas.agency.id"] == TEST_AGENCY_ID
 
 
@@ -177,6 +179,31 @@ def test_endpoint_returns_forbidden_for_insufficient_scope(
         "message": ERRORS[ErrorCode.FORBIDDEN].message,
     }
     assert response.headers["Correlation-Id"] == CORRELATION_ID
+
+
+def test_unknown_client_log_includes_verified_client_id_but_response_does_not(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unknown_client_id = "unknown-client"
+    monkeypatch.setattr(
+        api_authentication,
+        "authenticator",
+        agency_authenticator(client_id=unknown_client_id),
+    )
+
+    with capture_api_logs() as stream:
+        response = client.get(TEST_CONNECTION_PATH, headers=_authenticated_headers())
+
+    record = json.loads(stream.getvalue())
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {
+        "code": ErrorCode.FORBIDDEN.value,
+        "message": ERRORS[ErrorCode.FORBIDDEN].message,
+    }
+    assert record["auth.failure.reason"] == AuthFailureReason.UNKNOWN_CLIENT
+    assert record["auth.client.id"] == unknown_client_id
+    assert unknown_client_id not in response.content.decode()
 
 
 def test_auth_failure_logging_excludes_credentials_and_untrusted_data(client: Client) -> None:
@@ -296,6 +323,7 @@ def test_expired_access_token_returns_specific_safe_response(
     assert response.headers["WWW-Authenticate"] == 'Bearer realm="income-verification-api"'
     assert record["auth.failure.reason"] == AuthFailureReason.EXPIRED_TOKEN
     assert record["error.code"] == ErrorCode.ACCESS_TOKEN_EXPIRED
+    assert "auth.client.id" not in record
     assert encoded_token not in emitted
     assert "SENTINEL-EXPIRED-TOKEN-CLAIM" not in emitted
 
@@ -370,6 +398,7 @@ def test_decoded_jwt_claims_and_token_cannot_reach_logs(
     record = json.loads(emitted)
     assert response.status_code == HTTPStatus.FORBIDDEN
     assert record["auth.failure.reason"] == AuthFailureReason.INSUFFICIENT_SCOPE
+    assert record["auth.client.id"] == CLIENT_ID
     assert "SENTINEL-DECODED-PRIVATE-CLAIM" not in emitted
     assert encoded_token not in emitted
 

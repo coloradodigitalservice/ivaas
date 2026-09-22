@@ -31,7 +31,7 @@ API_VERSION: str = env.str("API_VERSION", default="v1")
 
 # Program-facing machine authentication. The application always verifies signed access tokens;
 # environments select the issuer and key endpoint without selecting a different code path.
-DEPLOYMENT_ENVIRONMENT: str = env.str("DEPLOYMENT_ENVIRONMENT", default="production")
+DEPLOYMENT_ENVIRONMENT: str = env.str("DEPLOYMENT_ENVIRONMENT")
 API_AUTHENTICATION: Mapping[str, object] = {
     "ISSUER": env.str("AUTH_ISSUER", default=""),
     "JWKS_URL": env.str("AUTH_JWKS_URL", default=""),

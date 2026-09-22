@@ -45,7 +45,6 @@ def test_request_validation_errors_use_the_locked_bad_request_definition() -> No
             HTTPStatus.UNAUTHORIZED,
             "The supplied authentication credentials are invalid.",
         ),
-        (ErrorCode.UNAUTHORIZED, HTTPStatus.UNAUTHORIZED, "Authentication is required."),
         (
             ErrorCode.FORBIDDEN,
             HTTPStatus.FORBIDDEN,

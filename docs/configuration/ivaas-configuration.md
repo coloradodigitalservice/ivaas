@@ -18,8 +18,7 @@ Every environment uses the same signed-access-token verification path. Configure
 - `AUTH_CLIENT_AGENCY_MAP`: JSON object mapping verified OAuth client IDs to IVaaS agency IDs.
 - `AUTH_JWKS_CACHE_SECONDS`: local JWKS document cache lifetime; defaults to 300 seconds.
 - `AUTH_JWKS_TIMEOUT_SECONDS`: JWKS request timeout; defaults to five seconds.
-- `DEPLOYMENT_ENVIRONMENT`: environment name returned by `/api/v1/test-connection`; defaults to
-  `production`.
+- `DEPLOYMENT_ENVIRONMENT`: environment name returned by `/api/v1/test-connection`.
 
 IVaaS accepts only RS256 access tokens with the configured issuer, a future expiration, an
 `access` token use, the required scope, and a client ID present in `AUTH_CLIENT_AGENCY_MAP`.

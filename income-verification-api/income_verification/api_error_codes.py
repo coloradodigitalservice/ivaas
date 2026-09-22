@@ -26,7 +26,6 @@ class ErrorCode(StrEnum):
     AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
     ACCESS_TOKEN_EXPIRED = "ACCESS_TOKEN_EXPIRED"  # noqa: S105 - API code, not a token
     INVALID_AUTHENTICATION = "INVALID_AUTHENTICATION"
-    UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     INTERNAL_ERROR = "INTERNAL_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
@@ -103,10 +102,6 @@ ERRORS: dict[ErrorCode, ErrorDefinition] = {
     ),
     ErrorCode.INVALID_AUTHENTICATION: ErrorDefinition(
         message="The supplied authentication credentials are invalid.",
-        status_code=HTTPStatus.UNAUTHORIZED,
-    ),
-    ErrorCode.UNAUTHORIZED: ErrorDefinition(
-        message="Authentication is required.",
         status_code=HTTPStatus.UNAUTHORIZED,
     ),
     ErrorCode.FORBIDDEN: ErrorDefinition(

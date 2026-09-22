@@ -8,7 +8,7 @@ from typing import Protocol
 from django.http import HttpRequest
 from ninja.security.base import AuthBase
 
-from income_verification.request_context import set_agency_log_context
+from income_verification.request_context import set_agency_log_context, set_client_log_context
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +104,7 @@ class AgencyAuthenticator:
 
     def authenticate(self, token: str) -> AuthenticatedAgency:
         client = self._token_verifier.verify(token)
+        set_client_log_context(client.client_id)
         if self._required_scope not in client.scopes:
             raise AuthorizationFailure(AuthFailureReason.INSUFFICIENT_SCOPE)
 
