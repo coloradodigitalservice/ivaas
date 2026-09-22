@@ -43,7 +43,7 @@ def make_request(last_calendar_month: LookbackPeriod) -> MakeRequest:
     def _make_request(**overrides: object) -> VerificationRequest:
         fields: dict[str, object] = {
             "verification_id": uuid4(),
-            "program_id": "TEST_PROGRAM",
+            "agency_id": "TEST_PROGRAM",
             "application_id": "APP-2026-004471",
             "first_name": "John",
             "last_name": "Doe",
@@ -126,7 +126,7 @@ class TestIncomeSourceAdapterInterface:
 
 
 class TestVerificationRequest:
-    @pytest.mark.parametrize("field_name", ["program_id", "application_id"])
+    @pytest.mark.parametrize("field_name", ["agency_id", "application_id"])
     def test_rejects_empty_audit_identifiers(
         self, make_request: MakeRequest, field_name: str
     ) -> None:

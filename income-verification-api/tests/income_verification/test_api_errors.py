@@ -124,7 +124,7 @@ def _runtime_error_from_core_request(
         ),
         pytest.raises(RuntimeError) as caught,
     ):
-        payload.to_envelope(CORRELATION_ID, program_id="TEST_PROGRAM")
+        payload.to_envelope(CORRELATION_ID, agency_id="TEST_PROGRAM")
 
     return caught.value
 
@@ -146,7 +146,7 @@ def _http_error_from_core_request(
         ),
         pytest.raises(HttpError) as caught,
     ):
-        payload.to_envelope(CORRELATION_ID, program_id="TEST_PROGRAM")
+        payload.to_envelope(CORRELATION_ID, agency_id="TEST_PROGRAM")
 
     return caught.value
 

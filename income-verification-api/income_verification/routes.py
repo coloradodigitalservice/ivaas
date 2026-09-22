@@ -134,7 +134,7 @@ def income_verification(
     correlation_id: CorrelationId,
 ) -> VerificationResponse:
     agency = get_authenticated_agency(request)
-    envelope = payload.to_envelope(correlation_id, program_id=agency.agency_id)
+    envelope = payload.to_envelope(correlation_id, agency_id=agency.agency_id)
     response[CORRELATION_ID_HEADER_NAME] = envelope.correlation_id
     set_verification_log_context(
         application_id=envelope.application_id,

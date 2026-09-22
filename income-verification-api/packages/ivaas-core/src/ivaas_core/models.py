@@ -89,7 +89,7 @@ class VerificationRequest:
     """
 
     verification_id: UUID
-    program_id: str
+    agency_id: str
     application_id: str
     first_name: str
     last_name: str
@@ -98,8 +98,8 @@ class VerificationRequest:
     last4_ssn: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
-        if not self.program_id:
-            raise ValueError("program_id must not be empty")
+        if not self.agency_id:
+            raise ValueError("agency_id must not be empty")
         if not self.application_id:
             # TODO: It is not clear at the time of writing whether this identifier will be something
             #       every program can make available.

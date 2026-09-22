@@ -79,12 +79,10 @@ class VerificationRequest(ApiSchema):
 
         return self
 
-    def _to_core_request(
-        self, *, verification_id: UUID, program_id: str
-    ) -> CoreVerificationRequest:
+    def _to_core_request(self, *, verification_id: UUID, agency_id: str) -> CoreVerificationRequest:
         return CoreVerificationRequest(
             verification_id=verification_id,
-            program_id=program_id,
+            agency_id=agency_id,
             application_id=self.application_id,
             first_name=self.first_name,
             last_name=self.last_name,
@@ -93,7 +91,7 @@ class VerificationRequest(ApiSchema):
             lookback_period=self.lookback_period,
         )
 
-    def to_envelope(self, correlation_id: str, *, program_id: str) -> VerificationRequestEnvelope:
+    def to_envelope(self, correlation_id: str, *, agency_id: str) -> VerificationRequestEnvelope:
         """Issue this verification its id and build the request the adapters receive."""
         verification_id = uuid4()
         return VerificationRequestEnvelope(
@@ -101,7 +99,7 @@ class VerificationRequest(ApiSchema):
             correlation_id=correlation_id,
             verification_id=verification_id,
             core_request=self._to_core_request(
-                verification_id=verification_id, program_id=program_id
+                verification_id=verification_id, agency_id=agency_id
             ),
         )
 
