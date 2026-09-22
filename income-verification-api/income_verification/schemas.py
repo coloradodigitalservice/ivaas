@@ -114,6 +114,13 @@ class VerificationResponse(ApiSchema):
     sources: list[SourceResult] = Field(default_factory=list)
 
 
+class TestConnectionResponse(ApiSchema):
+    """Non-PII confirmation of the resolved caller and current environment."""
+
+    authenticated_as: str
+    environment: str
+
+
 class Error(ApiSchema):
     code: ErrorCode
     message: str

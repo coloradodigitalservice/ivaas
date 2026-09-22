@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "99ddd3b9-b63c-40b0-ae58-1d9d1dfae837",
     "name": "IVaaS API",
-    "description": "Development and contract-testing requests for the IVaaS API. Start the application locally, then run the collection with its default variables. Authentication is intentionally unset until the API enforces the documented Cognito flow.",
+    "description": "Development and contract-testing requests for the IVaaS API. Protected requests automatically obtain a client-credentials access token in the collection pre-request script and attach it without persisting the token between requests. The committed OAuth client values target the containerized local OAuth server; override the configuration variables with Postman environment variables for another deployment.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -23,6 +23,42 @@
       "value": "",
       "type": "string",
       "description": "Generated before every request as a UUIDv4 with a Postman reference suffix."
+    },
+    {
+      "key": "authTokenUrl",
+      "value": "http://127.0.0.1:8090/default/token",
+      "type": "string",
+      "description": "OAuth2 token endpoint for the selected environment."
+    },
+    {
+      "key": "authClientId",
+      "value": "local-client",
+      "type": "string",
+      "description": "OAuth2 client ID; the committed value is only for the local mock server."
+    },
+    {
+      "key": "authClientSecret",
+      "value": "local-secret",
+      "type": "string",
+      "description": "OAuth2 client secret; the committed value is only for the local mock server."
+    },
+    {
+      "key": "authScope",
+      "value": "ivaas/income.verify",
+      "type": "string",
+      "description": "Scope required by protected IVaaS operations."
+    },
+    {
+      "key": "expectedAuthenticatedAgency",
+      "value": "local-agency",
+      "type": "string",
+      "description": "Agency expected from Test connection for the selected OAuth client."
+    },
+    {
+      "key": "expectedDeploymentEnvironment",
+      "value": "local",
+      "type": "string",
+      "description": "Application environment expected from Test connection."
     }
   ],
   "event": [
@@ -32,7 +68,43 @@
         "type": "text/javascript",
         "exec": [
           "const correlationId = pm.variables.replaceIn('{{$guid}}') + ':postman';",
-          "pm.collectionVariables.set('correlationId', correlationId);"
+          "pm.collectionVariables.set('correlationId', correlationId);",
+          "",
+          "// Obtain and attach the token within one script execution. This deliberately avoids",
+          "// persisting JWTs in Postman variables, which can abbreviate long values between requests.",
+          "const authMarker = 'X-Postman-Use-IVaaS-Token';",
+          "if (pm.request.headers.get(authMarker) === 'true') {",
+          "  const tokenResponse = await pm.sendRequest({",
+          "    url: pm.variables.get('authTokenUrl'),",
+          "    method: 'POST',",
+          "    auth: {",
+          "      type: 'basic',",
+          "      basic: [",
+          "        { key: 'username', value: pm.variables.get('authClientId'), type: 'string' },",
+          "        { key: 'password', value: pm.variables.get('authClientSecret'), type: 'string' },",
+          "      ],",
+          "    },",
+          "    header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "    body: {",
+          "      mode: 'urlencoded',",
+          "      urlencoded: [",
+          "        { key: 'grant_type', value: 'client_credentials', type: 'text' },",
+          "        { key: 'scope', value: pm.variables.get('authScope'), type: 'text' },",
+          "      ],",
+          "    },",
+          "  });",
+          "  if (tokenResponse.code !== 200) {",
+          "    throw new Error(`OAuth token endpoint returned ${tokenResponse.code}.`);",
+          "  }",
+          "  const tokenBody = tokenResponse.json();",
+          "  const accessToken = tokenBody.access_token;",
+          "  const tokenSegments = typeof accessToken === 'string' ? accessToken.split('.') : [];",
+          "  if (tokenBody.token_type.toLowerCase() !== 'bearer' || tokenSegments.length !== 3 || tokenSegments.some((segment) => !segment)) {",
+          "    throw new Error('OAuth token endpoint did not return a complete Bearer JWT.');",
+          "  }",
+          "  pm.request.headers.remove(authMarker);",
+          "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${accessToken}` });",
+          "}"
         ]
       }
     }
@@ -44,6 +116,9 @@
         {
           "name": "Health check",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -71,6 +146,9 @@
         {
           "name": "Generated OpenAPI document",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -101,13 +179,259 @@
       ]
     },
     {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get access token",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{authClientId}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{authClientSecret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{authScope}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{authTokenUrl}}",
+            "description": "Exercise the configured client-credentials token endpoint directly. Protected API requests acquire their own token in the collection pre-request script and do not depend on this request running first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const tokenResponse = pm.response.json();",
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns a Bearer access token with the required scope', () => {",
+                  "  pm.expect(tokenResponse.access_token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(tokenResponse.token_type.toLowerCase()).to.equal('bearer');",
+                  "  const tokenParts = tokenResponse.access_token.split('.');",
+                  "  pm.expect(tokenParts).to.have.lengthOf(3);",
+                  "  pm.expect(tokenParts.every((part) => part.length > 0)).to.equal(true);",
+                  "  const grantedScopes = (tokenResponse.scope || '').split(/\\s+/);",
+                  "  pm.expect(grantedScopes).to.include(pm.variables.get('authScope'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Test connection",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/test-connection",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "test-connection"]
+            },
+            "description": "Authenticated no-op that sends no claimant data and creates no verification."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the authenticated agency and environment', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({",
+                  "    authenticatedAs: pm.variables.get('expectedAuthenticatedAgency'),",
+                  "    environment: pm.variables.get('expectedDeploymentEnvironment'),",
+                  "  });",
+                  "});",
+                  "pm.test('echoes the correlation id', () => {",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject missing authentication",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/test-connection",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "test-connection"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 401', () => pm.response.to.have.status(401));",
+                  "pm.test('identifies missing authentication', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({ code: 'AUTHENTICATION_REQUIRED', message: 'A Bearer access token is required.' });",
+                  "});",
+                  "pm.test('echoes a valid correlation id', () => {",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid Bearer token",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "invalid-bearer-token",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/test-connection",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "test-connection"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 401', () => pm.response.to.have.status(401));",
+                  "pm.test('returns a safe invalid-authentication error', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({ code: 'INVALID_AUTHENTICATION', message: 'The supplied authentication credentials are invalid.' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Income verification",
       "item": [
+        {
+          "name": "Reject unauthenticated verification request",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"TEST-APPLICATION-001\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Applicant\",\n  \"last4Ssn\": \"0000\",\n  \"lookbackPeriod\": {\n    \"startDate\": \"2026-01-01\",\n    \"endDate\": \"2026-06-30\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{apiVersion}}/income-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiVersion}}", "income-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 401', () => pm.response.to.have.status(401));",
+                  "pm.test('identifies missing authentication', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({ code: 'AUTHENTICATION_REQUIRED', message: 'A Bearer access token is required.' });",
+                  "});",
+                  "pm.test('echoes the correlation id', () => {",
+                  "  pm.expect(pm.response.headers.get('Correlation-Id')).to.equal(pm.collectionVariables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Verify using last four SSN digits",
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json",
@@ -161,6 +485,11 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
@@ -208,6 +537,11 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
@@ -251,6 +585,11 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json",
@@ -299,6 +638,11 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
@@ -345,6 +689,11 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json",
@@ -393,6 +742,11 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
@@ -440,6 +794,11 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
@@ -486,6 +845,11 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "X-Postman-Use-IVaaS-Token",
+                "value": "true",
+                "type": "text"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json",

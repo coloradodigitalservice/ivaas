@@ -13,6 +13,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  mock-oauth2-server:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2
+    environment:
+      # Customizing mock tokens here to include the claims emitted by AWS Cognito. Not all claim properties are used by IVaaS authorization.
+      JSON_CONFIG: >-
+        {"tokenCallbacks":[{"issuerId":"default","requestMappings":[{"requestParam":"grant_type","match":"client_credentials","claims":{"sub":"$${clientId}","client_id":"$${clientId}","token_use":"access","scope":"ivaas/income.verify","auth_time":0,"version":2}}]}]}
+    ports:
+      - "127.0.0.1:8090:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/isalive",
+        ]
+      start_period: 5s
+      interval: 2s
+      timeout: 1s
+      retries: 10
   income-verification-api:
     build:
       context: ./income-verification-api
@@ -26,6 +48,9 @@ services:
       # mock publishes on the host, reachable as host.docker.internal.
       CDLE_ACCOUNT_URL: http://host.docker.internal:8890
       CDLE_ENVIRONMENT: DEV
+      # Tokens are issued through the host URL, so AUTH_ISSUER remains the public URL. Only JWKS
+      # retrieval uses the Compose network address.
+      AUTH_JWKS_URL: http://mock-oauth2-server:8080/default/jwks
     extra_hosts:
       # Provides host.docker.internal on Linux engines too (native on Docker Desktop).
       - "host.docker.internal:host-gateway"
@@ -33,6 +58,8 @@ services:
       - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      mock-oauth2-server:
         condition: service_healthy
     healthcheck:
       test:

@@ -30,7 +30,21 @@ def test_request_validation_errors_use_the_locked_bad_request_definition() -> No
 @pytest.mark.parametrize(
     ("code", "status", "message"),
     [
-        (ErrorCode.UNAUTHORIZED, HTTPStatus.UNAUTHORIZED, "Authentication is required."),
+        (
+            ErrorCode.AUTHENTICATION_REQUIRED,
+            HTTPStatus.UNAUTHORIZED,
+            "A Bearer access token is required.",
+        ),
+        (
+            ErrorCode.ACCESS_TOKEN_EXPIRED,
+            HTTPStatus.UNAUTHORIZED,
+            "The Bearer access token has expired.",
+        ),
+        (
+            ErrorCode.INVALID_AUTHENTICATION,
+            HTTPStatus.UNAUTHORIZED,
+            "The supplied authentication credentials are invalid.",
+        ),
         (
             ErrorCode.FORBIDDEN,
             HTTPStatus.FORBIDDEN,

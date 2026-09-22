@@ -242,7 +242,7 @@ def test_unexpected_exception_logs_safe_innermost_qualified_origin(
     ("framework_status", "expected_code", "expected_level"),
     [
         (HTTPStatus.BAD_REQUEST, ErrorCode.INVALID_REQUEST, "WARNING"),
-        (HTTPStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED, "WARNING"),
+        (HTTPStatus.UNAUTHORIZED, ErrorCode.INVALID_AUTHENTICATION, "WARNING"),
         (HTTPStatus.FORBIDDEN, ErrorCode.FORBIDDEN, "WARNING"),
         (HTTPStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, "ERROR"),
         (HTTPStatus.SERVICE_UNAVAILABLE, ErrorCode.SERVICE_UNAVAILABLE, "ERROR"),

@@ -67,6 +67,10 @@ dev-adapters: ## live-develop adapters from the sibling checkout (cleanup: make 
 db-up: ## start the local docker PostgreSQL database
 	$(COMPOSE) up --wait postgres
 
+.PHONY: local-services-up
+local-services-up: ## start local PostgreSQL and OAuth/JWKS services
+	$(COMPOSE) up --detach --wait postgres mock-oauth2-server
+
 .PHONY: db-reset
 db-reset: ## recreate the local docker PostgreSQL database
 	$(COMPOSE) down --volumes
@@ -85,7 +89,7 @@ docker-migrate: up ## apply migrations in the running api container
 	$(COMPOSE) exec $(DOCKER_API_NAME) python manage.py migrate
 
 .PHONY: run
-run: db-up ## run the local development server
+run: local-services-up ## run the local development server
 	$(LOCAL_RUN) uvicorn config.asgi:application \
 		--reload \
 		--host 127.0.0.1 \
