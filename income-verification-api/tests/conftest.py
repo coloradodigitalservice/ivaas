@@ -7,17 +7,18 @@ from income_verification.security.authentication import (
     ConfiguredAgencyResolver,
     VerifiedClient,
 )
-
-TEST_ACCESS_TOKEN = "test-access-token"  # noqa: S105 - deterministic test credential
-TEST_CLIENT_ID = "test-client"
-TEST_AGENCY_ID = "test-agency"
-TEST_SCOPE = "ivaas/income.verify"
+from tests.income_verification.security.authentication_test_support import (
+    REQUIRED_SCOPE,
+    TEST_ACCESS_TOKEN,
+    TEST_AGENCY_ID,
+    TEST_CLIENT_ID,
+)
 
 
 class StaticAccessTokenVerifier:
     """Deterministic provider substitute at the token-verification boundary."""
 
-    def __init__(self, scopes: frozenset[str] = frozenset({TEST_SCOPE})) -> None:
+    def __init__(self, scopes: frozenset[str] = frozenset({REQUIRED_SCOPE})) -> None:
         self.scopes = scopes
 
     def verify(self, token: str) -> VerifiedClient:
@@ -36,7 +37,7 @@ def configured_api_authentication(monkeypatch: pytest.MonkeyPatch) -> None:
         "authenticator",
         AgencyAuthenticator(
             token_verifier=StaticAccessTokenVerifier(),
-            required_scope=TEST_SCOPE,
+            required_scope=REQUIRED_SCOPE,
             agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
         ),
     )

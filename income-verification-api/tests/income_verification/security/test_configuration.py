@@ -8,12 +8,12 @@ from income_verification.security.configuration import (
     build_api_authentication,
 )
 from tests.income_verification.security.authentication_test_support import (
-    AGENCY_ID,
-    CLIENT_ID,
     ISSUER,
     JWKS_URL,
     OAUTH_ENDPOINT,
     REQUIRED_SCOPE,
+    TEST_AGENCY_ID,
+    TEST_CLIENT_ID,
 )
 
 
@@ -23,7 +23,7 @@ def authentication_configuration(**overrides: object) -> dict[str, object]:
         "JWKS_URL": JWKS_URL,
         "TOKEN_URL": OAUTH_ENDPOINT,
         "REQUIRED_SCOPE": REQUIRED_SCOPE,
-        "CLIENT_AGENCY_MAP": {CLIENT_ID: AGENCY_ID},
+        "CLIENT_AGENCY_MAP": {TEST_CLIENT_ID: TEST_AGENCY_ID},
         "JWKS_CACHE_SECONDS": 300,
         "JWKS_TIMEOUT_SECONDS": 5,
     }

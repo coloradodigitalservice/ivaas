@@ -17,9 +17,9 @@ info:
 
 servers:
   - url: https://test.income-verification.colorado.gov/
-    description: 'TBD: Test environment'
+    description: "TBD: Test environment"
   - url: https://income-verification.colorado.gov/
-    description: 'TBD: Production'
+    description: "TBD: Production"
 
 security:
   - AgencyOAuth2ClientCredentialsTest: [ivaas/income.verify]
@@ -38,13 +38,13 @@ paths:
 
         A `200` response carries a completed `VerificationResponse`.
       parameters:
-        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: "#/components/parameters/CorrelationId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VerificationRequest'
+              $ref: "#/components/schemas/VerificationRequest"
             examples:
               minimum:
                 summary: Minimum set of required fields
@@ -67,25 +67,25 @@ paths:
                     startDate: "2026-01-01"
                     endDate: "2026-06-30"
       responses:
-        '200':
+        "200":
           description: Verification completed.
           headers:
             Correlation-Id:
-              $ref: '#/components/headers/CorrelationId'
+              $ref: "#/components/headers/CorrelationId"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VerificationResponse'
-        '400':
-          $ref: '#/components/responses/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Error'
-        '500':
-          $ref: '#/components/responses/Error'
-        '503':
-          $ref: '#/components/responses/Error'
+                $ref: "#/components/schemas/VerificationResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
 
   /api/v1/test-connection:
     get:
@@ -97,30 +97,29 @@ paths:
         Modelled as a GET because it is safe and side-effect-free: it reads nothing and writes
         nothing, so an agency can call it freely while wiring up an integration.
       parameters:
-        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: "#/components/parameters/CorrelationId"
       responses:
-        '200':
+        "200":
           description: Assertion accepted. Connectivity and credentials are good.
           headers:
             Correlation-Id:
-              $ref: '#/components/headers/CorrelationId'
+              $ref: "#/components/headers/CorrelationId"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TestConnectionResponse'
-        '400':
-          $ref: '#/components/responses/Error'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Error'
-        '500':
-          $ref: '#/components/responses/Error'
-        '503':
-          $ref: '#/components/responses/Error'
+                $ref: "#/components/schemas/TestConnectionResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
 
 components:
-
   securitySchemes:
     AgencyOAuth2ClientCredentialsTest:
       type: oauth2
@@ -138,10 +137,12 @@ components:
         | Claim | Expectation |
         |---|---|
         | `iss` | `https://cognito-idp.{region}.amazonaws.com/{userPoolId}` for the destination environment |
+        | `sub` | Cognito-issued token subject |
         | `client_id` | The machine identity, mapped by IVaaS to an onboarded agency |
         | `token_use` | `access` |
         | `scope` | Must include `ivaas/income.verify` |
-        | `exp` | Must be in the future |
+        | `iat` / `exp` | Issued-at and expiry. Lifetime is configured on the app client in cognito|
+        | `jti` | Unique JWT identifier. Not used as the IVaaS request correlation identifier |
 
         An `aud` claim is not required because Cognito client-credentials access tokens are not
         guaranteed to provide one in the current configuration.
@@ -156,7 +157,7 @@ components:
         IVaaS-owned agency identity. The `iss` identifies Cognito, not the calling agency.
       flows:
         clientCredentials:
-          tokenUrl: 'https://TBD-test.auth.us-west-2.amazoncognito.com/oauth2/token'
+          tokenUrl: "https://TBD-test.auth.us-west-2.amazoncognito.com/oauth2/token"
           scopes:
             ivaas/income.verify: Submit income verification requests.
 
@@ -170,7 +171,7 @@ components:
         to `AgencyOAuth2ClientCredentialsTest`; the token endpoint, issuer, and user pool differ.
       flows:
         clientCredentials:
-          tokenUrl: 'https://TBD-prod.auth.us-west-2.amazoncognito.com/oauth2/token'
+          tokenUrl: "https://TBD-prod.auth.us-west-2.amazoncognito.com/oauth2/token"
           scopes:
             ivaas/income.verify: Submit income verification requests.
 
@@ -198,7 +199,7 @@ components:
       schema:
         type: string
         maxLength: 128
-        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
+        pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$"
 
   headers:
     CorrelationId:
@@ -208,7 +209,7 @@ components:
       schema:
         type: string
         maxLength: 128
-        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
+        pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$"
 
     OptionalCorrelationId:
       description: |
@@ -218,28 +219,28 @@ components:
       schema:
         type: string
         maxLength: 128
-        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$'
+        pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(:[A-Za-z0-9._~/-]+)?$"
 
   responses:
     Error:
       description: Error. Body carries a machine-readable `code` and a human-readable `message`.
       headers:
         Correlation-Id:
-          $ref: '#/components/headers/OptionalCorrelationId'
+          $ref: "#/components/headers/OptionalCorrelationId"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
 
     Unauthorized:
       description: Authentication failed.
       headers:
         Correlation-Id:
-          $ref: '#/components/headers/OptionalCorrelationId'
+          $ref: "#/components/headers/OptionalCorrelationId"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
 
   schemas:
     # Request
@@ -283,20 +284,20 @@ components:
           description: Claimant's legal last name.
         ssn:
           type: string
-          pattern: '^[0-9]{9}$'
+          pattern: "^[0-9]{9}$"
           description: |
             The claimant's full SSN, nine digits, no separators.
 
             Mutually exclusive with `last4Ssn`.
         last4Ssn:
           type: string
-          pattern: '^[0-9]{4}$'
+          pattern: "^[0-9]{4}$"
           description: |
             Last four digits of the claimant's SSN.
 
             Mutually exclusive with `ssn`. Required by {TBD SourceIds}
         lookbackPeriod:
-          $ref: '#/components/schemas/LookbackPeriod'
+          $ref: "#/components/schemas/LookbackPeriod"
       oneOf:
         - required: [ssn]
         - required: [last4Ssn]
@@ -312,14 +313,13 @@ components:
       properties:
         startDate:
           description: First day of the window, inclusive.
-          $ref: '#/components/schemas/Date'
+          $ref: "#/components/schemas/Date"
         endDate:
           description: |
             Last day of the window, inclusive.
 
             Must not precede `startDate`.
-          $ref: '#/components/schemas/Date'
-
+          $ref: "#/components/schemas/Date"
 
     # Response
     VerificationResponse:
@@ -332,7 +332,7 @@ components:
       required: [verificationId]
       properties:
         verificationId:
-          $ref: '#/components/schemas/VerificationId'
+          $ref: "#/components/schemas/VerificationId"
         sources:
           type: array
           description: |
@@ -343,7 +343,7 @@ components:
             diagnostic. Eligibility determinations get appealed, and answering "where did
             this figure come from, and as of when was it true" is an audit obligation.
           items:
-            $ref: '#/components/schemas/SourceResult'
+            $ref: "#/components/schemas/SourceResult"
 
     VerificationId:
       type: string
@@ -396,7 +396,7 @@ components:
             The raw income this source reported, with PII removed.
 
             Present only when `status` is `ok`.
-          $ref: '#/components/schemas/RawIncome'
+          $ref: "#/components/schemas/RawIncome"
 
     RawIncome:
       type: object
@@ -410,7 +410,7 @@ components:
         A calendar date with no time and no timezone.
         Used for pay dates, pay period bounds, etc.
       examples:
-        - '2026-03-15'
+        - "2026-03-15"
 
     Error:
       type: object

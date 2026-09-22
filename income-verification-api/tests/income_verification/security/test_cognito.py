@@ -26,11 +26,11 @@ from income_verification.security.cognito import (
     SigningKeyUnavailableError,
 )
 from tests.income_verification.security.authentication_test_support import (
-    AGENCY_ID,
-    CLIENT_ID,
     ISSUER,
     JWKS_URL,
     REQUIRED_SCOPE,
+    TEST_AGENCY_ID,
+    TEST_CLIENT_ID,
     access_token,
     access_token_without_claim,
     assert_failure_reason,
@@ -47,8 +47,8 @@ def test_valid_cognito_access_token_resolves_known_agency(
     principal = cognito_authenticator(signing_key).authenticate(access_token(private_key))
 
     assert principal == AuthenticatedAgency(
-        client_id=CLIENT_ID,
-        agency_id=AGENCY_ID,
+        client_id=TEST_CLIENT_ID,
+        agency_id=TEST_AGENCY_ID,
         scopes=frozenset({"openid", REQUIRED_SCOPE}),
     )
 
@@ -100,7 +100,7 @@ def test_unknown_kid_refreshes_jwks_then_is_unauthorized(
             signing_key_provider=provider,
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({CLIENT_ID: AGENCY_ID}),
+        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
     )
     with patch.object(
         provider._client,
@@ -246,7 +246,7 @@ def test_cognito_jwks_connection_failure_is_infrastructure_failure(
             signing_key_provider=UnavailableSigningKeyProvider(),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({CLIENT_ID: AGENCY_ID}),
+        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
     )
 
     assert_failure_reason(

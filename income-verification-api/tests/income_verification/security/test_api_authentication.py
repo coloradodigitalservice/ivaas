@@ -28,11 +28,11 @@ from income_verification.security.cognito import (
     SigningKeyUnavailableError,
 )
 from tests.income_verification.security.authentication_test_support import (
-    AGENCY_ID,
-    CLIENT_ID,
     ISSUER,
     REQUIRED_SCOPE,
     TEST_ACCESS_TOKEN,
+    TEST_AGENCY_ID,
+    TEST_CLIENT_ID,
     access_token,
     agency_authenticator,
     cognito_authenticator,
@@ -44,8 +44,6 @@ API_ROOT = "/api"
 INCOME_VERIFICATION_PATH = f"{API_ROOT}/{settings.API_VERSION}/income-verification"
 TEST_CONNECTION_PATH = f"{API_ROOT}/{settings.API_VERSION}/test-connection"
 CORRELATION_ID = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:auth-test"
-TEST_CLIENT_ID = "test-client"
-TEST_AGENCY_ID = "test-agency"
 
 
 def _authenticated_headers(**headers: str) -> dict[str, str]:
@@ -267,7 +265,7 @@ def test_raw_jwt_exception_message_cannot_reach_logs(
             signing_key_provider=FailingSigningKeyProvider(),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({CLIENT_ID: AGENCY_ID}),
+        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
     )
     monkeypatch.setattr(api_authentication, "authenticator", authenticator)
     with capture_api_logs() as stream:
@@ -344,7 +342,7 @@ def test_jwks_unavailability_returns_safe_service_unavailable(
             signing_key_provider=UnavailableSigningKeyProvider(),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({CLIENT_ID: AGENCY_ID}),
+        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
     )
     monkeypatch.setattr(api_authentication, "authenticator", authenticator)
     with capture_api_logs() as stream:
@@ -398,7 +396,7 @@ def test_decoded_jwt_claims_and_token_cannot_reach_logs(
     record = json.loads(emitted)
     assert response.status_code == HTTPStatus.FORBIDDEN
     assert record["auth.failure.reason"] == AuthFailureReason.INSUFFICIENT_SCOPE
-    assert record["auth.client.id"] == CLIENT_ID
+    assert record["auth.client.id"] == TEST_CLIENT_ID
     assert "SENTINEL-DECODED-PRIVATE-CLAIM" not in emitted
     assert encoded_token not in emitted
 

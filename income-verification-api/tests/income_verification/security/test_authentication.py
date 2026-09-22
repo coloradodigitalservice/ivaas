@@ -9,11 +9,11 @@ from income_verification.security import (
     AuthorizationFailure,
 )
 from tests.income_verification.security.authentication_test_support import (
-    AGENCY_ID,
-    CLIENT_ID,
     OAUTH_ENDPOINT,
     REQUIRED_SCOPE,
     TEST_ACCESS_TOKEN,
+    TEST_AGENCY_ID,
+    TEST_CLIENT_ID,
     agency_authenticator,
     assert_failure_reason,
 )
@@ -23,8 +23,8 @@ def test_agency_authenticator_resolves_verified_client() -> None:
     principal = agency_authenticator().authenticate(TEST_ACCESS_TOKEN)
 
     assert principal == AuthenticatedAgency(
-        client_id=CLIENT_ID,
-        agency_id=AGENCY_ID,
+        client_id=TEST_CLIENT_ID,
+        agency_id=TEST_AGENCY_ID,
         scopes=frozenset({REQUIRED_SCOPE}),
     )
 

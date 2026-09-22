@@ -22,15 +22,17 @@ from income_verification.request_context import (
     set_client_log_context,
     set_verification_log_context,
 )
+from tests.income_verification.security.authentication_test_support import (
+    TEST_ACCESS_TOKEN,
+    TEST_AGENCY_ID,
+    TEST_CLIENT_ID,
+)
 
 pytestmark = pytest.mark.usefixtures("configured_api_authentication")
 
 CORRELATION_ID = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471"
 API_ROOT = "/api"
 INCOME_VERIFICATION_PATH = f"{API_ROOT}/{settings.API_VERSION}/income-verification"
-TEST_ACCESS_TOKEN = "test-access-token"  # noqa: S105 - deterministic test credential
-TEST_CLIENT_ID = "test-client"
-TEST_AGENCY_ID = "test-agency"
 
 
 def authenticated_headers(**headers: str) -> dict[str, str]:

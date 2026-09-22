@@ -26,6 +26,4 @@ def health(request: HttpRequest) -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Ninja's mounted routers need the API default passed at the version boundary. All current and
-# future routes registered on this program-facing router inherit it automatically.
-api.add_router(f"/{settings.API_VERSION}", router, auth=api_authentication)
+api.add_router(f"/{settings.API_VERSION}", router)
