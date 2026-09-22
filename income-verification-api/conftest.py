@@ -25,7 +25,7 @@ def verification_request(last_calendar_month: LookbackPeriod) -> VerificationReq
     return VerificationRequest(
         verification_id=uuid4(),
         program_id="TEST_PROGRAM",
-        requestor_id="APP-2026-004471",
+        application_id="APP-2026-004471",
         first_name="John",
         last_name="Doe",
         lookback_period=last_calendar_month,

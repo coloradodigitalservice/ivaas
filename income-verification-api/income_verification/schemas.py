@@ -85,7 +85,7 @@ class VerificationRequest(ApiSchema):
         return CoreVerificationRequest(
             verification_id=verification_id,
             program_id=program_id,
-            requestor_id=self.application_id,
+            application_id=self.application_id,
             first_name=self.first_name,
             last_name=self.last_name,
             ssn=self.ssn,

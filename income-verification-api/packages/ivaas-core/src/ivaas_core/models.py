@@ -90,7 +90,7 @@ class VerificationRequest:
 
     verification_id: UUID
     program_id: str
-    requestor_id: str
+    application_id: str
     first_name: str
     last_name: str
     lookback_period: LookbackPeriod
@@ -100,11 +100,11 @@ class VerificationRequest:
     def __post_init__(self) -> None:
         if not self.program_id:
             raise ValueError("program_id must not be empty")
-        if not self.requestor_id:
+        if not self.application_id:
             # TODO: It is not clear at the time of writing whether this identifier will be something
             #       every program can make available.
             #       As a result, this could be made optional or removed entirely.
-            raise ValueError("requestor_id must not be empty")
+            raise ValueError("application_id must not be empty")
         _validate_name(self.first_name, "first_name")
         _validate_name(self.last_name, "last_name")
         _validate_ssn_fields(self.ssn, self.last4_ssn)
