@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -8,6 +9,7 @@ from ivaas_core import (
     IncomeSourceError,
     SourceIncome,
     SourceResponseInvalid,
+    SourceStatus,
     SourceTimeout,
     SourceUnavailable,
     SubjectNotFound,
@@ -23,6 +25,7 @@ from adapter_engine.policies import (
     RetryPolicy,
 )
 from adapter_engine.registry import INCOME_SOURCE_ADAPTERS, AdapterRegistry, registry
+from income_verification.schemas import SourceResult
 
 
 class ScriptedAdapter(IncomeSourceAdapter):
@@ -41,7 +44,16 @@ class ScriptedAdapter(IncomeSourceAdapter):
 
 
 def _source_income() -> SourceIncome:
-    return SourceIncome(retrieved_at=datetime.now(tz=UTC), raw_income={})
+    return SourceIncome(retrieved_at=datetime.now(tz=UTC), raw_income={"records": 1})
+
+
+def _ok(income: SourceIncome) -> SourceResult:
+    return SourceResult(
+        source_id=ScriptedAdapter.source_id,
+        status=SourceStatus.OK,
+        retrieved_at=income.retrieved_at,
+        raw_income=income.raw_income,
+    )
 
 
 def _engine(
@@ -61,27 +73,62 @@ def _engine(
     return AdapterEngine(registry_mock), adapter, initialized_adapter
 
 
+def _only_status(adapter_engine: AdapterEngine, request: VerificationRequest) -> SourceStatus:
+    [result] = adapter_engine.verify(request)
+    return result.status
+
+
 def test_without_policies_calls_adapter_once(
     verification_request: VerificationRequest,
 ) -> None:
     expected = _source_income()
     adapter_engine, adapter, _initialized_adapter = _engine([expected])
 
-    assert adapter_engine.verify(verification_request) == expected
+    assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 1
 
 
-def test_without_policies_preserves_exception(
+@pytest.mark.parametrize(
+    ("error", "status", "level"),
+    [
+        (SubjectNotFound("no records"), SourceStatus.NO_DATA, logging.INFO),
+        (SourceTimeout("timed out"), SourceStatus.UNAVAILABLE, logging.WARNING),
+        (SourceUnavailable("refused"), SourceStatus.UNAVAILABLE, logging.WARNING),
+        (SourceResponseInvalid("unparseable"), SourceStatus.ERROR, logging.WARNING),
+        (IncomeSourceError("other"), SourceStatus.ERROR, logging.WARNING),
+    ],
+)
+def test_contract_exception_becomes_the_source_status(
+    error: IncomeSourceError,
+    status: SourceStatus,
+    level: int,
     verification_request: VerificationRequest,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    error = SourceTimeout("timed out")
+    mock_logger = MagicMock()
+    monkeypatch.setattr("adapter_engine.engine.logger", mock_logger)
     adapter_engine, adapter, _initialized_adapter = _engine([error])
 
-    with pytest.raises(SourceTimeout) as exc_info:
-        adapter_engine.verify(verification_request)
+    [result] = adapter_engine.verify(verification_request)
 
-    assert exc_info.value is error
+    assert result.source_id == ScriptedAdapter.source_id
+    assert result.status is status
+    assert result.raw_income is None
+    assert result.retrieved_at is None
     assert adapter.call_count == 1
+    mock_logger.log.assert_called_once()
+    assert mock_logger.log.call_args.args[0] == level
+    assert mock_logger.log.call_args.args[2:] == ("stub", type(error).__name__, error)
+
+
+def test_non_contract_exception_propagates(
+    verification_request: VerificationRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter_engine, adapter, _initialized_adapter = _engine([])
+    monkeypatch.setattr(adapter, "verify", MagicMock(side_effect=RuntimeError("adapter bug")))
+
+    with pytest.raises(RuntimeError, match="adapter bug"):
+        adapter_engine.verify(verification_request)
 
 
 @pytest.mark.parametrize("error_type", [SourceTimeout, SourceUnavailable])
@@ -99,7 +146,7 @@ def test_retries_retryable_errors_until_success(
         [first_error, second_error, expected], retry_policy=policy
     )
 
-    assert adapter_engine.verify(verification_request) == expected
+    assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 3
     logged_attempts = [call.args[1:] for call in mock_logger.warning.call_args_list]
     assert logged_attempts == [
@@ -109,27 +156,27 @@ def test_retries_retryable_errors_until_success(
 
 
 @pytest.mark.parametrize("error_type", [SourceTimeout, SourceUnavailable])
-def test_retry_exhaustion_preserves_last_error(
+def test_retry_exhaustion_reports_unavailable(
     error_type: type[IncomeSourceError],
     verification_request: VerificationRequest,
 ) -> None:
-    last_error = error_type("last")
     policy = RetryPolicy(2, FixedBackoff(0))
     adapter_engine, adapter, _initialized_adapter = _engine(
-        [error_type("first"), last_error],
+        [error_type("first"), error_type("last")],
         retry_policy=policy,
     )
 
-    with pytest.raises(error_type) as exc_info:
-        adapter_engine.verify(verification_request)
-
-    assert exc_info.value is last_error
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
     assert adapter.call_count == 2
 
 
-@pytest.mark.parametrize("error_type", [SubjectNotFound, SourceResponseInvalid])
+@pytest.mark.parametrize(
+    ("error_type", "status"),
+    [(SubjectNotFound, SourceStatus.NO_DATA), (SourceResponseInvalid, SourceStatus.ERROR)],
+)
 def test_final_errors_are_not_retried_or_counted_by_breaker(
     error_type: type[IncomeSourceError],
+    status: SourceStatus,
     verification_request: VerificationRequest,
 ) -> None:
     expected = _source_income()
@@ -139,10 +186,8 @@ def test_final_errors_are_not_retried_or_counted_by_breaker(
         circuit_breaker=CircuitBreakerPolicy(1, 30),
     )
 
-    with pytest.raises(error_type):
-        adapter_engine.verify(verification_request)
-
-    assert adapter_engine.verify(verification_request) == expected
+    assert _only_status(adapter_engine, verification_request) is status
+    assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 2
 
 
@@ -151,23 +196,23 @@ def test_tripping_call_reports_open_breaker_and_logs_the_cause(
 ) -> None:
     mock_logger = MagicMock()
     monkeypatch.setattr("adapter_engine.engine.logger", mock_logger)
-    first_error = SourceTimeout("first")
-    tripping_error = SourceTimeout("second")
+    first_error, tripping_error = SourceTimeout("first"), SourceTimeout("second")
     adapter_engine, adapter, _initialized_adapter = _engine(
         [first_error, tripping_error],
         circuit_breaker=CircuitBreakerPolicy(2, 30),
     )
 
-    with pytest.raises(SourceTimeout) as first_exc:
-        adapter_engine.verify(verification_request)
-    with pytest.raises(SourceUnavailable, match="circuit breaker is open") as second_exc:
-        adapter_engine.verify(verification_request)
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
 
-    assert first_exc.value is first_error
-    assert second_exc.value.__cause__ is tripping_error
     assert adapter.call_count == 2
+    # First call: its failure. Second call: the breaker opening, then its failure.
+    first_failure, second_failure = (call.args for call in mock_logger.log.call_args_list)
+    assert first_failure[2:] == ("stub", "SourceTimeout", first_error)
     mock_logger.warning.assert_called_once()
     assert mock_logger.warning.call_args.args[1:] == ("stub", "SourceTimeout", tripping_error)
+    assert second_failure[2:4] == ("stub", "SourceUnavailable")
+    assert str(second_failure[4]) == "income source adapter 'stub' circuit breaker is open"
 
 
 def test_open_breaker_stops_retry_without_calling_adapter(
@@ -179,15 +224,8 @@ def test_open_breaker_stops_retry_without_calling_adapter(
         circuit_breaker=CircuitBreakerPolicy(1, 30),
     )
 
-    with pytest.raises(
-        SourceUnavailable, match="income source adapter 'stub' circuit breaker is open"
-    ):
-        adapter_engine.verify(verification_request)
-    with pytest.raises(
-        SourceUnavailable, match="income source adapter 'stub' circuit breaker is open"
-    ):
-        adapter_engine.verify(verification_request)
-
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
     assert adapter.call_count == 1
 
 
@@ -202,12 +240,11 @@ def test_success_in_half_open_closes_breaker(
     circuit_breaker = initialized_adapter.circuit_breaker
     assert circuit_breaker is not None
 
-    with pytest.raises(SourceUnavailable, match="circuit breaker is open"):
-        adapter_engine.verify(verification_request)
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
     assert circuit_breaker.current_state == "open"
     circuit_breaker.half_open()
 
-    assert adapter_engine.verify(verification_request) == expected
+    assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert circuit_breaker.current_state == "closed"
     assert adapter.call_count == 2
 
@@ -215,22 +252,17 @@ def test_success_in_half_open_closes_breaker(
 def test_failure_in_half_open_reopens_breaker(
     verification_request: VerificationRequest,
 ) -> None:
-    half_open_error = SourceUnavailable("half-open failure")
     adapter_engine, adapter, initialized_adapter = _engine(
-        [SourceUnavailable("first failure"), half_open_error],
+        [SourceUnavailable("first failure"), SourceUnavailable("half-open failure")],
         circuit_breaker=CircuitBreakerPolicy(1, 30),
     )
     circuit_breaker = initialized_adapter.circuit_breaker
     assert circuit_breaker is not None
 
-    with pytest.raises(SourceUnavailable, match="circuit breaker is open"):
-        adapter_engine.verify(verification_request)
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
     circuit_breaker.half_open()
 
-    with pytest.raises(SourceUnavailable, match="circuit breaker is open") as exc_info:
-        adapter_engine.verify(verification_request)
-
-    assert exc_info.value.__cause__ is half_open_error
+    assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
     assert circuit_breaker.current_state == "open"
     assert adapter.call_count == 2
 
@@ -246,7 +278,7 @@ def test_fixed_backoff_sleeps_the_configured_seconds_between_attempts(
         retry_policy=RetryPolicy(3, FixedBackoff(1.5)),
     )
 
-    assert adapter_engine.verify(verification_request) == expected
+    assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 3
     assert sleeps == [1.5, 1.5]
 
@@ -262,7 +294,7 @@ def test_exponential_backoff_grows_within_bounds_between_attempts(
         retry_policy=RetryPolicy(4, ExponentialBackoff(1, 3)),
     )
 
-    assert adapter_engine.verify(verification_request) == expected
+    assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 4
     # tenacity: min(initial * 2**n + jitter, max), jitter in [0, 1], n from 0
     first_sleep, second_sleep, third_sleep = sleeps
@@ -284,8 +316,10 @@ def test_django_engine_uses_refreshed_registry(
     }
     with override_settings(**{INCOME_SOURCE_ADAPTERS: declarations}):
         registry.refresh_from_settings()
-        with pytest.raises(SubjectNotFound):
-            engine.verify(verification_request)
+        [result] = engine.verify(verification_request)
+
+    assert result.source_id == "STUB_1_0"
+    assert result.status is SourceStatus.NO_DATA
 
 
 def test_uses_the_first_enabled_adapter(verification_request: VerificationRequest) -> None:
@@ -298,7 +332,7 @@ def test_uses_the_first_enabled_adapter(verification_request: VerificationReques
         "second": InitializedAdapter(second_adapter, None, None),
     }
 
-    assert AdapterEngine(registry_mock).verify(verification_request) == expected
+    assert AdapterEngine(registry_mock).verify(verification_request) == [_ok(expected)]
     assert first_adapter.call_count == 1
     assert second_adapter.call_count == 0
 

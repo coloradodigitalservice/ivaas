@@ -7,6 +7,7 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from ninja import Header, Router
 
+from adapter_engine.engine import engine
 from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     CORRELATION_ID_MAX_LENGTH,
@@ -150,7 +151,10 @@ def income_verification(
     )
 
     return VerificationResponse.model_validate(
-        {"verificationId": envelope.verification_id},
+        {
+            "verificationId": envelope.verification_id,
+            "sources": engine.verify(envelope.core_request),
+        },
     )
 
 

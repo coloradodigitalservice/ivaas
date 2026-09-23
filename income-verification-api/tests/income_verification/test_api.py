@@ -2,16 +2,20 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Iterator
+from datetime import datetime
 from io import StringIO
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, override_settings
+from example_adapter import ExampleAdapter
+from ivaas_core import SubjectNotFound
 
+from adapter_engine.registry import INCOME_SOURCE_ADAPTERS, registry
 from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.request_context import (
     JsonLogFormatter,
@@ -33,6 +37,23 @@ pytestmark = pytest.mark.usefixtures("configured_api_authentication")
 CORRELATION_ID = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471"
 API_ROOT = "/api"
 INCOME_VERIFICATION_PATH = f"{API_ROOT}/{settings.API_VERSION}/income-verification"
+EXAMPLE_ADAPTER_SETTINGS = {
+    "example": {
+        "class": "example_adapter.ExampleAdapter",
+        "enabled": True,
+        "retry_policy": None,
+        "circuit_breaker": None,
+    }
+}
+
+
+@pytest.fixture(autouse=True)
+def example_adapter_registered() -> Iterator[None]:
+    """Serve every request from the example adapter, whatever the machine's settings enable."""
+    with override_settings(**{INCOME_SOURCE_ADAPTERS: EXAMPLE_ADAPTER_SETTINGS}):
+        registry.refresh_from_settings()
+        yield
+    registry.refresh_from_settings()
 
 
 def authenticated_headers(**headers: str) -> dict[str, str]:
@@ -104,7 +125,9 @@ def test_accepts_verification_request(client: Client) -> None:
     assert response.headers["Correlation-Id"] == CORRELATION_ID
     body = response.json()
     assert UUID(body["verificationId"]).version == 4
-    assert body["sources"] == []
+    [source] = body["sources"]
+    assert datetime.fromisoformat(source.pop("retrievedAt")).tzinfo is not None
+    assert source == {"sourceId": ExampleAdapter.source_id, "status": "OK", "rawIncome": {}}
     logger.info.assert_called_once_with(
         "income verification request accepted",
         extra={
@@ -113,6 +136,20 @@ def test_accepts_verification_request(client: Client) -> None:
             LogField.URL_PATH.value: INCOME_VERIFICATION_PATH,
         },
     )
+
+
+def test_adapter_failure_is_reported_as_the_source_status(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ExampleAdapter, "verify", MagicMock(side_effect=SubjectNotFound()))
+
+    response = post_verification(client, valid_request())
+
+    assert response.status_code == 200
+    [source] = response.json()["sources"]
+    assert source["status"] == "NO_DATA"
+    assert source["retrievedAt"] is None
+    assert source["rawIncome"] is None
 
 
 def test_accepts_full_ssn_instead_of_last_four(client: Client) -> None:

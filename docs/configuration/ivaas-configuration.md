@@ -60,6 +60,7 @@ Adapter development requires only that the resulting adapter implement the contr
 
 - Adapters should be implementations of the [IncomeSourceAdapter](../../income-verification-api/packages/ivaas-core/src/ivaas_core/adapter.py) abstract base class.
 - Proper error handling by IVaaS requires exceptions raised by adapters to be implementations of [IncomeSourceError](../../income-verification-api/packages/ivaas-core/src/ivaas_core/exceptions.py).
+- The [example-adapter](../../income-verification-api/packages/adapters/example) package is a minimal reference implementation of the contract. It does nothing and is registered and exercised only by tests.
 
 The adapter must be built into a wheel and dropped into the designated "landing-zone". See [adapter installation](#adapter-installation)
 
