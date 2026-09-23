@@ -374,25 +374,16 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
     original_handlers = adapter_logger.handlers
     adapter_logger.handlers = [handler]
 
-    def emit_downstream_log(message: str, *, extra: dict[str, object]) -> None:
-        logging.getLogger("adapter_engine.downstream").info(
-            "downstream verification processing",
-            extra={
-                LogField.EVENT_NAME.value: "income_verification.downstream.test",
-                "attempt": 1,
-            },
-        )
-
     try:
-        with patch("income_verification.routes.logger.info", side_effect=emit_downstream_log):
-            response = post_verification(client, valid_request())
+        response = post_verification(client, valid_request())
     finally:
         adapter_logger.handlers = original_handlers
 
     assert response.status_code == 200
     record = json.loads(stream.getvalue())
-    assert record["event.name"] == "income_verification.downstream.test"
-    assert "attempt" not in record
+    assert record["message"] == "invoking adapter 'example' to handle request"
+    assert record["event.name"] == "adapter_engine.adapter.invoked"
+    assert record["ivaas.source.id"] == ExampleAdapter.source_id
     assert record["ivaas.correlation.id"] == CORRELATION_ID
     assert record["auth.client.id"] == TEST_CLIENT_ID
     assert record["ivaas.agency.id"] == TEST_AGENCY_ID

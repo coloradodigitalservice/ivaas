@@ -57,6 +57,7 @@ class LogField(StrEnum):
     AGENCY_ID = "ivaas.agency.id"
     APPLICATION_ID = "ivaas.application.id"
     VERIFICATION_ID = "ivaas.verification.id"
+    SOURCE_ID = "ivaas.source.id"
 
 
 def get_correlation_id() -> str | None:

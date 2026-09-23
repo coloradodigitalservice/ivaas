@@ -13,6 +13,7 @@ from ivaas_core import (
 
 from adapter_engine.policies import InitializedAdapter
 from adapter_engine.registry import AdapterRegistry, registry
+from income_verification.request_context import LogField
 from income_verification.schemas import SourceResult
 
 logger = logging.getLogger(__name__)
@@ -31,11 +32,18 @@ class AdapterEngine:
             raise LookupError("no income source adapters are enabled")
         name, initialized_adapter = next(iter(self._registry.adapters.items()))
         source_id = initialized_adapter.adapter.source_id
+        logger.info(
+            "invoking adapter '%s' to handle request",
+            name,
+            extra={
+                LogField.EVENT_NAME.value: "adapter_engine.adapter.invoked",
+                LogField.SOURCE_ID.value: source_id,
+            },
+        )
         try:
             income = _verify_with_policies(name, initialized_adapter, request)
         except IncomeSourceError as error:
             # No data is an ordinary answer; every other status is a failure worth attention.
-            # TODO: use static string with structured keys for dynamic context
             logger.log(
                 logging.INFO if error.status is SourceStatus.NO_DATA else logging.WARNING,
                 "income source adapter %r returned no income data: %s: %s",

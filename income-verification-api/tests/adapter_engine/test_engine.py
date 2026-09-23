@@ -25,6 +25,7 @@ from adapter_engine.policies import (
     RetryPolicy,
 )
 from adapter_engine.registry import INCOME_SOURCE_ADAPTERS, AdapterRegistry, registry
+from income_verification.request_context import LogField
 from income_verification.schemas import SourceResult
 
 
@@ -79,13 +80,23 @@ def _only_status(adapter_engine: AdapterEngine, request: VerificationRequest) ->
 
 
 def test_without_policies_calls_adapter_once(
-    verification_request: VerificationRequest,
+    verification_request: VerificationRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    mock_logger = MagicMock()
+    monkeypatch.setattr("adapter_engine.engine.logger", mock_logger)
     expected = _source_income()
     adapter_engine, adapter, _initialized_adapter = _engine([expected])
 
     assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 1
+    mock_logger.info.assert_called_once_with(
+        "invoking adapter '%s' to handle request",
+        "stub",
+        extra={
+            LogField.EVENT_NAME.value: "adapter_engine.adapter.invoked",
+            LogField.SOURCE_ID.value: ScriptedAdapter.source_id,
+        },
+    )
 
 
 @pytest.mark.parametrize(

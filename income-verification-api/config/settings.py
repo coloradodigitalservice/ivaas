@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import environ
 
@@ -104,7 +105,7 @@ USE_TZ = True
 
 # Logging
 
-LOGGING = {
+LOGGING: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
@@ -170,3 +171,10 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
         },
     },
 }
+
+# Each adapter logs under its own top-level package. Route every declared adapter's package
+# through the application's handler, so adapter logs are structured and carry the request
+# context. Other libraries keep Python's defaults and never get a DEBUG-level handler.
+for _declaration in INCOME_SOURCE_ADAPTERS.values():
+    _adapter_package = str(_declaration["class"]).partition(".")[0]
+    LOGGING["loggers"][_adapter_package] = LOGGING["loggers"]["adapter_engine"]

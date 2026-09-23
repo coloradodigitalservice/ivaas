@@ -116,6 +116,8 @@ IVaaS validates every entry at startup and refuses to start on a missing key or 
 
 The import path of the adapter class. The class must implement `IncomeSourceAdapter` from ivaas-core and must be importable from an installed wheel.
 
+IVaaS routes the adapter's top-level package logger (the first segment of this path) through its own structured log handler at `DJANGO_LOG_LEVEL`, so an adapter that logs with `logging.getLogger(__name__)` gets JSON output with the request context.
+
 #### `enabled`
 
 Whether IVaaS registers the adapter at startup. Disabled adapters are skipped but still validated.
