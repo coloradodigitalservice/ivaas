@@ -21,6 +21,7 @@ from ivaas_core.exceptions import (
 from ivaas_core.models import (
     LookbackPeriod,
     SourceIncome,
+    SourceStatus,
     VerificationRequest,
 )
 
@@ -35,6 +36,7 @@ __all__ = [
     "LookbackPeriod",
     "SourceIncome",
     "SourceResponseInvalid",
+    "SourceStatus",
     "SourceTimeout",
     "SourceUnavailable",
     "SubjectNotFound",

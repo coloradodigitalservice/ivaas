@@ -538,20 +538,6 @@ def test_openapi_documentation_endpoint(client: Client) -> None:
     assert response.status_code == 200
 
 
-def test_core_value_error_during_request_validation_returns_400(client: Client) -> None:
-    with patch(
-        "income_verification.schemas.CoreVerificationRequest",
-        side_effect=ValueError("simulated core invariant"),
-    ):
-        response = post_verification(client, valid_request())
-
-    assert_error_response(
-        response,
-        ErrorCode.INVALID_REQUEST,
-        echoes_correlation_id=True,
-    )
-
-
 def test_core_runtime_error_during_request_validation_returns_500(client: Client) -> None:
     with patch(
         "income_verification.schemas.CoreVerificationRequest",

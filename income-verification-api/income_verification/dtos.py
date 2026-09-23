@@ -1,7 +1,7 @@
 """Application-layer data transfer objects."""
 
-from dataclasses import dataclass, field
-from uuid import UUID, uuid4
+from dataclasses import dataclass
+from uuid import UUID
 
 from ivaas_core import VerificationRequest as CoreVerificationRequest
 
@@ -12,5 +12,5 @@ class VerificationRequestEnvelope:
 
     application_id: str
     correlation_id: str
+    verification_id: UUID
     core_request: CoreVerificationRequest
-    verification_id: UUID = field(default_factory=uuid4)
