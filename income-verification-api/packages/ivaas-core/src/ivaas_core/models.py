@@ -88,6 +88,8 @@ class VerificationRequest:
     request objects can be logged safely.
     """
 
+    # TODO: Split out into VerificationRequest that takes only the lookup parameters, and a "context" for additional
+    #       fields like verification_id, agency_id, application_id
     verification_id: UUID
     agency_id: str
     application_id: str
