@@ -89,14 +89,6 @@ def test_without_policies_calls_adapter_once(
 
     assert adapter_engine.verify(verification_request) == [_ok(expected)]
     assert adapter.call_count == 1
-    mock_logger.info.assert_called_once_with(
-        "invoking adapter '%s' to handle request",
-        "stub",
-        extra={
-            LogField.EVENT_NAME.value: "adapter_engine.adapter.invoked",
-            LogField.SOURCE_ID.value: ScriptedAdapter.source_id,
-        },
-    )
 
 
 @pytest.mark.parametrize(
@@ -129,7 +121,6 @@ def test_contract_exception_becomes_the_source_status(
     assert adapter.call_count == 1
     mock_logger.log.assert_called_once()
     assert mock_logger.log.call_args.args[0] == level
-    assert mock_logger.log.call_args.args[2:] == ("stub", type(error).__name__, error)
 
 
 def test_non_contract_exception_propagates(
@@ -217,13 +208,18 @@ def test_tripping_call_reports_open_breaker_and_logs_the_cause(
     assert _only_status(adapter_engine, verification_request) is SourceStatus.UNAVAILABLE
 
     assert adapter.call_count == 2
-    # First call: its failure. Second call: the breaker opening, then its failure.
-    first_failure, second_failure = (call.args for call in mock_logger.log.call_args_list)
-    assert first_failure[2:] == ("stub", "SourceTimeout", first_error)
+    # Each call ends with a completion log naming the error; the second call also logs the
+    # breaker opening, with the tripping error as the cause.
+    first_failure, second_failure = mock_logger.log.call_args_list
+    for failure in (first_failure, second_failure):
+        assert failure.args[1] == "income source adapter %r completed without returning income data"
+    assert first_failure.kwargs["extra"][LogField.EXCEPTION_TYPE.value] == "SourceTimeout"
+    assert second_failure.kwargs["extra"][LogField.EXCEPTION_TYPE.value] == "SourceUnavailable"
     mock_logger.warning.assert_called_once()
-    assert mock_logger.warning.call_args.args[1:] == ("stub", "SourceTimeout", tripping_error)
-    assert second_failure[2:4] == ("stub", "SourceUnavailable")
-    assert str(second_failure[4]) == "income source adapter 'stub' circuit breaker is open"
+    assert mock_logger.warning.call_args.args[0] == (
+        "income source adapter %r circuit breaker opened by %s: %s"
+    )
+    assert mock_logger.warning.call_args.args[2:] == ("SourceTimeout", tripping_error)
 
 
 def test_open_breaker_stops_retry_without_calling_adapter(

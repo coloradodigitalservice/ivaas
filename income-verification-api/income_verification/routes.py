@@ -150,6 +150,8 @@ def income_verification(
         },
     )
 
+    # TODO: derive the HTTP status from the overall adapter results (every source failed is an
+    #       error; a fallback source succeeding after failures is a success). Always 200 for now.
     return VerificationResponse.model_validate(
         {
             "verificationId": envelope.verification_id,

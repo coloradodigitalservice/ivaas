@@ -33,7 +33,7 @@ class AdapterEngine:
         name, initialized_adapter = next(iter(self._registry.adapters.items()))
         source_id = initialized_adapter.adapter.source_id
         logger.info(
-            "invoking adapter '%s' to handle request",
+            "Adapter '%s' invoked to handle request",
             name,
             extra={
                 LogField.EVENT_NAME.value: "adapter_engine.adapter.invoked",
@@ -46,12 +46,23 @@ class AdapterEngine:
             # No data is an ordinary answer; every other status is a failure worth attention.
             logger.log(
                 logging.INFO if error.status is SourceStatus.NO_DATA else logging.WARNING,
-                "income source adapter %r returned no income data: %s: %s",
+                "income source adapter %r completed without returning income data",
                 name,
-                type(error).__name__,
-                error,
+                extra={
+                    LogField.EVENT_NAME.value: "adapter_engine.adapter.completed",
+                    LogField.EXCEPTION_TYPE.value: type(error).__name__,
+                    LogField.SOURCE_ID.value: source_id,
+                },
             )
             return [SourceResult(source_id=source_id, status=error.status)]
+        logger.info(
+            "adapter '%s' invocation completed successfully",
+            name,
+            extra={
+                LogField.EVENT_NAME.value: "adapter_engine.adapter.completed",
+                LogField.SOURCE_ID.value: source_id,
+            },
+        )
         return [
             SourceResult(
                 source_id=source_id,
