@@ -370,24 +370,30 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
     handler.setFormatter(JsonLogFormatter())
-    adapter_logger = logging.getLogger("adapter_engine")
-    original_handlers = adapter_logger.handlers
-    adapter_logger.handlers = [handler]
+    downstream_loggers = [logging.getLogger("adapter_engine"), logging.getLogger("example_adapter")]
+    original_state = [(logger.handlers, logger.level) for logger in downstream_loggers]
+    for logger in downstream_loggers:
+        logger.handlers = [handler]
+        # The example adapter's logger is unconfigured in tests, so it inherits WARNING.
+        logger.setLevel(logging.INFO)
 
     try:
         response = post_verification(client, valid_request())
     finally:
-        adapter_logger.handlers = original_handlers
+        for logger, (handlers, level) in zip(downstream_loggers, original_state, strict=True):
+            logger.handlers = handlers
+            logger.setLevel(level)
 
     assert response.status_code == 200
-    # Any downstream record will do; the first is enough to prove the context is inherited.
-    record = json.loads(stream.getvalue().splitlines()[0])
-    assert record["logger"].startswith("adapter_engine")
-    assert record["ivaas.correlation.id"] == CORRELATION_ID
-    assert record["auth.client.id"] == TEST_CLIENT_ID
-    assert record["ivaas.agency.id"] == TEST_AGENCY_ID
-    assert record["ivaas.application.id"] == "APP-2026-004471"
-    assert record["ivaas.verification.id"] == response.json()["verificationId"]
+    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    for logger in downstream_loggers:
+        # Any record from the logger will do; one is enough to prove the context is inherited.
+        record = next(r for r in records if r["logger"].startswith(logger.name))
+        assert record["ivaas.correlation.id"] == CORRELATION_ID
+        assert record["auth.client.id"] == TEST_CLIENT_ID
+        assert record["ivaas.agency.id"] == TEST_AGENCY_ID
+        assert record["ivaas.application.id"] == "APP-2026-004471"
+        assert record["ivaas.verification.id"] == response.json()["verificationId"]
 
 
 def test_async_request_context_is_isolated_between_concurrent_requests() -> None:
