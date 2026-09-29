@@ -4,6 +4,11 @@ on:
   pull_request:
     branches:
       - main
+    types:
+      - opened # default
+      - synchronize # default
+      - reopened # default
+      - ready_for_review # run skipped jobs when marking PR ready for review
   push:
     branches:
       - main

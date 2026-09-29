@@ -1,0 +1,10 @@
+[project]
+name = "example-adapter"
+version = "0.1.0"
+description = "Reference implementation of the ivaas-core adapter contract. Does nothing; never register it outside tests."
+requires-python = ">=3.14"
+dependencies = ["ivaas-core"]
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"

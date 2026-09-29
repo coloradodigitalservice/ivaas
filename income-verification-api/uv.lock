@@ -8,6 +8,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "example-adapter",
     "income-verification-api",
     "ivaas-core",
 ]
@@ -336,6 +337,17 @@ wheels = [
 ]
 
 [[package]]
+name = "example-adapter"
+version = "0.1.0"
+source = { editable = "packages/adapters/example" }
+dependencies = [
+    { name = "ivaas-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ivaas-core", editable = "packages/ivaas-core" }]
+
+[[package]]
 name = "filelock"
 version = "3.32.2"
 source = { registry = "https://pypi.org/simple" }
@@ -412,6 +424,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "django-stubs" },
+    { name = "example-adapter" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -446,6 +459,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "django-stubs", specifier = ">=6.0.7" },
+    { name = "example-adapter", editable = "packages/adapters/example" },
     { name = "mypy", specifier = ">=2.1.0" },
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "pytest", specifier = ">=9.1.1" },
@@ -658,7 +672,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c4/b1/f6670f00fa7ea601584623f6c11602ab92117d83eaff885e0210f6de7418/psycopg_binary-3.3.4-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:47c656a8a7ba6eb0cff1801a4caaa9c8bdc12d03080e273aff1c8ac39971a77e", size = 4255811, upload-time = "2026-05-01T23:31:44.986Z" },
     { url = "https://files.pythonhosted.org/packages/eb/e6/5fff07a70d1f945ed90ae131c3bd76cab32beff7c58c6db15ad5820b6d1f/psycopg_binary-3.3.4-cp314-cp314-win_amd64.whl", hash = "sha256:c37e024c07308cd06cf3ec51bfd0e7f6157585a4d84d1bce4a7f5f7913719bf8", size = 3666849, upload-time = "2026-05-01T23:31:51.165Z" },
 ]
-
 
 [[package]]
 name = "pybreaker"

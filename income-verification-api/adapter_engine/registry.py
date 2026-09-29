@@ -61,7 +61,7 @@ class AdapterRegistry:
             retry_policy = parse_retry_policy(name, declaration["retry_policy"])
             circuit_breaker = parse_circuit_breaker_policy(name, declaration["circuit_breaker"])
             if not enabled:
-                logger.debug("income source adapter %r is disabled; skipping", name)
+                logger.info("income source adapter %r is disabled; skipping", name)
                 continue
 
             dotted_path = declaration.get("class")
