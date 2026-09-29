@@ -62,7 +62,7 @@ make migrate
 
 Secrets and local overrides go in a .gitignored `income-verification-api/.envs/.local/.secrets`.
 Never commit the file.
-Each adapter is responsible for documenting the settings it needs, and how to generate them, if necessary. 
+Each adapter is responsible for documenting the settings it needs, and how to generate them, if necessary.
 
 > [!TIP]
 > Validate Compose settings with `docker compose config -q`, because plain
