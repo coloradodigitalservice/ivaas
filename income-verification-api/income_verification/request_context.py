@@ -16,6 +16,7 @@ from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     validated_correlation_id,
 )
+from income_verification.log_redaction import redacted_message
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,7 +120,7 @@ class RequestContextFilter(logging.Filter):
 
 
 class JsonLogFormatter(logging.Formatter):
-    """Serialize allowlisted fields; application messages must already be PII-safe."""
+    """Serialize allowlisted fields with backup redaction for application messages."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
@@ -128,7 +129,7 @@ class JsonLogFormatter(logging.Formatter):
             .replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": redacted_message(record),
         }
         for field in LogField:
             if hasattr(record, field.value):
