@@ -81,7 +81,9 @@ class SourceStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class VerificationContext:
-    """Additional context about a request that adapters may use for verification, logging, metrics, etc"""
+    """
+    Additional context about a request that adapters may use for verification, logging, metrics, etc
+    """
 
     verification_id: UUID
     correlation_id: str
