@@ -1,6 +1,5 @@
 import json
 from datetime import UTC, datetime, timedelta
-from io import StringIO
 from unittest.mock import patch
 
 import jwt
@@ -72,14 +71,17 @@ def test_cognito_jwks_provider_reuses_cached_jwks_document(
     private_key, _ = rsa_keys
     provider = CognitoJwksKeyProvider(JWKS_URL, cache_seconds=600, timeout_seconds=5)
     encoded_token = access_token(private_key)
-    jwks_response = StringIO(json.dumps({"keys": [public_jwk(private_key)]}))
-    with patch("urllib.request.urlopen", return_value=jwks_response) as network_call:
+    with patch.object(
+        provider._client,
+        "fetch_data",
+        return_value={"keys": [public_jwk(private_key)]},
+    ) as fetch_data:
         first_key = provider.get_signing_key(encoded_token)
         second_key = provider.get_signing_key(encoded_token)
 
     assert first_key.key_id == "test-key"
     assert second_key.key_id == "test-key"
-    network_call.assert_called_once()
+    fetch_data.assert_called_once()
 
 
 def test_unknown_kid_refreshes_jwks_then_is_unauthorized(
