@@ -5,7 +5,12 @@ import pybreaker
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
-from ivaas_core import IncomeSourceAdapter, SubjectNotFound, VerificationRequest
+from ivaas_core import (
+    IncomeSourceAdapter,
+    SubjectNotFound,
+    VerificationContext,
+    VerificationRequest,
+)
 from tenacity import Retrying
 
 from adapter_engine.policies import InitializedAdapter
@@ -171,7 +176,7 @@ class TestProcessRegistry:
             registry.get_adapter("nope")
 
     def test_runtime_smoke_settings_to_contract_exception(
-        self, verification_request: VerificationRequest
+        self, verification_request: VerificationRequest, verification_context: VerificationContext
     ) -> None:
         """The WP3 gate: load via settings, call it, catch the contract type."""
         with override_settings(**{INCOME_SOURCE_ADAPTERS: adapter_settings_entry()}):
@@ -180,7 +185,7 @@ class TestProcessRegistry:
 
             assert isinstance(initialized_adapter.adapter, IncomeSourceAdapter)
             with pytest.raises(SubjectNotFound):
-                initialized_adapter.adapter.verify(verification_request)
+                initialized_adapter.adapter.verify(verification_request, verification_context)
 
     def test_empty_declarations_enable_nothing(self) -> None:
         with override_settings(**{INCOME_SOURCE_ADAPTERS: {}}):
