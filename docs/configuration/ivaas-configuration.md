@@ -48,11 +48,11 @@ Adapters encapsulate logic and implementation details relating to the data sourc
 
 Adapter development can take place wherever source-code constraints allow.
 
-Adapters that may be beneficial to other IVaaS installations should be published publicly. [TODO: Exact details of where/how pending Equifax adapter as an example]
+If an adapters can be used by multiple jurisdictions (i.e. commercial or federal data sources), it can be housed in this repository or in a separate public repository. [TODO: Exact details of standards & processes pending Equifax adapter as an example]
 
-The source code for adapters where state-specific datasource implementation details are sensitive can be hosted privately.
-Privately hosted adapter code _will_ complicate build pipelines and development processes due to the inherent access restrictions.
-This approach is suitable for adapters with private source code, even if an IVaaS installation/implementation is public, since the adapter wheels are .gitignored.
+The source code for jurisdiction-specific adapters (e.g. a state unemployment insurance database) can be hosted publicly or privately.
+
+Privately hosted adapter code _will_ complicate build pipelines and development processes due to the inherent access restrictions. This approach is suitable for adapters with private source code, even if an IVaaS installation/implementation is public, since the adapter wheels are .gitignored.
 
 #### Best practices
 
