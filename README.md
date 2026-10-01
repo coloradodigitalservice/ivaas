@@ -1,5 +1,8 @@
 # Income Verification as a Service (IVaaS) Application
 
+[![tests](https://github.com/coloradodigitalservice/ivaas/actions/workflows/qa-main.yaml/badge.svg)](https://github.com/coloradodigitalservice/ivaas/actions/workflows/qa-main.yaml) | [![dependencies](https://github.com/coloradodigitalservice/ivaas/actions/workflows/dependabot/update-graph/badge.svg)](https://github.com/coloradodigitalservice/ivaas/actions/workflows/dependabot/update-graph) | ![license](https://img.shields.io/github/license/coloradodigitalservice/ivaas)
+
+
 This is IVaaS, a customizable platform for income verification. It is designed for direct use by government entities, with no need to fork. By combining this codebase with a your own configuration files, the application can run on your preferred infrastructure.
 
 Income data sources are selected via configuration, allowing you to connect to the specific set of sources used by your jurisdiction. Data source adapters with multi-state reusability are distributed along with the codebase, and custom adapters for local sources can be loaded during deployment.
