@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from ivaas_core.models import SourceIncome, VerificationRequest
+from ivaas_core.models import SourceIncome, VerificationContext, VerificationRequest
 
 
 class IncomeSourceAdapter(ABC):
@@ -14,7 +14,7 @@ class IncomeSourceAdapter(ABC):
     """Provenance identifier for this source."""
 
     @abstractmethod
-    def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest, context: VerificationContext) -> SourceIncome:
         """Perform income verification routine, based on the requested parameters.
 
         Should raise only contract exception types (``ivaas_core.exceptions``);

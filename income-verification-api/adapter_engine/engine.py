@@ -8,6 +8,7 @@ from ivaas_core import (
     SourceIncome,
     SourceStatus,
     SourceUnavailable,
+    VerificationContext,
     VerificationRequest,
 )
 
@@ -25,7 +26,9 @@ class AdapterEngine:
     def __init__(self, registry: AdapterRegistry) -> None:
         self._registry = registry
 
-    def verify(self, request: VerificationRequest) -> list[SourceResult]:
+    def verify(
+        self, request: VerificationRequest, context: VerificationContext
+    ) -> list[SourceResult]:
         """Verify income through adapters, retrying as configured."""
         # TODO: Call adapters via clientId configuration. For now, get the first configured adapter.
         if not self._registry.adapters:
@@ -41,7 +44,7 @@ class AdapterEngine:
             },
         )
         try:
-            income = _verify_with_policies(name, initialized_adapter, request)
+            income = _verify_with_policies(name, initialized_adapter, request, context)
         except IncomeSourceError as error:
             # No data is an ordinary answer; every other status is a failure worth attention.
             logger.log(
@@ -74,15 +77,18 @@ class AdapterEngine:
 
 
 def _verify_with_policies(
-    name: str, initialized_adapter: InitializedAdapter, request: VerificationRequest
+    name: str,
+    initialized_adapter: InitializedAdapter,
+    request: VerificationRequest,
+    context: VerificationContext,
 ) -> SourceIncome:
     """Call the adapter, retrying as configured; an open circuit breaker is SourceUnavailable."""
     try:
         if initialized_adapter.retrying is not None:
             return initialized_adapter.retrying(
-                _attempt_verification_request, initialized_adapter, request
+                _attempt_verification_request, initialized_adapter, request, context
             )
-        return _attempt_verification_request(initialized_adapter, request)
+        return _attempt_verification_request(initialized_adapter, request, context)
     except pybreaker.CircuitBreakerError as error:
         # On the call that trips the breaker, pybreaker raises its own error with the
         # adapter's exception as __context__; a call rejected while already open has none.
@@ -101,14 +107,18 @@ def _verify_with_policies(
 
 
 def _attempt_verification_request(
-    initialized_adapter: InitializedAdapter, request: VerificationRequest
+    initialized_adapter: InitializedAdapter,
+    request: VerificationRequest,
+    context: VerificationContext,
 ) -> SourceIncome:
     """Make one call via the adapter, through its circuit breaker as configured."""
     if initialized_adapter.circuit_breaker is not None:
         # PyBreaker holds a lock for the whole call, so one call per breaker at a time.
         # Revisit if calling view becomes async.
-        return initialized_adapter.circuit_breaker.call(initialized_adapter.adapter.verify, request)
-    return initialized_adapter.adapter.verify(request)
+        return initialized_adapter.circuit_breaker.call(
+            initialized_adapter.adapter.verify, request, context
+        )
+    return initialized_adapter.adapter.verify(request, context)
 
 
 engine = AdapterEngine(registry)

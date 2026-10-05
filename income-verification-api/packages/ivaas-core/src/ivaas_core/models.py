@@ -80,6 +80,29 @@ class SourceStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class VerificationContext:
+    """
+    Additional context about a request that adapters may use for verification, logging, metrics, etc
+    """
+
+    verification_id: UUID
+    correlation_id: str
+    agency_id: str
+    application_id: str
+
+    def __post_init__(self) -> None:
+        if not self.correlation_id:
+            raise ValueError("correlation_id must not be empty")
+        if not self.agency_id:
+            raise ValueError("agency_id must not be empty")
+        if not self.application_id:
+            # TODO: It is not clear at the time of writing whether this identifier will be something
+            #       every program can make available.
+            #       As a result, this could be made optional or removed entirely.
+            raise ValueError("application_id must not be empty")
+
+
+@dataclass(frozen=True, slots=True)
 class VerificationRequest:
     """What an income datasource needs to look up a subject.
 
@@ -88,11 +111,6 @@ class VerificationRequest:
     request objects can be logged safely.
     """
 
-    # TODO: Split out into VerificationRequest that takes only the lookup parameters,
-    #  and a "context" for additional fields like verification_id, agency_id, application_id
-    verification_id: UUID
-    agency_id: str
-    application_id: str
     first_name: str
     last_name: str
     lookback_period: LookbackPeriod
@@ -100,13 +118,6 @@ class VerificationRequest:
     last4_ssn: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
-        if not self.agency_id:
-            raise ValueError("agency_id must not be empty")
-        if not self.application_id:
-            # TODO: It is not clear at the time of writing whether this identifier will be something
-            #       every program can make available.
-            #       As a result, this could be made optional or removed entirely.
-            raise ValueError("application_id must not be empty")
         _validate_name(self.first_name, "first_name")
         _validate_name(self.last_name, "last_name")
         _validate_ssn_fields(self.ssn, self.last4_ssn)
