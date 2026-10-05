@@ -5,7 +5,8 @@ ADAPTERS_ENV ?= .envs/.local/.adapters# CI overrides this with .envs/.ci/.adapte
 ENV := \
 	--env-file .envs/.local/.django \
 	--env-file .envs/.local/.postgres \
-	--env-file $(ADAPTERS_ENV)
+	--env-file $(ADAPTERS_ENV) \
+	$(if $(wildcard $(API_DIR)/.envs/.local/.secrets),--env-file .envs/.local/.secrets)
 
 COMPOSE := docker compose
 UV := cd $(API_DIR) && uv

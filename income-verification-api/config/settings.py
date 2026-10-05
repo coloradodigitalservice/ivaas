@@ -150,6 +150,9 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
         "enabled": env.bool("CDLE_ADAPTER_ENABLED", default=False),
         "config": {
             "account_url": env("CDLE_ACCOUNT_URL", default=None),
+            "account_identifier": env("CDLE_ACCOUNT_IDENTIFIER", default=None),
+            "user": env("CDLE_USER", default=None),
+            "private_key": env("CDLE_PRIVATE_KEY", default=None),
             "environment": env("CDLE_ENVIRONMENT", default=None),
             "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=5),
         },
