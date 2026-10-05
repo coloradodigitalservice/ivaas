@@ -203,13 +203,12 @@ For a backward-compatible Adapter Contract change, IVaaS may release the new `iv
 
 For a breaking Adapter Contract change:
 
-1. Identify affected public and private adapters.
-2. Update public adapters as part of the IVaaS change.
-3. Update and release compatible versions of affected private adapters.
-4. Test the resulting IVaaS and adapter combinations.
-5. Deploy only combinations verified to be compatible.
+1. Document the contract change and its compatibility requirements for private adapter maintainers.
+2. Update and test affected public adapters as part of the IVaaS release.
+3. Before upgrading a deployment, update and release any affected private adapters and test the resulting IVaaS and adapter combination.
+4. Deploy only combinations verified to be compatible.
 
-Public adapters can migrate atomically with the IVaaS release because they are maintained in the same repository. Private adapters may require coordination across independently released artifacts.
+Public adapters migrate with the IVaaS release because they are maintained in the same repository. The IVaaS release can be published before private adapters are updated. Each deployer is responsible for identifying affected private adapters and verifying them before upgrading.
 
 If IVaaS and required private adapters cannot be upgraded together, either:
 
@@ -236,15 +235,15 @@ Changes such as source authentication, endpoints, query structure, or field mapp
 If the source change cannot be contained:
 
 - If satisfying the source requires changing `ivaas-core`, follow the **Adapter Contract Changes** process.
-- If `rawIncome` must change incompatibly, identify affected programs and provide a compatibility or migration path.
-- If the IVaaS-owned Consumer API must change incompatibly, introduce a new Consumer API URL version.
+- If a breaking change to `rawIncome` is unavoidable, identify affected programs and provide a compatibility or migration path.
+- If the IVaaS-owned Consumer API requires a breaking change, introduce a new Consumer API URL version.
 
 For a consumer-visible source change, determine:
 
-1. Which programs depend on the affected source data.
+1. Which programs are known to depend on the affected source data; if field-level use is unknown, treat all consumers of that source as potentially affected.
 2. Whether the adapter can translate the new source representation into the previous representation.
 3. Whether old and new behavior can coexist during a migration period.
-4. How affected programs will be notified.
+4. How affected or potentially affected programs will be notified by their deployer.
 5. What compatibility or migration mechanism is appropriate.
 
 Source-specific versioning may be introduced when necessary, but IVaaS does not require every source to expose or map to a versioned contract.
