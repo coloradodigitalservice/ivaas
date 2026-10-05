@@ -12,6 +12,13 @@ IVaaS manages three contracts that can evolve independently:
 2. **Adapter Contract** — the `ivaas-core` interface implemented by data source adapters.
 3. **Adapter Source Contract** — the source-specific interface between an adapter and its data source.
 
+```mermaid
+flowchart LR
+    Programs -->|Consumer API<br/>URL version| IVaaS["IVaaS application<br/>SemVer code release"]
+    IVaaS -->|Adapter Contract<br/>ivaas-core version| Adapters["Adapters<br/>Public: released with IVaaS<br/>Private: separately versioned"]
+    Adapters -->|Adapter Source Contract| Sources["Data sources"]
+```
+
 IVaaS code releases use SemVer independently of Consumer API versions. Public adapters are maintained and released with IVaaS. Deployer-specific or private adapters may be maintained and released separately, then installed into a deployment as built packages.
 
 A deployment combines an IVaaS release with the adapters required by that deployment. The IVaaS release establishes the `ivaas-core` contract available to those adapters. Public adapters are tested as part of the IVaaS release; separately released adapters must be verified against the IVaaS release with which they are deployed.
