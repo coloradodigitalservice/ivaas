@@ -9,7 +9,7 @@ AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponseBase]]
 
 
 class HealthCheckMiddleware:
-    """Answers ALB health checks before host validation"""
+    """For ALB health checks"""
 
     PATH = "/healthz"
     sync_capable = True
