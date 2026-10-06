@@ -414,6 +414,7 @@ dependencies = [
     { name = "django-environ" },
     { name = "django-ninja" },
     { name = "ivaas-core" },
+    { name = "loggingredactor" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pybreaker" },
     { name = "pyjwt", extra = ["crypto"] },
@@ -449,6 +450,7 @@ requires-dist = [
     { name = "django-environ", specifier = ">=0.14.0" },
     { name = "django-ninja", specifier = ">=1.6.2" },
     { name = "ivaas-core", editable = "packages/ivaas-core" },
+    { name = "loggingredactor", specifier = "==0.0.7" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.4" },
     { name = "pybreaker", specifier = ">=1.4.1" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.13.0" },
@@ -535,6 +537,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/99/6203ce619dee940d6bfbe099ec3fe4be00a68e9d60f70abf906cf124fe66/librt-0.13.0-cp314-cp314t-win32.whl", hash = "sha256:5fdcf34f86de8fb66d7dc7589f96ba91c4aa46671200d400e6fd6f109a483f18", size = 104357, upload-time = "2026-07-08T12:26:09.828Z" },
     { url = "https://files.pythonhosted.org/packages/52/dd/843b6314087c41657c7036d7914d8f294bdf9b580aa8513ea0588c8e9a3d/librt-0.13.0-cp314-cp314t-win_amd64.whl", hash = "sha256:260c33e92263fa629b4f6d3c51967a1c2158fe6c33237aaa3ebeac586b085259", size = 126998, upload-time = "2026-07-08T12:26:10.975Z" },
     { url = "https://files.pythonhosted.org/packages/5f/5d/3dcec2884ba1b0806d1408612555c38dd5d68e90156b59f75f6e36435c3a/librt-0.13.0-cp314-cp314t-win_arm64.whl", hash = "sha256:2f281549a4c52ac7bb97997f14353f8bd0e53a34ca0dad1c905cfd0b4a58ae99", size = 110771, upload-time = "2026-07-08T12:26:12.303Z" },
+]
+
+[[package]]
+name = "loggingredactor"
+version = "0.0.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/4c/66ee5500c7ec1258f46f2138d64d330690b048e4e2f824d18954a26d02e3/loggingredactor-0.0.7.tar.gz", hash = "sha256:87452a311616873a2d73c0c764cdd36a1945a04dd14db9523fea1d703b8377ea", size = 20735, upload-time = "2026-06-30T21:55:15.492Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/bf/4c6bc1943a9947f297d18d221f24f1bb3b1da6dd5705c6f9ddae4392df58/loggingredactor-0.0.7-py3-none-any.whl", hash = "sha256:21f43097661fd6fb9f518f163447338334bb49987748b9ae7c58cd6f11f17bdd", size = 11036, upload-time = "2026-06-30T21:55:14.625Z" },
 ]
 
 [[package]]
