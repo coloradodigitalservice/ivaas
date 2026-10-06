@@ -64,7 +64,7 @@ select = [
     # Extended rules
     "PT",   # Pytest conventions
     "LOG",  # Logging
-    "G001", "G002", "G003", "G004", # Keep values available to logging redaction
+    "G",    # Logging format and usage
     "C4",   # Comprehensions
     "S",    # Bandit-derived security checks
     "A",    # Prevent shadowing Python builtins

@@ -4,7 +4,7 @@ import logging
 import re
 from collections.abc import Mapping
 from copy import copy
-from dataclasses import asdict, fields, is_dataclass
+from dataclasses import fields, is_dataclass
 from functools import cache
 from typing import cast
 
@@ -57,6 +57,19 @@ _SENSITIVE_LOG_KEYS = frozenset(
     )
 )
 
+_TEXT_REDACTOR = RedactingFilter(
+    mask=_REDACTION_MASK,
+    mask_patterns=(
+        _SSN_PATTERN,
+        _BEARER_TOKEN_PATTERN,
+        _JWT_PATTERN,
+        _SECRET_ASSIGNMENT_PATTERN,
+        EMAIL,
+        PHONE.US,
+        PHONE.INTERNATIONAL,
+    ),
+)
+
 
 def _sensitive_model_keys(model: type) -> frozenset[str]:
     """Return the model keys that are considered sensitive, and therefore should not be logged."""
@@ -89,25 +102,12 @@ def _sensitive_message_keys() -> frozenset[str]:
     )
 
 
-_TEXT_REDACTOR = RedactingFilter(
-    mask=_REDACTION_MASK,
-    mask_patterns=(
-        _SSN_PATTERN,
-        _BEARER_TOKEN_PATTERN,
-        _JWT_PATTERN,
-        _SECRET_ASSIGNMENT_PATTERN,
-        EMAIL,
-        PHONE.US,
-        PHONE.INTERNATIONAL,
-    ),
-)
-
-
-def _redact_log_value(value: object, sensitive_keys: frozenset[str]) -> object:
+def _redact_log_value(value: object) -> object:
     """Mask schema-derived keys and default model fields to sensitive."""
+    sensitive_keys = _sensitive_message_keys()
     if is_dataclass(value) and not isinstance(value, type):
         sensitive_keys |= _sensitive_model_keys(type(value))
-        value = asdict(value)
+        value = {field.name: getattr(value, field.name) for field in fields(value)}
     elif isinstance(value, BaseModel):
         sensitive_keys |= _sensitive_model_keys(type(value))
         value = value.model_dump()
@@ -115,22 +115,21 @@ def _redact_log_value(value: object, sensitive_keys: frozenset[str]) -> object:
         return {
             key: _REDACTION_MASK
             if _normalized_log_key(key) in sensitive_keys
-            else _redact_log_value(nested, sensitive_keys)
+            else _redact_log_value(nested)
             for key, nested in value.items()
         }
     if isinstance(value, list | tuple | set | frozenset):
-        return type(value)(_redact_log_value(item, sensitive_keys) for item in value)
+        return type(value)(_redact_log_value(item) for item in value)
     return value
 
 
 def redacted_message(record: logging.LogRecord) -> str:
-"""Return a copy of a log message with all sensitive values masked"""
+    """Return a copy of a log message with all sensitive values masked"""
     try:
-        keys = _sensitive_message_keys()
         safe_record = copy(record)
-        safe_record.msg = _redact_log_value(record.msg, keys)
+        safe_record.msg = _redact_log_value(record.msg)
         safe_record.args = cast(
-            tuple[object, ...] | Mapping[str, object], _redact_log_value(record.args, keys)
+            tuple[object, ...] | Mapping[str, object], _redact_log_value(record.args)
         )
         return cast(str, _TEXT_REDACTOR.redact(safe_record.getMessage()))
     except Exception:
