@@ -115,9 +115,10 @@ def test_redacts_api_and_core_request_objects(identity_key: str, identity_value:
             "lookbackPeriod": {"startDate": "2026-01-01", "endDate": "2026-06-30"},
         }
     )
-    core_request = request.to_envelope("test-correlation", agency_id="test-agency").core_request
+    envelope = request.to_envelope("test-correlation", agency_id="test-agency")
+    core_request = envelope.request
 
-    for value in (request, core_request, {"envelope": [core_request]}):
+    for value in (request, core_request, envelope, {"envelope": [core_request]}):
         output = JsonLogFormatter().format(_record("request: %s", value))
         assert "SensitiveGivenName" not in output
         assert "SensitiveFamilyName" not in output
