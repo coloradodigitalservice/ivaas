@@ -59,7 +59,7 @@ _SENSITIVE_LOG_KEYS = frozenset(
 
 
 def _sensitive_model_keys(model: type) -> frozenset[str]:
-    """Default model fields to sensitive, including their API aliases."""
+    """Return the model keys that are considered sensitive, and therefore should not be logged."""
     if is_dataclass(model):
         names = {field.name for field in fields(model)}
     elif issubclass(model, BaseModel):
@@ -124,7 +124,7 @@ def _redact_log_value(value: object, sensitive_keys: frozenset[str]) -> object:
 
 
 def redacted_message(record: logging.LogRecord) -> str:
-    """Redact structured arguments and final text without mutating the shared record."""
+"""Return a copy of a log message with all sensitive values masked"""
     try:
         keys = _sensitive_message_keys()
         safe_record = copy(record)
