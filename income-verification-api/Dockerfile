@@ -1,5 +1,5 @@
 # python:3.14.7-slim-trixie
-ARG PYTHON_IMAGE=python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+ARG PYTHON_IMAGE=python@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
 # ghcr.io/astral-sh/uv:0.12.15
 ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:62f8c047d0a0e9ece6b53fc63df902585a67a47a7f318ddec4a37db586edc8e3
 
@@ -7,18 +7,10 @@ FROM ${PYTHON_IMAGE} AS base
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends --only-upgrade \
-        base-files=13.8+deb13u7 \
-        bash=5.2.37-2+b10 \
-        gzip=1.13-1+deb13u1 \
-        libaudit-common=1:4.0.2-2+deb13u1 \
-        libaudit1=1:4.0.2-2+deb13u1 \
-        libc-bin=2.41-12+deb13u4 \
-        libc6=2.41-12+deb13u4 \
-        libcap2=1:2.75-10+deb13u1+b3 \
-        libpcre2-8-0=10.46-1~deb13u2 \
-        libsqlite3-0=3.46.1-7+deb13u2 \
-        perl-base=5.40.1-6+deb13u1 \
-        tzdata=2026c-0+deb13u1 \
+        libpcre2-8-0=10.46-1~deb13u3 \
+        libssl3t64=3.5.7-1~deb13u3 \
+        openssl-provider-legacy=3.5.7-1~deb13u3 \
+        openssl=3.5.7-1~deb13u3 \
   && rm -rf /var/lib/apt/lists/*
 
 FROM ${UV_IMAGE} AS uv

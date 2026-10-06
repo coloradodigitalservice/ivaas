@@ -29,6 +29,7 @@ htmlcov/
 **/.envs/*
 !**/.envs/.local/
 !**/.envs/.ci/
+**/.envs/.local/.secrets
 
 ## mypy
 .mypy_cache/

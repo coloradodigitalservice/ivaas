@@ -24,6 +24,7 @@ from ivaas_core import (
     SourceTimeout,
     SourceUnavailable,
     SubjectNotFound,
+    VerificationContext,
     VerificationRequest,
 )
 
@@ -42,9 +43,6 @@ def test_portable_validation_constraints_are_public() -> None:
 def make_request(last_calendar_month: LookbackPeriod) -> MakeRequest:
     def _make_request(**overrides: object) -> VerificationRequest:
         fields: dict[str, object] = {
-            "verification_id": uuid4(),
-            "agency_id": "TEST_PROGRAM",
-            "application_id": "APP-2026-004471",
             "first_name": "John",
             "last_name": "Doe",
             "lookback_period": last_calendar_month,
@@ -63,7 +61,7 @@ class StubSource(IncomeSourceAdapter):
         self.subject_exists = subject_exists
         self.times_out = times_out
 
-    def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest, context: VerificationContext) -> SourceIncome:
         if self.times_out:
             raise SourceTimeout("stub timed out")
         if not self.subject_exists:
@@ -82,23 +80,29 @@ class TestIncomeSourceAdapterInterface:
         with pytest.raises(TypeError):
             IncomeSourceAdapter()  # type: ignore[abstract]
 
-    def test_verify_returns_source_income(self, make_request: MakeRequest) -> None:
-        result = StubSource().verify(make_request())
+    def test_verify_returns_source_income(
+        self, make_request: MakeRequest, verification_context: VerificationContext
+    ) -> None:
+        result = StubSource().verify(make_request(), verification_context)
 
         assert isinstance(result, SourceIncome)
         assert result.raw_income["entries"] == [
             {"employer_name": "Food and Stuff", "gross_wages": "1300.00"}
         ]
 
-    def test_contract_exceptions_are_caught_by_identity(self, make_request: MakeRequest) -> None:
+    def test_contract_exceptions_are_caught_by_identity(
+        self, make_request: MakeRequest, verification_context: VerificationContext
+    ) -> None:
         with pytest.raises(SubjectNotFound):
-            StubSource(subject_exists=False).verify(make_request())
+            StubSource(subject_exists=False).verify(make_request(), verification_context)
         with pytest.raises(SourceTimeout):
-            StubSource(times_out=True).verify(make_request())
+            StubSource(times_out=True).verify(make_request(), verification_context)
 
-    def test_contract_exceptions_share_a_base(self, make_request: MakeRequest) -> None:
+    def test_contract_exceptions_share_a_base(
+        self, make_request: MakeRequest, verification_context: VerificationContext
+    ) -> None:
         with pytest.raises(IncomeSourceError):
-            StubSource(times_out=True).verify(make_request())
+            StubSource(times_out=True).verify(make_request(), verification_context)
 
     @pytest.mark.parametrize(
         ("exception_type", "status"),
@@ -125,14 +129,21 @@ class TestIncomeSourceAdapterInterface:
         ]
 
 
-class TestVerificationRequest:
-    @pytest.mark.parametrize("field_name", ["agency_id", "application_id"])
-    def test_rejects_empty_audit_identifiers(
-        self, make_request: MakeRequest, field_name: str
-    ) -> None:
+class TestVerificationContext:
+    @pytest.mark.parametrize("field_name", ["correlation_id", "agency_id", "application_id"])
+    def test_rejects_empty_identifiers(self, field_name: str) -> None:
+        fields = {
+            "verification_id": uuid4(),
+            "correlation_id": "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471",
+            "agency_id": "TEST_PROGRAM",
+            "application_id": "APP-2026-004471",
+            field_name: "",
+        }
         with pytest.raises(ValueError, match=f"{field_name} must not be empty"):
-            make_request(**{field_name: ""})
+            VerificationContext(**fields)  # type: ignore[arg-type]
 
+
+class TestVerificationRequest:
     def test_accepts_last4_ssn(self, make_request: MakeRequest) -> None:
         assert make_request().last4_ssn == "1234"
 

@@ -8,7 +8,12 @@ import logging
 from datetime import UTC, datetime
 from typing import override
 
-from ivaas_core import IncomeSourceAdapter, SourceIncome, VerificationRequest
+from ivaas_core import (
+    IncomeSourceAdapter,
+    SourceIncome,
+    VerificationContext,
+    VerificationRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +33,7 @@ class ExampleAdapter(IncomeSourceAdapter):
         self.timeout_seconds = timeout_seconds
 
     @override
-    def verify(self, request: VerificationRequest) -> SourceIncome:
+    def verify(self, request: VerificationRequest, context: VerificationContext) -> SourceIncome:
         """Log the call and succeed with no income. A real adapter queries its source here."""
-        logger.info("example adapter called for verification %s", request.verification_id)
+        logger.info("example adapter called for verification %s", context.verification_id)
         return SourceIncome(retrieved_at=datetime.now(UTC), raw_income={})
