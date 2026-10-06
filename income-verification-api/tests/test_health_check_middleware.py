@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from django.http import HttpRequest, HttpResponse, HttpResponseBase
 from django.test import Client, RequestFactory
+from pytest_django.fixtures import Settings
 
 from income_verification.health_check import HealthCheckMiddleware
 
@@ -56,7 +57,7 @@ def async_middleware(async_get_response: AsyncMock) -> HealthCheckMiddleware:
 class TestHealthCheckResponse:
     def test_get_returns_200_ok(
         self, rf: RequestFactory, middleware: HealthCheckMiddleware, get_response: Mock
-    ):
+    ) -> None:
         response = call_sync(middleware, rf.get(HEALTH_PATH))
 
         assert response.status_code == 200
@@ -81,7 +82,9 @@ class TestHealthCheckResponse:
         assert response.status_code == 200
         get_response.assert_not_called()
 
-    def test_does_not_validate_host(self, rf: RequestFactory, middleware: HealthCheckMiddleware):
+    def test_does_not_validate_host(
+        self, rf: RequestFactory, middleware: HealthCheckMiddleware
+    ) -> None:
         response = call_sync(middleware, rf.get(HEALTH_PATH, HTTP_HOST=TEST_OTHER_HOST))
 
         assert response.status_code == 200
@@ -154,7 +157,7 @@ class TestAsyncMode:
 
 
 @pytest.fixture
-def production_like(settings):
+def production_like(settings: Settings) -> Settings:
     settings.DEBUG = False
     settings.ALLOWED_HOSTS = [TEST_ALLOWED_HOST]
     return settings
@@ -162,7 +165,7 @@ def production_like(settings):
 
 @pytest.mark.usefixtures("production_like")
 class TestFullStack:
-    def test_middleware_is_first(self, settings) -> None:
+    def test_middleware_is_first(self, settings: Settings) -> None:
         assert settings.MIDDLEWARE[0] == MIDDLEWARE_PATH
 
     def test_middleware_other_host_succeeds(self) -> None:

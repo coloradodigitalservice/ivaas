@@ -1,5 +1,6 @@
 from collections.abc import Awaitable, Callable
 from inspect import iscoroutinefunction, markcoroutinefunction
+from typing import cast
 
 from django.http import HttpRequest, HttpResponse, HttpResponseBase
 
@@ -35,10 +36,10 @@ class HealthCheckMiddleware:
         if self._is_health_check(request):
             return self._health_response()
 
-        return self.get_response(request)
+        return cast(SyncGetResponse, self.get_response)(request)
 
     async def _async_call(self, request: HttpRequest) -> HttpResponseBase:
         if self._is_health_check(request):
             return self._health_response()
 
-        return await self.get_response(request)
+        return await cast(AsyncGetResponse, self.get_response)(request)
