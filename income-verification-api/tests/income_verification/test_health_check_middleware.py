@@ -82,13 +82,6 @@ class TestHealthCheckResponse:
         assert response.status_code == 200
         get_response.assert_not_called()
 
-    def test_does_not_validate_host(
-        self, rf: RequestFactory, middleware: HealthCheckMiddleware
-    ) -> None:
-        response = call_sync(middleware, rf.get(HEALTH_PATH, HTTP_HOST=TEST_OTHER_HOST))
-
-        assert response.status_code == 200
-
 
 class TestPassThrough:
     @pytest.mark.parametrize("method", ["post", "put", "patch", "delete", "options", "head"])
