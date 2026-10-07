@@ -1,15 +1,26 @@
+"""Answer load balancer health checks before Django request validation."""
+
 from collections.abc import Awaitable, Callable
 from inspect import iscoroutinefunction, markcoroutinefunction
 from typing import cast
 
 from django.http import HttpRequest, HttpResponse, HttpResponseBase
+from django.utils.cache import add_never_cache_headers
 
 SyncGetResponse = Callable[[HttpRequest], HttpResponseBase]
 AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponseBase]]
 
 
 class HealthCheckMiddleware:
-    """For ALB health checks"""
+    """
+    Answers GET /healthz
+
+    Application Load Balancers send the target's IP address as the Host header.
+    which ALLOWED_HOSTS rejects if it has not been configured to include
+    the IP address. Using this middleware in the first position (or prior to
+    middleware that checks the Host header) ensures that it responds before
+    subsequent validation may occur.
+    """
 
     PATH = "/healthz"
     sync_capable = True
@@ -26,7 +37,7 @@ class HealthCheckMiddleware:
 
     def _health_response(self) -> HttpResponse:
         response = HttpResponse("ok", content_type="text/plain")
-        response["Cache-Control"] = "max-age=0, no-cache, no-store, must-revalidate, private"
+        add_never_cache_headers(response)
         return response
 
     def __call__(self, request: HttpRequest) -> HttpResponseBase | Awaitable[HttpResponseBase]:
