@@ -13,7 +13,7 @@ AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponseBase]]
 
 class HealthCheckMiddleware:
     """
-    Answers GET /healthz before host validation runs.
+    Answers GET /api/healthz before host validation runs.
 
     Application Load Balancers send the target's IP address as the Host header,
     which ALLOWED_HOSTS rejects if it has not been configured to include
@@ -21,7 +21,7 @@ class HealthCheckMiddleware:
     ensures that it responds before subsequent validation may occur.
     """
 
-    PATH = "/healthz"
+    PATH = "/api/healthz"
     sync_capable = True
     async_capable = True
 
