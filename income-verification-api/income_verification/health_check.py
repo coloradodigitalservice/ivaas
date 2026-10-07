@@ -15,7 +15,7 @@ class HealthCheckMiddleware:
     """
     Answers GET /healthz before host validation runs.
 
-    Application Load Balancers send the target's IP address as the Host header.
+    Application Load Balancers send the target's IP address as the Host header,
     which ALLOWED_HOSTS rejects if it has not been configured to include
     the IP address. Using this middleware in the first position (crucially)
     ensures that it responds before subsequent validation may occur.
