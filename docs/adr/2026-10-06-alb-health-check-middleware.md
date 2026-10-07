@@ -48,7 +48,8 @@ to `ALLOWED_HOSTS`.
 
 * `+` Health checks go through normal request path
 * `+` No custom middleware
-* `-` Only works with `awsvpc` networking
+* `-` Only works with `awsvpc` networking, although that is likely the
+  networking mode used for most AWS/ECS deployments
 * `-` The IP becomes a valid Host for every path, not just the health check
 * `-` Adds a network call at startup
 
