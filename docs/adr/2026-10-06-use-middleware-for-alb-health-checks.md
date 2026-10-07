@@ -1,6 +1,6 @@
 ---
-status: "proposed"
-deciders:
+status: "accepted"
+deciders: CDS-IVAAS
 ---
 
 # Use middleware for ALB health checks
@@ -18,12 +18,14 @@ How will IVaaS handle ALB health checks for ECS deployments?
 
 ## Decision Outcome
 
-Use middleware to handle ALB health checks
+Use middleware to handle ALB health checks because the behavior is consistent
+across platforms and environments (local vs. deployed) and avoids startup steps
+that could potentially fail intermittently.
 
 ### Consequences
 
-* Requires a decision around which path to use for the ALB health check and
-  whether to retain the existing health check
+* IVaaS custom middleware is introduced to handle ALB health checks.
+* The ALB points to the middleware's custom health check route.
 
 ## Options Considered
 
