@@ -150,10 +150,9 @@ class TestAsyncMode:
 
 
 @pytest.fixture
-def production_like(settings: Settings) -> Settings:
+def production_like(settings: Settings) -> None:
     settings.DEBUG = False
     settings.ALLOWED_HOSTS = [TEST_ALLOWED_HOST]
-    return settings
 
 
 @pytest.mark.usefixtures("production_like")
