@@ -12,7 +12,8 @@ environments where IVaaS is deployed to Amazon Elastic Container Service (ECS)
 behind an Application Load Balancer (ALB), ALB health checks send the target's
 IP address as the Host header. If the application's `ALLOWED_HOSTS` configuration
 does not include the task's IP address, the application rejects the ALB
-health check, leaving the application in a nonfunctional state.
+health check. This causes the ALB to mark the target containers as "unhealthy",
+and will therefore not route traffic to them.
 
 How will IVaaS handle ALB health checks for ECS deployments?
 
