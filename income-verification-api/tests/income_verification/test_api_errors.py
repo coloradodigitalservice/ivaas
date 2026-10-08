@@ -161,9 +161,8 @@ def test_json_formatter_discards_exception_text_and_raw_stack_info(
     try:
         raise ValueError(sentinel)
     except ValueError:
-        logger.error(
+        logger.exception(
             "safe application error",
-            exc_info=True,
             stack_info=True,
             extra={"exception.origin.filename": unknown_extra_sentinel},
         )
