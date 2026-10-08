@@ -10,7 +10,7 @@ from enum import StrEnum
 from inspect import iscoroutinefunction, markcoroutinefunction
 from typing import cast
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponseBase
 
 from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
@@ -33,8 +33,8 @@ _request_log_context: ContextVar[RequestLogContext] = ContextVar(
     "ivaas_request_log_context", default=_empty_request_log_context
 )
 
-SyncGetResponse = Callable[[HttpRequest], HttpResponse]
-AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponse]]
+SyncGetResponse = Callable[[HttpRequest], HttpResponseBase]
+AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponseBase]]
 
 
 class LogField(StrEnum):
@@ -156,7 +156,7 @@ class RequestContextMiddleware:
         if self.async_mode:
             markcoroutinefunction(self)
 
-    def __call__(self, request: HttpRequest) -> HttpResponse | Awaitable[HttpResponse]:
+    def __call__(self, request: HttpRequest) -> HttpResponseBase | Awaitable[HttpResponseBase]:
         if self.async_mode:
             return self._async_call(request)
 
@@ -166,7 +166,7 @@ class RequestContextMiddleware:
         finally:
             _request_log_context.reset(token)
 
-    async def _async_call(self, request: HttpRequest) -> HttpResponse:
+    async def _async_call(self, request: HttpRequest) -> HttpResponseBase:
         token = _bind_request_log_context(request)
         try:
             return await cast(AsyncGetResponse, self.get_response)(request)
