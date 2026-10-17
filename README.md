@@ -1,7 +1,8 @@
+![](docs/images/BTF-round-nodes-green.png)
+
 # Income Verification as a Service (IVaaS) Application
 
 [![tests](https://github.com/coloradodigitalservice/ivaas/actions/workflows/qa-main.yaml/badge.svg)](https://github.com/coloradodigitalservice/ivaas/actions/workflows/qa-main.yaml) | [![dependencies](https://github.com/coloradodigitalservice/ivaas/actions/workflows/dependabot/update-graph/badge.svg)](https://github.com/coloradodigitalservice/ivaas/actions/workflows/dependabot/update-graph) | ![license](https://img.shields.io/github/license/coloradodigitalservice/ivaas)
-
 
 This is IVaaS, a customizable platform for income verification. It is designed for direct use by government entities, with no need to fork. By combining this codebase with a your own configuration files, the application can run on your preferred infrastructure.
 
@@ -11,7 +12,7 @@ The MVP will contain adapters for:
 - Equifax - The Work Number (API v4)
 - Digital Public Works - Verify My Income
 
-Pull requests for additional data source adapters are welcome.
+This project began as a collaboration between the State of Colorado and the Benefits Transformation Fund.
 
 ## Principles
 
