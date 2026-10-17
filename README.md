@@ -13,6 +13,13 @@ The MVP will contain adapters for:
 
 Pull requests for additional data source adapters are welcome.
 
+## Principles
+
+- **Reusability** - The codebase should be usable by any state. IVaaS should be deployable with no need to customize the code. States can select and enforce their preferences through infrastructure configuration files
+- **Program choice** - Consult one data source or all of them. Incorporate data calls into your processes as fits your business needs. IVaaS should provide flexibility rather than mandating a specific approach
+- **Ease of change** - Programs can switch providers in a few lines of code. For the central service, adding or removing providers from the menu is accomplished through configuration with no need for custom development. IVaaS should prevent provider lock-in for both programs and states
+- **Transparency** - Get insight into usage and budgets across programs. IVaaS should provide metrics that allow programs and states to make informed decisions
+
 ## Configuration
 
 For documentation related to configuring IVaaS, see [ivaas-configuration](docs/configuration/ivaas-configuration.md).
