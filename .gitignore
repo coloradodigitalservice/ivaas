@@ -21,6 +21,8 @@ dist/
 htmlcov/
 **/.coverage
 **/coverage.xml
+smoke-results.xml
+smoke-results/
 .pytest_cache/
 
 ## Environments

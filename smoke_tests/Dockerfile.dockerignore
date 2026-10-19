@@ -1,0 +1,12 @@
+**
+!income-verification-api/
+!income-verification-api/pyproject.toml
+!income-verification-api/uv.lock
+!income-verification-api/.python-version
+!smoke_tests/
+!smoke_tests/Dockerfile
+!smoke_tests/Dockerfile.dockerignore
+!smoke_tests/test_api.py
+!smoke_tests/conftest.py
+!smoke_tests/smoke_client.py
+!smoke_tests/pytest.ini

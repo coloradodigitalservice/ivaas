@@ -1,6 +1,7 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
 DOCKER_BASE_STAGE_TAG := ivaas-$(DOCKER_API_NAME):base
+SMOKE_IMAGE ?= ivaas-smoke:local
 ADAPTERS_ENV ?= .envs/.local/.adapters# CI overrides this with .envs/.ci/.adapters
 ENV := \
 	--env-file .envs/.local/.django \
@@ -112,17 +113,35 @@ migrations: ## generate database migrations
 test: db-up ## run tests
 	$(LOCAL_RUN) pytest
 
+.PHONY: test-smoke
+test-smoke: ## run HTTP smoke tests against SMOKE_BASE_URL (application must already be running)
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --project $(API_DIR) --no-sync python -m pytest -c smoke_tests/pytest.ini smoke_tests/test_api.py $(SMOKE_TEST_ARGS)
+
+.PHONY: smoke-image
+smoke-image: ## build the standalone smoke-test image (override SMOKE_IMAGE to set its tag)
+	docker build --file smoke_tests/Dockerfile --tag $(SMOKE_IMAGE) .
+
+.PHONY: test-smoke-local
+test-smoke-local: ## run smoke tests against the running local application and mock OAuth server
+	SMOKE_BASE_URL=http://127.0.0.1:8000 \
+	SMOKE_TOKEN_URL=http://127.0.0.1:8090/default/token \
+	SMOKE_CLIENT_ID=local-client \
+	SMOKE_CLIENT_SECRET=local-secret \
+	SMOKE_EXPECTED_AGENCY=local-agency \
+	SMOKE_EXPECTED_ENVIRONMENT=local \
+	$(MAKE) --no-print-directory test-smoke
+
 .PHONY: quality-fix
 quality-fix: ## Apply available automatic fixes for python package quality violations
-	$(RUN_NO_SYNC) ruff format .
-	$(RUN_NO_SYNC) ruff check --fix .
+	$(RUN_NO_SYNC) ruff format . ../smoke_tests
+	$(RUN_NO_SYNC) ruff check --fix . ../smoke_tests
 
 .PHONY: quality-check
 quality-check: ## run all required checks
-	$(RUN_NO_SYNC) ruff format --check .
-	$(RUN_NO_SYNC) ruff check .
+	$(RUN_NO_SYNC) ruff format --check . ../smoke_tests
+	$(RUN_NO_SYNC) ruff check . ../smoke_tests
 	$(MANAGE) check
-	$(LOCAL_RUN) mypy .
+	$(LOCAL_RUN) mypy . ../smoke_tests
 
 .PHONY: django-secret-key
 django-secret-key: ## generate string for DJANGO_SECRET_KEY

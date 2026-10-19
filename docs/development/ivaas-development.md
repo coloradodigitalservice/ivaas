@@ -126,6 +126,16 @@ To run the automated test suite, use the `make test` command:
 make test
 ```
 
+To smoke test the running application, start it with `make run` or `make up`, then run in another terminal:
+
+```shell
+make test-smoke-local
+```
+
+This uses the local API and mock OAuth server with the committed local test credentials. It checks health, authenticated connection, and authentication rejection. The no-income case is skipped unless you supply `SMOKE_NO_INCOME_REQUEST` and `SMOKE_SOURCE_ID` for an approved test fixture. See the [testing strategy](../api/testing-strategy.md) for configuration and deployed-environment testing.
+
+To build the same standalone test image used in CI, run `make smoke-image`. See [Container Runner](../api/testing-strategy.md#container-runner) for runtime configuration, networking, and report output.
+
 For a complete list of available `make` commands, run:
 
 ```shell
