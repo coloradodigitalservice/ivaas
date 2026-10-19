@@ -76,22 +76,11 @@ jobs:
           SMOKE_EXPECTED_AGENCY: local-agency
           SMOKE_EXPECTED_ENVIRONMENT: local
         run: |
-          mkdir -p smoke-results
           docker run --rm --network host \
-            --user "$(id -u):$(id -g)" \
-            --mount "type=bind,source=$PWD/smoke-results,target=/results" \
             -e SMOKE_BASE_URL -e SMOKE_TOKEN_URL \
             -e SMOKE_CLIENT_ID -e SMOKE_CLIENT_SECRET \
             -e SMOKE_EXPECTED_AGENCY -e SMOKE_EXPECTED_ENVIRONMENT \
             ivaas-smoke:local
-
-      - name: Upload smoke test results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: smoke-results
-          path: smoke-results/smoke-results.xml
-          if-no-files-found: ignore
 
       - name: Tear down
         if: always()
