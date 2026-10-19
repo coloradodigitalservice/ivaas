@@ -2,13 +2,13 @@
 
 ## General Testing Approach
 
-Use unit tests to verify logic, integration tests against mocks to verify how components work together, and a small end-to-end (E2E) suite to verify the deployed application against real services. Run unit and mock integration tests in GitHub Actions before deployment, then run E2E tests in sandbox or development before promotion. Reserve a limited smoke suite for production. Target at least 80% code coverage, with meaningful assertions for critical behavior.
+Use unit tests to verify logic, integration tests against mocks to verify how components work together, and a small end-to-end (E2E) suite to verify the deployed application against real services. Run unit and mock integration tests in CI before deployment, then run E2E tests in sandbox or development before promotion. Reserve a limited smoke suite for production. Target at least 80% code coverage, with meaningful assertions for critical behavior.
 
-Public adapters in the IVaaS repository should include tests in each applicable category. Deployers should run the IVaaS and adapter unit and integration suites in their own CI before deployment, including integration checks for their configuration and adapter combination. An unchanged release can rely on verified upstream unit-test results; deployment-specific integration and E2E checks remain the deployer's responsibility. Promote the same application image that passed testing.
+Public adapters in the IVaaS repository should include tests in each applicable category. Private adapter tests and fixtures belong with those adapters, outside the public IVaaS repository. Deployers should run the IVaaS and adapter unit and integration suites in their own CI before deployment, including integration checks for their configuration and adapter combination. An unchanged release can rely on verified upstream unit-test results; deployment-specific integration and E2E checks remain the deployer's responsibility. Promote the same application image that passed testing.
 
 ## Unit Testing
 
-Unit tests provide the fastest feedback on logic and regressions. Cover validation, transformations, and error handling without requiring deployed infrastructure or live services. Keep private adapter tests alongside the adapter code.
+Unit tests provide the fastest feedback on logic and regressions. They should cover validation, transformations, and error handling, and run locally without deployed infrastructure or live services.
 
 ## Integration Testing with Mocks
 
@@ -16,7 +16,7 @@ Run the real application and installed adapter against mock identity and upstrea
 
 ## End-to-End Testing
 
-Deployers must run automated E2E tests against their deployed application, real identity provider, and real upstream services. Use provider-approved test subjects and environment-specific credentials from the deployer's secret store. Keep private adapter E2E tests and fixtures with the adapter, and run them from the deployer's pipeline.
+Deployers should run automated E2E tests against their deployed application, real identity provider, and real upstream services. Use provider-approved test subjects and environment-specific credentials from the deployer's secret store.
 
 Run the tests after deployment is ready, either directly on the deployer's CI runner or in a separate test container launched by the pipeline. The test environment must be able to reach the API and identity provider. For private endpoints, place it on a network with the required access. Test code and dependencies stay outside the application image. Developers can run the same tests locally against an accessible environment.
 
@@ -42,7 +42,7 @@ The [smoke suite](../../smoke_tests/test_api.py) uses pytest and Python's standa
 | `SMOKE_EXPECTED_AGENCY`, `SMOKE_EXPECTED_ENVIRONMENT` | Expected values from the authenticated connection test.                                |
 | `SMOKE_API_VERSION`                                   | Optional; defaults to `v1`.                                                            |
 | `SMOKE_SCOPE`                                         | Optional; defaults to `ivaas/income.verify`.                                           |
-| `SMOKE_NO_INCOME_REQUEST`, `SMOKE_SOURCE_ID`          | Optional pair: path to a private JSON verification request and the expected source ID. |
+| `SMOKE_NO_INCOME_CASES`                                | Optional path to a private JSON file defining approved no-income scenarios.              |
 
 From the IVaaS repository root, on a fresh CI runner:
 
@@ -51,15 +51,42 @@ uv sync --project income-verification-api --locked --only-group test
 make test-smoke SMOKE_TEST_ARGS="--junitxml=smoke-results.xml"
 ```
 
-For local testing, use the normal `make sync` setup, start the application with `make run` or `make up`, and run `make test-smoke-local` in another terminal. This supplies the committed local API and mock OAuth settings. Use `make test-smoke` with the configuration above for other environments. URLs must use HTTPS except on localhost. Each HTTP request has a 30-second timeout and redirects are not followed.
+For local testing, use the normal `make sync` setup, start the application with `make run` or `make up`, and run `make test-smoke-local` in another terminal. This supplies the committed local API and mock OAuth settings. Use `make test-smoke` with the configuration above for other environments. URLs must use HTTPS except on localhost. The HTTP client uses a 30-second socket timeout and does not follow redirects. This does not limit the total request duration; set an overall test deadline in the pipeline or execution environment.
 
 The missing-token check requires HTTP `401` but does not require an application-specific response body or correlation header: an authentication gateway may reject the request before it reaches the application. Application tests retain the detailed error-contract assertions. Authenticated smoke requests still check correlation ID propagation.
 
 HTTP failures identify the endpoint and include the response status when available, including invalid-JSON and redirect responses. Redirects are rejected without following their destination. Diagnostics exclude response bodies, URLs, credentials, and claimant data. JUnit correlation properties are named by API route so the connection check and verification request can be distinguished.
 
-The no-income fixture contains the normal verification request fields for an approved test subject and lookback period. The suite generates a unique `applicationId` and correlation IDs, verifies the target agency/environment before submitting, and checks the expected source returns `NO_DATA` with null income and retrieval timestamp. This request can still create audit records. Without the fixture/source pair, this case is explicitly skipped; supplying only one is an error.
+Set `SMOKE_NO_INCOME_CASES` to a JSON case file such as:
 
-GitHub Actions builds the test image and runs its connectivity and authentication checks against the local application image and mock identity provider. Deployers run the same suite after deployment with their own configuration and approved fixture, using the IVaaS revision associated with the deployed release. Publish the JUnit report even when tests fail to retain results, skips, correlation IDs, and verification IDs; assertion diagnostics omit response bodies and credentials. Require the test job to pass before promotion.
+```json
+[
+  {
+    "name": "no-records-in-either-source",
+    "requestFile": "requests/subject-a.json",
+    "expectedSources": {
+      "source-a": {"status": "NO_DATA"},
+      "source-b": {"status": "NO_DATA"}
+    }
+  },
+  {
+    "name": "different-lookback",
+    "requestFile": "requests/subject-a-earlier-period.json",
+    "expectedSources": {
+      "source-a": {"status": "NO_DATA"},
+      "source-b": {"status": "NO_DATA"}
+    }
+  }
+]
+```
+
+Request-file paths are relative to the case file, or absolute paths within the runner. Each request contains the normal verification fields for an approved test subject and lookback period. Use unique, non-sensitive case names of 1-64 letters, digits, underscores, or hyphens; names appear in test output and JUnit results.
+
+Pytest runs each scenario as a separate test in the same process or container. The suite generates a unique `applicationId` and correlation IDs, verifies the target agency/environment before submitting, and requires exactly one result for every expected source, with no additional sources. Every source must return `NO_DATA` with explicitly null `rawIncome` and `retrievedAt`. Expected source IDs describe the response; they do not select which adapters the application invokes. Requests can still create audit records.
+
+Without `SMOKE_NO_INCOME_CASES`, verification is explicitly skipped. A supplied case file must contain at least one valid scenario; malformed files or missing request fixtures fail the suite. This case file replaces the earlier `SMOKE_NO_INCOME_REQUEST` and `SMOKE_SOURCE_ID` settings. Mixed outcomes and known-income payload assertions belong in the broader adapter tests below.
+
+CI builds the test image and runs its connectivity and authentication checks against the local application image and mock identity provider. Results remain in the CI logs; this workflow does not upload JUnit artifacts. Deployers run the same suite after deployment with their own configuration and approved fixture, using the IVaaS revision associated with the deployed release. Deployer pipelines should publish the JUnit report even when tests fail to retain results, skips, correlation IDs, and verification IDs. Require the test job to pass before promotion.
 
 #### Container Runner
 
@@ -78,7 +105,7 @@ docker run --rm \
 ```
 
 - The default report is `/results/smoke-results.xml`, written to `smoke-results/` on the host in this example. The container returns pytest's exit code. Additional arguments after the image name replace the default `--junitxml=/results/smoke-results.xml` argument; include it if you also pass test-selection options.
-- Supply optional `SMOKE_*` variables as needed. Mount private request fixtures read-only and set `SMOKE_NO_INCOME_REQUEST` to their path inside the container; also supply `SMOKE_SOURCE_ID`. Credentials and private fixtures are supplied at runtime and excluded from the image build context.
+- Supply optional `SMOKE_*` variables as needed. For verification, mount the case file and its request fixtures together read-only, for example with `--mount type=bind,source=/absolute/path/approved-fixtures,target=/fixtures,readonly` and `-e SMOKE_NO_INCOME_CASES=/fixtures/no-income-cases.json`. Relative request paths then resolve within that mounted directory. Credentials and private fixtures are supplied at runtime and excluded from the image build context.
 - Container networking must reach the configured URLs; `localhost` inside a container refers to that container. CI uses Linux host networking to reach its local application and mock OAuth server. For local development, `make test-smoke-local` avoids container-network setup.
 - Deployers own image publishing, network access, secret injection, and report persistence. Treat task startup failure, timeout, missing results, and a nonzero test exit code as failed validation. A stopped test container alone does not establish success.
 
@@ -97,7 +124,14 @@ The inherited default runs only the shared smoke file. To also run the adapter t
 
 ### Sandbox and Development Tests
 
-Run broader income-response and contract scenarios for each configured adapter through the deployed income-verification API. Use approved test subjects with known results, and keep request fixtures and expected responses alongside the adapter's tests. Cover:
+Run one test suite against the deployed income-verification API, covering every adapter the deployment is configured to invoke. A single test runner executes the scenarios for all adapters:
+
+1. After the candidate deployment is ready in sandbox or development, run the test suite from a connected CI runner or a single test container.
+2. Configure the runner with the API URL, credentials, and expected agency/environment. Supply approved request fixtures and expected source-level outcomes for each scenario. A single request may cover multiple adapters; use separate test cases within the same run when adapters need different test subjects or lookback periods.
+3. Execute the shared smoke tests and broader verification scenarios against the same deployment. For each scenario, assert exactly one result for every expected `sourceId` and check its status and payload. Verify that the returned set of sources matches the configured orchestration for that request.
+4. Require all scenarios to pass before promotion, with verification coverage for every adapter. Connectivity checks alone or a skipped no-income case do not establish adapter coverage.
+
+Use approved test subjects with known results and cover:
 
 - **Known income:** verify the intended `sourceId`, `OK` status, retrieval timestamp, and expected income records. Include subjects with multiple records where the source supports them.
 - **Request variations:** exercise the identifiers and lookback periods the adapter supports, including records at the start and end of the requested period where applicable. Verify that returned records match the adapter's documented behavior.

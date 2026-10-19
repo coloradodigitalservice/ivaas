@@ -132,7 +132,7 @@ To smoke test the running application, start it with `make run` or `make up`, th
 make test-smoke-local
 ```
 
-This uses the local API and mock OAuth server with the committed local test credentials. It checks health, authenticated connection, and authentication rejection. The no-income case is skipped unless you supply `SMOKE_NO_INCOME_REQUEST` and `SMOKE_SOURCE_ID` for an approved test fixture. See the [testing strategy](../api/testing-strategy.md) for configuration and deployed-environment testing.
+This uses the local API and mock OAuth server with the committed local test credentials. It checks health, authenticated connection, and authentication rejection. Verification is skipped unless you supply `SMOKE_NO_INCOME_CASES` with approved request fixtures and expected sources for one or more no-income scenarios. Each scenario runs as a separate test within the same invocation. See the [testing strategy](../api/testing-strategy.md) for the case-file format and deployed-environment configuration.
 
 To build the same standalone test image used in CI, run `make smoke-image`. See [Container Runner](../api/testing-strategy.md#container-runner) for runtime configuration, networking, and report output.
 
