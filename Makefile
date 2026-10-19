@@ -141,7 +141,8 @@ quality-check: ## run all required checks
 	$(RUN_NO_SYNC) ruff format --check . ../smoke_tests
 	$(RUN_NO_SYNC) ruff check . ../smoke_tests
 	$(MANAGE) check
-	$(LOCAL_RUN) mypy . ../smoke_tests
+	$(LOCAL_RUN) mypy .
+	$(LOCAL_RUN) mypy ../smoke_tests
 
 .PHONY: django-secret-key
 django-secret-key: ## generate string for DJANGO_SECRET_KEY
