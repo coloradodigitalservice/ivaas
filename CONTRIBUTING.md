@@ -1,8 +1,8 @@
 # How to Contribute
 
-We're so thankful you're considering contributing to an open source project of the State of Colorado government\! If you're unsure about anything, just ask \-- submit the issue or pull request or send an email to [OIT\_ColoradoDigitalService@state.co.us](mailto:OIT_ColoradoDigitalService@state.co.us). The worst that can happen is you'll be politely asked to change something. We appreciate all friendly contributions.
+We're so thankful you're considering contributing to an open source project of the State of Colorado government! If you're unsure about anything, just ask. Submit an issue or pull request or send an email to [OIT_ColoradoDigitalService@state.co.us](mailto:OIT_ColoradoDigitalService@state.co.us). The worst that can happen is you'll be politely asked to change something. We appreciate all friendly contributions.
 
-We encourage you to read this project's CONTRIBUTING policy (you are here), its [LICENSE](https://file+.vscode-resource.vscode-cdn.net/Users/greggles/checkouts/ivaas/LICENSE), its CODE\_OF\_CONDUCT and its [README](https://file+.vscode-resource.vscode-cdn.net/Users/greggles/checkouts/ivaas/README.md).
+We encourage you to read this project's CONTRIBUTING policy (you are here), its [LICENSE](./LICENSE), its [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md) and its [README](./README.md).
 
 ## Getting Started
 
@@ -10,7 +10,7 @@ We encourage you to read this project's CONTRIBUTING policy (you are here), its 
 
 This project is maintained by the State of Colorado Governor's Office of Information Technology in collaboration with other stakeholders.
 
-For information about building the software, see the project README.md.
+For information about building the software, see the project [README](./README.md).
 
 ### Workflow and Branching
 
@@ -24,13 +24,11 @@ We follow the [GitHub Flow Workflow](https://guides.github.com/introduction/flow
 
 4. Write code and tests for your change
 
-5. From your branch, make a pull request against `main`
+5. From your forked branch, make a pull request against `main`
 
-6. Work with repo maintainers to get your change reviewed
+6. Work with repo maintainers to get your pull request reviewed and merged
 
-7. Wait for your change to be pulled into `main`
-
-8. Delete your feature branch
+7. (Optional) Delete your feature branch
 
 ### Writing Pull Requests
 
@@ -60,11 +58,7 @@ We also welcome improvements to the project documentation or to the existing doc
 
 ### Security and Responsible Disclosure Policy
 
-Vulnerability reports can be submitted through email to isoc@state.co.us.
-
-Review the [State of Colorado Disclosure Policy and scope](https://oit.colorado.gov/protect-yourself-online#reportaconcern).
-
-For more information about our Security, Vulnerability, and Responsible Disclosure Policies, see [SECURITY.md](https://file+.vscode-resource.vscode-cdn.net/Users/greggles/checkouts/ivaas/SECURITY.md).
+For information about our Security, Vulnerability, and Responsible Disclosure Policies, see [SECURITY.md](https://file+.vscode-resource.vscode-cdn.net/Users/greggles/checkouts/ivaas/SECURITY.md).
 
 ## License
 
