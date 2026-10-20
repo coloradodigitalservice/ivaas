@@ -48,20 +48,20 @@ Some important notes regarding the summary line:
 
 * Do not end in a period — this is a title/subject
 
-* Prefix the subject with its scope   see our .github/pull\_request\_template.md for more examples.
+* Prefix the subject with its scope. See our [Pull Request Template](./.github/pull_request_template.md) for more examples.
 
 ## Documentation
 
-We also welcome improvements to the project documentation or to the existing docs. Please file an [issue](https://github.com/coloradodigitalservice/ivaas/issues) or pull request.
+We also welcome improvements to the project documentation or to the existing docs. Please file an issue or pull request.
 
 ## Policies
 
 ### Security and Responsible Disclosure Policy
 
-For information about our Security, Vulnerability, and Responsible Disclosure Policies, see [SECURITY.md](https://file+.vscode-resource.vscode-cdn.net/Users/greggles/checkouts/ivaas/SECURITY.md).
+For information about our Security, Vulnerability, and Responsible Disclosure Policies, see [SECURITY.md](./SECURITY.md).
 
 ## License
 
-This project is primarily licensed under the MIT License.
+This project is primarily licensed under the MIT License, though see the [LICENSE](./LICENSE) for more details.
 
 All contributions to this project will be released under the MIT License. By submitting a pull request or issue, you are agreeing to comply with this license. If there is some element of the pull request that is not or cannot be MIT licensed, add a note to the pull request explaining that exception.
