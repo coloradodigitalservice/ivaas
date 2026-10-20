@@ -10,7 +10,7 @@ from income_verification.correlation_id import (
     "correlation_id",
     [
         "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31",
-        "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:agency/reference-1",
+        "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:program/reference-1",
     ],
 )
 def test_accepts_valid_correlation_ids(correlation_id: str) -> None:

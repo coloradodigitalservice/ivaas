@@ -8,15 +8,15 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.exceptions import PyJWKClientError, PyJWKSetError
 
 from income_verification.security import (
-    AuthenticatedAgency,
+    AuthenticatedProgram,
     AuthenticationFailure,
     AuthenticationInfrastructureFailure,
     AuthFailureReason,
     AuthorizationFailure,
 )
 from income_verification.security.authentication import (
-    AgencyAuthenticator,
-    ConfiguredAgencyResolver,
+    ConfiguredProgramResolver,
+    ProgramAuthenticator,
 )
 from income_verification.security.cognito import (
     CognitoAccessTokenVerifier,
@@ -28,8 +28,8 @@ from tests.income_verification.security.authentication_test_support import (
     ISSUER,
     JWKS_URL,
     REQUIRED_SCOPE,
-    TEST_AGENCY_ID,
     TEST_CLIENT_ID,
+    TEST_PROGRAM_ID,
     access_token,
     access_token_without_claim,
     assert_failure_reason,
@@ -38,16 +38,16 @@ from tests.income_verification.security.authentication_test_support import (
 )
 
 
-def test_valid_cognito_access_token_resolves_known_agency(
+def test_valid_cognito_access_token_resolves_known_program(
     rsa_keys: tuple[rsa.RSAPrivateKey, jwt.PyJWK],
 ) -> None:
     private_key, signing_key = rsa_keys
 
     principal = cognito_authenticator(signing_key).authenticate(access_token(private_key))
 
-    assert principal == AuthenticatedAgency(
+    assert principal == AuthenticatedProgram(
         client_id=TEST_CLIENT_ID,
-        agency_id=TEST_AGENCY_ID,
+        program_id=TEST_PROGRAM_ID,
         scopes=frozenset({"openid", REQUIRED_SCOPE}),
     )
 
@@ -96,13 +96,13 @@ def test_unknown_kid_refreshes_jwks_then_is_unauthorized(
         headers={"kid": "unknown-key"},
     )
     provider = CognitoJwksKeyProvider(JWKS_URL, cache_seconds=600, timeout_seconds=5)
-    authenticator = AgencyAuthenticator(
+    authenticator = ProgramAuthenticator(
         token_verifier=CognitoAccessTokenVerifier(
             issuer=ISSUER,
             signing_key_provider=provider,
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
+        program_resolver=ConfiguredProgramResolver({TEST_CLIENT_ID: TEST_PROGRAM_ID}),
     )
     with patch.object(
         provider._client,
@@ -242,13 +242,13 @@ def test_cognito_jwks_connection_failure_is_infrastructure_failure(
         def get_signing_key(self, token: str) -> jwt.PyJWK:
             raise SigningKeyUnavailableError("SENTINEL-JWKS-CONNECTION-DETAIL")
 
-    authenticator = AgencyAuthenticator(
+    authenticator = ProgramAuthenticator(
         token_verifier=CognitoAccessTokenVerifier(
             issuer=ISSUER,
             signing_key_provider=UnavailableSigningKeyProvider(),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
+        program_resolver=ConfiguredProgramResolver({TEST_CLIENT_ID: TEST_PROGRAM_ID}),
     )
 
     assert_failure_reason(

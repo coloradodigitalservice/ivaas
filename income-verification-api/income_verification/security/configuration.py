@@ -10,9 +10,9 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from income_verification.security.authentication import (
-    AgencyAuthenticator,
-    AgencyOAuth2ClientCredentials,
-    ConfiguredAgencyResolver,
+    ConfiguredProgramResolver,
+    ProgramAuthenticator,
+    ProgramOAuth2ClientCredentials,
 )
 from income_verification.security.cognito import CognitoAccessTokenVerifier, CognitoJwksKeyProvider
 
@@ -25,7 +25,7 @@ class AuthenticationConfig:
     jwks_url: str
     token_url: str
     required_scope: str
-    client_agency_map: Mapping[str, str]
+    client_program_map: Mapping[str, str]
     jwks_cache_seconds: float
     jwks_timeout_seconds: float
 
@@ -40,7 +40,7 @@ class AuthenticationConfig:
             jwks_url=_required_string(value, "JWKS_URL"),
             token_url=_required_string(value, "TOKEN_URL"),
             required_scope=_required_string(value, "REQUIRED_SCOPE"),
-            client_agency_map=MappingProxyType(_agency_mapping(value.get("CLIENT_AGENCY_MAP"))),
+            client_program_map=MappingProxyType(_program_mapping(value.get("CLIENT_PROGRAM_MAP"))),
             jwks_cache_seconds=_positive_seconds(value, "JWKS_CACHE_SECONDS"),
             jwks_timeout_seconds=_positive_seconds(value, "JWKS_TIMEOUT_SECONDS"),
         )
@@ -53,20 +53,20 @@ def _required_string(configuration: Mapping[object, object], key: str) -> str:
     raise ImproperlyConfigured(f"API_AUTHENTICATION.{key} must be configured")
 
 
-def _agency_mapping(value: object) -> dict[str, str]:
+def _program_mapping(value: object) -> dict[str, str]:
     if not isinstance(value, Mapping) or not value:
         raise ImproperlyConfigured(
-            "API_AUTHENTICATION.CLIENT_AGENCY_MAP must map non-empty client IDs to agency IDs"
+            "API_AUTHENTICATION.CLIENT_PROGRAM_MAP must map non-empty client IDs to program IDs"
         )
     if not all(
         isinstance(client_id, str)
         and bool(client_id.strip())
-        and isinstance(agency_id, str)
-        and bool(agency_id.strip())
-        for client_id, agency_id in value.items()
+        and isinstance(program_id, str)
+        and bool(program_id.strip())
+        for client_id, program_id in value.items()
     ):
         raise ImproperlyConfigured(
-            "API_AUTHENTICATION.CLIENT_AGENCY_MAP must map non-empty client IDs to agency IDs"
+            "API_AUTHENTICATION.CLIENT_PROGRAM_MAP must map non-empty client IDs to program IDs"
         )
     return dict(value)
 
@@ -82,7 +82,7 @@ def _positive_seconds(configuration: Mapping[object, object], key: str) -> float
 
 def build_api_authentication(
     configuration: object | None = None,
-) -> AgencyOAuth2ClientCredentials:
+) -> ProgramOAuth2ClientCredentials:
     """Build the configured authentication implementation, failing closed."""
     authentication_config = AuthenticationConfig.from_mapping(
         settings.API_AUTHENTICATION if configuration is None else configuration
@@ -95,12 +95,12 @@ def build_api_authentication(
             timeout_seconds=authentication_config.jwks_timeout_seconds,
         ),
     )
-    authenticator = AgencyAuthenticator(
+    authenticator = ProgramAuthenticator(
         token_verifier=token_verifier,
         required_scope=authentication_config.required_scope,
-        agency_resolver=ConfiguredAgencyResolver(authentication_config.client_agency_map),
+        program_resolver=ConfiguredProgramResolver(authentication_config.client_program_map),
     )
-    return AgencyOAuth2ClientCredentials(
+    return ProgramOAuth2ClientCredentials(
         authenticator,
         token_url=authentication_config.token_url,
         required_scope=authentication_config.required_scope,
@@ -108,7 +108,7 @@ def build_api_authentication(
 
 
 @cache
-def get_api_authentication() -> AgencyOAuth2ClientCredentials:
+def get_api_authentication() -> ProgramOAuth2ClientCredentials:
     """Return the per-process authentication object built during application startup.
 
     AppConfig.ready() initializes this zero-argument cache eagerly. Later imports by

@@ -18,8 +18,8 @@ from income_verification.security import (
 )
 from income_verification.security.authentication import (
     AccessTokenVerifier,
-    AgencyAuthenticator,
-    ConfiguredAgencyResolver,
+    ConfiguredProgramResolver,
+    ProgramAuthenticator,
     VerifiedClient,
 )
 from income_verification.security.cognito import CognitoAccessTokenVerifier, SigningKeyProvider
@@ -28,7 +28,7 @@ ISSUER = "https://cognito-idp.us-west-2.amazonaws.com/test-pool"
 JWKS_URL = f"{ISSUER}/.well-known/jwks.json"
 REQUIRED_SCOPE = "ivaas/income.verify"
 TEST_CLIENT_ID = "test-client"
-TEST_AGENCY_ID = "test-agency"
+TEST_PROGRAM_ID = "test-program"
 TEST_ACCESS_TOKEN = "test-access-token"  # noqa: S105 - deterministic test credential
 OAUTH_ENDPOINT = "https://example.invalid/oauth2"
 
@@ -92,33 +92,33 @@ def access_token_without_claim(private_key: rsa.RSAPrivateKey, claim: str) -> st
 def cognito_authenticator(
     signing_key: jwt.PyJWK,
     *,
-    agencies: dict[str, str] | None = None,
-) -> AgencyAuthenticator:
-    return AgencyAuthenticator(
+    programs: dict[str, str] | None = None,
+) -> ProgramAuthenticator:
+    return ProgramAuthenticator(
         token_verifier=CognitoAccessTokenVerifier(
             issuer=ISSUER,
             signing_key_provider=StaticSigningKeyProvider(signing_key),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver(
-            {TEST_CLIENT_ID: TEST_AGENCY_ID} if agencies is None else agencies
+        program_resolver=ConfiguredProgramResolver(
+            {TEST_CLIENT_ID: TEST_PROGRAM_ID} if programs is None else programs
         ),
     )
 
 
-def agency_authenticator(
+def program_authenticator(
     *,
     client_id: str = TEST_CLIENT_ID,
     scopes: frozenset[str] | None = None,
-    agencies: dict[str, str] | None = None,
-) -> AgencyAuthenticator:
-    return AgencyAuthenticator(
+    programs: dict[str, str] | None = None,
+) -> ProgramAuthenticator:
+    return ProgramAuthenticator(
         token_verifier=AcceptingAccessTokenVerifier(
             client_id=client_id, scopes=frozenset({REQUIRED_SCOPE}) if scopes is None else scopes
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver(
-            {TEST_CLIENT_ID: TEST_AGENCY_ID} if agencies is None else agencies
+        program_resolver=ConfiguredProgramResolver(
+            {TEST_CLIENT_ID: TEST_PROGRAM_ID} if programs is None else programs
         ),
     )
 

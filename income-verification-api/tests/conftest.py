@@ -1,17 +1,17 @@
 import pytest
 
 from income_verification.security.authentication import (
-    AgencyAuthenticator,
     AuthenticationFailure,
     AuthFailureReason,
-    ConfiguredAgencyResolver,
+    ConfiguredProgramResolver,
+    ProgramAuthenticator,
     VerifiedClient,
 )
 from tests.income_verification.security.authentication_test_support import (
     REQUIRED_SCOPE,
     TEST_ACCESS_TOKEN,
-    TEST_AGENCY_ID,
     TEST_CLIENT_ID,
+    TEST_PROGRAM_ID,
 )
 
 
@@ -35,9 +35,9 @@ def configured_api_authentication(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         api_authentication,
         "authenticator",
-        AgencyAuthenticator(
+        ProgramAuthenticator(
             token_verifier=StaticAccessTokenVerifier(),
             required_scope=REQUIRED_SCOPE,
-            agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
+            program_resolver=ConfiguredProgramResolver({TEST_CLIENT_ID: TEST_PROGRAM_ID}),
         ),
     )

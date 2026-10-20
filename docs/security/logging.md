@@ -14,7 +14,7 @@ or income data. Redaction is a backup protection, not permission to log sensitiv
 ## Acceptable log content
 
 - Operation names, outcomes, attempt counts, durations, and record counts.
-- Approved application, verification, agency, source, and correlation identifiers.
+- Approved application, verification, program, source, and correlation identifiers.
 - Exception types and sanitized error messages that preserve useful diagnostics.
 
 In IVaaS, prefer `extra` with keys declared by `LogField` for reusable properties

@@ -49,10 +49,10 @@
       "description": "Scope required by protected IVaaS operations."
     },
     {
-      "key": "expectedAuthenticatedAgency",
-      "value": "local-agency",
+      "key": "expectedAuthenticatedProgram",
+      "value": "local-program",
       "type": "string",
-      "description": "Agency expected from Test connection for the selected OAuth client."
+      "description": "Program expected from Test connection for the selected OAuth client."
     },
     {
       "key": "expectedDeploymentEnvironment",
@@ -271,9 +271,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('returns 200', () => pm.response.to.have.status(200));",
-                  "pm.test('returns the authenticated agency and environment', () => {",
+                  "pm.test('returns the authenticated program and environment', () => {",
                   "  pm.expect(pm.response.json()).to.deep.equal({",
-                  "    authenticatedAs: pm.variables.get('expectedAuthenticatedAgency'),",
+                  "    authenticatedAs: pm.variables.get('expectedAuthenticatedProgram'),",
                   "    environment: pm.variables.get('expectedDeploymentEnvironment'),",
                   "  });",
                   "});",
