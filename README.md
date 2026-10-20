@@ -21,6 +21,16 @@ This project began as a collaboration between the State of Colorado and the Bene
 - **Ease of change** - Programs can switch providers in a few lines of code. For the central service, adding or removing providers from the menu is accomplished through configuration with no need for custom development. IVaaS should prevent provider lock-in for both programs and states
 - **Transparency** - Get insight into usage and budgets across programs. IVaaS should provide metrics that allow programs and states to make informed decisions
 
+## Roadmap
+
+- [x] Core API with adapter logic
+- [ ] Adapter for The Work Number API
+- [ ] Adapter for Verify My Income
+- [x] Support for custom adapters
+- [ ] Usage metrics
+- [ ] Customization via configuration files to select the active data providers
+- [ ] More adapters for additional data providers (tell us what you want!)
+
 ## Configuration
 
 For documentation related to configuring IVaaS, see [ivaas-configuration](docs/configuration/ivaas-configuration.md).
