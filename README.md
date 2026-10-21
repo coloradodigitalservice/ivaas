@@ -74,4 +74,3 @@ mindmap
           Public templates
           State-specific deployment pipelines
 ```
-
