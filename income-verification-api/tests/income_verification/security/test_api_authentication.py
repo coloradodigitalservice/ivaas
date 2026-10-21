@@ -20,8 +20,8 @@ from income_verification.security import (
     get_api_authentication,
 )
 from income_verification.security.authentication import (
-    AgencyAuthenticator,
-    ConfiguredAgencyResolver,
+    ConfiguredProgramResolver,
+    ProgramAuthenticator,
 )
 from income_verification.security.cognito import (
     CognitoAccessTokenVerifier,
@@ -31,11 +31,11 @@ from tests.income_verification.security.authentication_test_support import (
     ISSUER,
     REQUIRED_SCOPE,
     TEST_ACCESS_TOKEN,
-    TEST_AGENCY_ID,
     TEST_CLIENT_ID,
+    TEST_PROGRAM_ID,
     access_token,
-    agency_authenticator,
     cognito_authenticator,
+    program_authenticator,
 )
 
 pytestmark = pytest.mark.usefixtures("configured_api_authentication")
@@ -99,13 +99,13 @@ def test_income_verification_rejects_missing_auth_and_echoes_valid_correlation(
     assert response.headers["WWW-Authenticate"] == 'Bearer realm="income-verification-api"'
 
 
-def test_test_connection_returns_resolved_agency_and_environment(client: Client) -> None:
+def test_test_connection_returns_resolved_program_and_environment(client: Client) -> None:
     with capture_api_logs() as stream:
         response = client.get(TEST_CONNECTION_PATH, headers=_authenticated_headers())
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        "authenticatedAs": TEST_AGENCY_ID,
+        "authenticatedAs": TEST_PROGRAM_ID,
         "environment": settings.DEPLOYMENT_ENVIRONMENT,
     }
     assert response.headers["Correlation-Id"] == CORRELATION_ID
@@ -117,7 +117,7 @@ def test_test_connection_returns_resolved_agency_and_environment(client: Client)
     assert record["url.path"] == TEST_CONNECTION_PATH
     assert record["ivaas.correlation.id"] == CORRELATION_ID
     assert record["auth.client.id"] == TEST_CLIENT_ID
-    assert record["ivaas.agency.id"] == TEST_AGENCY_ID
+    assert record["ivaas.program.id"] == TEST_PROGRAM_ID
 
 
 def test_api_reuses_authentication_initialized_at_application_startup() -> None:
@@ -161,7 +161,7 @@ def test_endpoint_returns_forbidden_for_insufficient_scope(
     monkeypatch.setattr(
         api_authentication,
         "authenticator",
-        agency_authenticator(scopes=frozenset({"openid"})),
+        program_authenticator(scopes=frozenset({"openid"})),
     )
     response = client.get(
         TEST_CONNECTION_PATH,
@@ -187,7 +187,7 @@ def test_unknown_client_log_includes_verified_client_id_but_response_does_not(
     monkeypatch.setattr(
         api_authentication,
         "authenticator",
-        agency_authenticator(client_id=unknown_client_id),
+        program_authenticator(client_id=unknown_client_id),
     )
 
     with capture_api_logs() as stream:
@@ -259,13 +259,13 @@ def test_raw_jwt_exception_message_cannot_reach_logs(
         def get_signing_key(self, token: str) -> jwt.PyJWK:
             raise jwt.DecodeError(raw_exception)
 
-    authenticator = AgencyAuthenticator(
+    authenticator = ProgramAuthenticator(
         token_verifier=CognitoAccessTokenVerifier(
             issuer=ISSUER,
             signing_key_provider=FailingSigningKeyProvider(),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
+        program_resolver=ConfiguredProgramResolver({TEST_CLIENT_ID: TEST_PROGRAM_ID}),
     )
     monkeypatch.setattr(api_authentication, "authenticator", authenticator)
     with capture_api_logs() as stream:
@@ -336,13 +336,13 @@ def test_jwks_unavailability_returns_safe_service_unavailable(
         def get_signing_key(self, token: str) -> jwt.PyJWK:
             raise SigningKeyUnavailableError(raw_exception)
 
-    authenticator = AgencyAuthenticator(
+    authenticator = ProgramAuthenticator(
         token_verifier=CognitoAccessTokenVerifier(
             issuer=ISSUER,
             signing_key_provider=UnavailableSigningKeyProvider(),
         ),
         required_scope=REQUIRED_SCOPE,
-        agency_resolver=ConfiguredAgencyResolver({TEST_CLIENT_ID: TEST_AGENCY_ID}),
+        program_resolver=ConfiguredProgramResolver({TEST_CLIENT_ID: TEST_PROGRAM_ID}),
     )
     monkeypatch.setattr(api_authentication, "authenticator", authenticator)
     with capture_api_logs() as stream:

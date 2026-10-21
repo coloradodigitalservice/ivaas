@@ -22,8 +22,8 @@ servers:
     description: "TBD: Production"
 
 security:
-  - AgencyOAuth2ClientCredentialsTest: [ivaas/income.verify]
-  - AgencyOAuth2ClientCredentialsProduction: [ivaas/income.verify]
+  - ProgramOAuth2ClientCredentialsTest: [ivaas/income.verify]
+  - ProgramOAuth2ClientCredentialsProduction: [ivaas/income.verify]
 
 paths:
   /api/v1/income-verification:
@@ -91,11 +91,11 @@ paths:
     get:
       summary: Verify authenticated connectivity
       description: |
-        An authenticated no-op for onboarding and triage. Lets an agency confirm that its credentials are accepted and
+        An authenticated no-op for onboarding and triage. Lets a program confirm that its credentials are accepted and
         that it is reaching the intended environment without submitting any claimant data or creating a verification attempt.
 
         Modelled as a GET because it is safe and side-effect-free: it reads nothing and writes
-        nothing, so an agency can call it freely while wiring up an integration.
+        nothing, so a program can call it freely while wiring up an integration.
       parameters:
         - $ref: "#/components/parameters/CorrelationId"
       responses:
@@ -121,14 +121,14 @@ paths:
 
 components:
   securitySchemes:
-    AgencyOAuth2ClientCredentialsTest:
+    ProgramOAuth2ClientCredentialsTest:
       type: oauth2
       description: |
         **Test environment.** Tokens are issued by the test Cognito user pool and are accepted only
         by the test IVaaS environment.
 
         Machine-to-machine access using an Amazon Cognito access token, obtained through the
-        `client_credentials` grant. An agency is issued an app client id and secret at onboarding,
+        `client_credentials` grant. A program is issued an app client id and secret at onboarding,
         exchanges them at the Cognito token endpoint, and sends the result as
         `Authorization: Bearer {token}`.
 
@@ -138,7 +138,7 @@ components:
         |---|---|
         | `iss` | `https://cognito-idp.{region}.amazonaws.com/{userPoolId}` for the destination environment |
         | `sub` | Cognito-issued token subject |
-        | `client_id` | The machine identity, mapped by IVaaS to an onboarded agency |
+        | `client_id` | The machine identity, mapped by IVaaS to an onboarded program |
         | `token_use` | `access` |
         | `scope` | Must include `ivaas/income.verify` |
         | `iat` / `exp` | Issued-at and expiry. Lifetime is configured on the app client in cognito|
@@ -154,21 +154,21 @@ components:
         ## Identity
 
         The verified `client_id` is resolved through the IVaaS onboarding configuration to an
-        IVaaS-owned agency identity. The `iss` identifies Cognito, not the calling agency.
+        IVaaS-owned program identity. The `iss` identifies Cognito, not the calling program.
       flows:
         clientCredentials:
           tokenUrl: "https://TBD-test.auth.us-west-2.amazoncognito.com/oauth2/token"
           scopes:
             ivaas/income.verify: Submit income verification requests.
 
-    AgencyOAuth2ClientCredentialsProduction:
+    ProgramOAuth2ClientCredentialsProduction:
       type: oauth2
       description: |
         **Production environment.** Tokens are issued by the production Cognito user pool and are
         accepted only by the production IVaaS environment.
 
         Token validation, required claims, scope, signature, and identity resolution are identical
-        to `AgencyOAuth2ClientCredentialsTest`; the token endpoint, issuer, and user pool differ.
+        to `ProgramOAuth2ClientCredentialsTest`; the token endpoint, issuer, and user pool differ.
       flows:
         clientCredentials:
           tokenUrl: "https://TBD-prod.auth.us-west-2.amazoncognito.com/oauth2/token"
@@ -185,7 +185,7 @@ components:
         while handling the request. Two accepted forms:
 
         - `{uuidv4}`: version-4 UUID on its own.
-        - `{uuidv4}:{reference}`: version-4 UUID, a colon, then an agency's own reference or identifier string
+        - `{uuidv4}:{reference}`: version-4 UUID, a colon, then a program's own reference or identifier string
 
         Distinct from the token's `jti`: correlation identifiers
         are deliberately reusable across retries, must exist even when authentication fails,
@@ -361,14 +361,14 @@ components:
         Confirmation that the caller's credentials were accepted. Carries no claimant data,
         so it is safe to call from any environment at any time.
 
-        TBD: exact fields. These are the fields an agency can use to confirm their configuration.
+        TBD: exact fields. These are the fields a program can use to confirm their configuration.
         Depends on authentication mechanism
       required: [authenticatedAs, environment]
       properties:
         authenticatedAs:
           type: string
           description: |
-            The IVaaS agency identity resolved from the verified token `client_id`.
+            The IVaaS program identity resolved from the verified token `client_id`.
         environment:
           type: string
           description: |

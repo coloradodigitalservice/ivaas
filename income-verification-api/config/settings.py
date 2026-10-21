@@ -38,7 +38,7 @@ API_AUTHENTICATION: Mapping[str, object] = {
     "JWKS_URL": env.str("AUTH_JWKS_URL", default=""),
     "TOKEN_URL": env.str("AUTH_TOKEN_URL", default=""),
     "REQUIRED_SCOPE": env.str("AUTH_REQUIRED_SCOPE", default="ivaas/income.verify"),
-    "CLIENT_AGENCY_MAP": env.json("AUTH_CLIENT_AGENCY_MAP", default={}),
+    "CLIENT_PROGRAM_MAP": env.json("AUTH_CLIENT_PROGRAM_MAP", default={}),
     "JWKS_CACHE_SECONDS": env.float("AUTH_JWKS_CACHE_SECONDS", default=300.0),
     "JWKS_TIMEOUT_SECONDS": env.float("AUTH_JWKS_TIMEOUT_SECONDS", default=5.0),
 }

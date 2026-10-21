@@ -15,19 +15,19 @@ Every environment uses the same signed-access-token verification path. Configure
 - `AUTH_TOKEN_URL`: client-credentials token endpoint advertised in generated OpenAPI.
 - `AUTH_REQUIRED_SCOPE`: scope required by program-facing operations; defaults to
   `ivaas/income.verify`.
-- `AUTH_CLIENT_AGENCY_MAP`: JSON object mapping verified OAuth client IDs to IVaaS agency IDs.
+- `AUTH_CLIENT_PROGRAM_MAP`: JSON object mapping verified OAuth client IDs to IVaaS program IDs.
 - `AUTH_JWKS_CACHE_SECONDS`: local JWKS document cache lifetime; defaults to 300 seconds.
 - `AUTH_JWKS_TIMEOUT_SECONDS`: JWKS request timeout; defaults to five seconds.
 - `DEPLOYMENT_ENVIRONMENT`: environment name returned by `/api/v1/test-connection`.
 
 IVaaS accepts only RS256 access tokens with the configured issuer, a future expiration, an
-`access` token use, the required scope, and a client ID present in `AUTH_CLIENT_AGENCY_MAP`.
-It validates tokens using public signing keys and never needs consuming agencies' client secrets.
-Both JWKS duration settings must be greater than zero, and the client-to-agency map must contain at
+`access` token use, the required scope, and a client ID present in `AUTH_CLIENT_PROGRAM_MAP`.
+It validates tokens using public signing keys and never needs consuming programs' client secrets.
+Both JWKS duration settings must be greater than zero, and the client-to-program map must contain at
 least one entry. Invalid authentication configuration fails application startup rather than
 falling back to unauthenticated behavior.
 
-The client-to-agency map is deployment-time onboarding configuration. Adding or changing an entry
+The client-to-program map is deployment-time onboarding configuration. Adding or changing an entry
 requires deploying or restarting IVaaS; there is currently no runtime onboarding API or durable
 onboarding store.
 

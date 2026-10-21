@@ -12,8 +12,8 @@ from tests.income_verification.security.authentication_test_support import (
     JWKS_URL,
     OAUTH_ENDPOINT,
     REQUIRED_SCOPE,
-    TEST_AGENCY_ID,
     TEST_CLIENT_ID,
+    TEST_PROGRAM_ID,
 )
 
 
@@ -23,7 +23,7 @@ def authentication_configuration(**overrides: object) -> dict[str, object]:
         "JWKS_URL": JWKS_URL,
         "TOKEN_URL": OAUTH_ENDPOINT,
         "REQUIRED_SCOPE": REQUIRED_SCOPE,
-        "CLIENT_AGENCY_MAP": {TEST_CLIENT_ID: TEST_AGENCY_ID},
+        "CLIENT_PROGRAM_MAP": {TEST_CLIENT_ID: TEST_PROGRAM_ID},
         "JWKS_CACHE_SECONDS": 300,
         "JWKS_TIMEOUT_SECONDS": 5,
     }
@@ -34,9 +34,9 @@ def authentication_configuration(**overrides: object) -> dict[str, object]:
 def test_configuration_requires_an_onboarded_client() -> None:
     with pytest.raises(
         ImproperlyConfigured,
-        match=r"API_AUTHENTICATION\.CLIENT_AGENCY_MAP",
+        match=r"API_AUTHENTICATION\.CLIENT_PROGRAM_MAP",
     ):
-        AuthenticationConfig.from_mapping(authentication_configuration(CLIENT_AGENCY_MAP={}))
+        AuthenticationConfig.from_mapping(authentication_configuration(CLIENT_PROGRAM_MAP={}))
 
 
 @pytest.mark.parametrize("key", ["ISSUER", "JWKS_URL", "TOKEN_URL", "REQUIRED_SCOPE"])

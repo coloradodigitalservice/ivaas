@@ -22,14 +22,14 @@ from income_verification.request_context import (
     LogField,
     RequestContextFilter,
     RequestContextMiddleware,
-    set_agency_log_context,
     set_client_log_context,
+    set_program_log_context,
     set_verification_log_context,
 )
 from tests.income_verification.security.authentication_test_support import (
     TEST_ACCESS_TOKEN,
-    TEST_AGENCY_ID,
     TEST_CLIENT_ID,
+    TEST_PROGRAM_ID,
 )
 
 pytestmark = pytest.mark.usefixtures("configured_api_authentication")
@@ -342,7 +342,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(
     assert accepted["event.name"] == "income_verification.request.accepted"
     assert accepted["ivaas.correlation.id"] == CORRELATION_ID
     assert accepted["auth.client.id"] == TEST_CLIENT_ID
-    assert accepted["ivaas.agency.id"] == TEST_AGENCY_ID
+    assert accepted["ivaas.program.id"] == TEST_PROGRAM_ID
     assert accepted["ivaas.application.id"] == "APP-2026-004471"
     assert accepted["ivaas.verification.id"] == response.json()["verificationId"]
     assert accepted["timestamp"].endswith("Z")
@@ -353,7 +353,7 @@ def test_stdout_is_structured_and_request_context_does_not_leak(
     assert "custom_details" not in outside_request
     assert "ivaas.correlation.id" not in outside_request
     assert "auth.client.id" not in outside_request
-    assert "ivaas.agency.id" not in outside_request
+    assert "ivaas.program.id" not in outside_request
     assert "ivaas.application.id" not in outside_request
     assert "ivaas.verification.id" not in outside_request
 
@@ -391,7 +391,7 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
         record = next(r for r in records if r["logger"].startswith(logger.name))
         assert record["ivaas.correlation.id"] == CORRELATION_ID
         assert record["auth.client.id"] == TEST_CLIENT_ID
-        assert record["ivaas.agency.id"] == TEST_AGENCY_ID
+        assert record["ivaas.program.id"] == TEST_PROGRAM_ID
         assert record["ivaas.application.id"] == "APP-2026-004471"
         assert record["ivaas.verification.id"] == response.json()["verificationId"]
 
@@ -406,15 +406,15 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
     api_logger.handlers = [handler]
 
     context_by_path = {
-        "/one": ("client-one", "agency-one", "application-one", "verification-one"),
-        "/two": ("client-two", "agency-two", "application-two", "verification-two"),
+        "/one": ("client-one", "program-one", "application-one", "verification-one"),
+        "/two": ("client-two", "program-two", "application-two", "verification-two"),
     }
 
     async def get_response(request: HttpRequest) -> HttpResponse:
         await asyncio.sleep(0)
-        client_id, agency_id, application_id, verification_id = context_by_path[request.path]
+        client_id, program_id, application_id, verification_id = context_by_path[request.path]
         set_client_log_context(client_id)
-        set_agency_log_context(agency_id)
+        set_program_log_context(program_id)
         set_verification_log_context(application_id, verification_id)
         await asyncio.sleep(0)
         logging.getLogger("income_verification.concurrent").info("concurrent request")
@@ -452,15 +452,15 @@ def test_async_request_context_is_isolated_between_concurrent_requests() -> None
     request_records = {record["ivaas.application.id"]: record for record in records[:2]}
     assert request_records["application-one"]["ivaas.correlation.id"].endswith(":one")
     assert request_records["application-one"]["auth.client.id"] == "client-one"
-    assert request_records["application-one"]["ivaas.agency.id"] == "agency-one"
+    assert request_records["application-one"]["ivaas.program.id"] == "program-one"
     assert request_records["application-one"]["ivaas.verification.id"] == "verification-one"
     assert request_records["application-two"]["ivaas.correlation.id"].endswith(":two")
     assert request_records["application-two"]["auth.client.id"] == "client-two"
-    assert request_records["application-two"]["ivaas.agency.id"] == "agency-two"
+    assert request_records["application-two"]["ivaas.program.id"] == "program-two"
     assert request_records["application-two"]["ivaas.verification.id"] == "verification-two"
     assert "ivaas.correlation.id" not in records[2]
     assert "auth.client.id" not in records[2]
-    assert "ivaas.agency.id" not in records[2]
+    assert "ivaas.program.id" not in records[2]
     assert "ivaas.application.id" not in records[2]
     assert "ivaas.verification.id" not in records[2]
 

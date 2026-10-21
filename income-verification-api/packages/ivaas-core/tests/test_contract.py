@@ -130,12 +130,12 @@ class TestIncomeSourceAdapterInterface:
 
 
 class TestVerificationContext:
-    @pytest.mark.parametrize("field_name", ["correlation_id", "agency_id", "application_id"])
+    @pytest.mark.parametrize("field_name", ["correlation_id", "program_id", "application_id"])
     def test_rejects_empty_identifiers(self, field_name: str) -> None:
         fields = {
             "verification_id": uuid4(),
             "correlation_id": "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471",
-            "agency_id": "TEST_PROGRAM",
+            "program_id": "TEST_PROGRAM",
             "application_id": "APP-2026-004471",
             field_name: "",
         }

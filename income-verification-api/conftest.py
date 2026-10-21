@@ -36,6 +36,6 @@ def verification_context() -> VerificationContext:
     return VerificationContext(
         verification_id=uuid4(),
         correlation_id="8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471",
-        agency_id="TEST_PROGRAM",
+        program_id="TEST_PROGRAM",
         application_id="APP-2026-004471",
     )

@@ -12,6 +12,6 @@ AUTH_ISSUER=http://127.0.0.1:8090/default
 AUTH_JWKS_URL=http://127.0.0.1:8090/default/jwks
 AUTH_REQUIRED_SCOPE=ivaas/income.verify
 AUTH_TOKEN_URL=http://127.0.0.1:8090/default/token
-AUTH_CLIENT_AGENCY_MAP='{"local-client":"local-agency"}'
+AUTH_CLIENT_PROGRAM_MAP='{"local-client":"local-program"}'
 AUTH_JWKS_CACHE_SECONDS=300
 AUTH_JWKS_TIMEOUT_SECONDS=5

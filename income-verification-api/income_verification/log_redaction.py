@@ -38,7 +38,7 @@ _SAFE_MODEL_KEYS = frozenset(
         "application_id",
         "verification_id",
         "correlation_id",
-        "agency_id",
+        "program_id",
         "source_id",
         "status",
         "retrieved_at",
