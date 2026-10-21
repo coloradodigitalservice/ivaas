@@ -10,12 +10,13 @@ from enum import StrEnum
 from inspect import iscoroutinefunction, markcoroutinefunction
 from typing import cast
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponseBase
 
 from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     validated_correlation_id,
 )
+from income_verification.log_redaction import redacted_message
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,8 +33,8 @@ _request_log_context: ContextVar[RequestLogContext] = ContextVar(
     "ivaas_request_log_context", default=_empty_request_log_context
 )
 
-SyncGetResponse = Callable[[HttpRequest], HttpResponse]
-AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponse]]
+SyncGetResponse = Callable[[HttpRequest], HttpResponseBase]
+AsyncGetResponse = Callable[[HttpRequest], Awaitable[HttpResponseBase]]
 
 
 class LogField(StrEnum):
@@ -57,6 +58,7 @@ class LogField(StrEnum):
     AGENCY_ID = "ivaas.agency.id"
     APPLICATION_ID = "ivaas.application.id"
     VERIFICATION_ID = "ivaas.verification.id"
+    SOURCE_ID = "ivaas.source.id"
 
 
 def get_correlation_id() -> str | None:
@@ -118,7 +120,7 @@ class RequestContextFilter(logging.Filter):
 
 
 class JsonLogFormatter(logging.Formatter):
-    """Serialize allowlisted fields; application messages must already be PII-safe."""
+    """Serialize allowlisted fields with backup redaction for application messages."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
@@ -127,7 +129,7 @@ class JsonLogFormatter(logging.Formatter):
             .replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": redacted_message(record),
         }
         for field in LogField:
             if hasattr(record, field.value):
@@ -154,7 +156,7 @@ class RequestContextMiddleware:
         if self.async_mode:
             markcoroutinefunction(self)
 
-    def __call__(self, request: HttpRequest) -> HttpResponse | Awaitable[HttpResponse]:
+    def __call__(self, request: HttpRequest) -> HttpResponseBase | Awaitable[HttpResponseBase]:
         if self.async_mode:
             return self._async_call(request)
 
@@ -164,7 +166,7 @@ class RequestContextMiddleware:
         finally:
             _request_log_context.reset(token)
 
-    async def _async_call(self, request: HttpRequest) -> HttpResponse:
+    async def _async_call(self, request: HttpRequest) -> HttpResponseBase:
         token = _bind_request_log_context(request)
         try:
             return await cast(AsyncGetResponse, self.get_response)(request)

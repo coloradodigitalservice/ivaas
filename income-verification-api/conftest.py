@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from uuid import uuid4
 
 import pytest
-from ivaas_core import LookbackPeriod, VerificationRequest
+from ivaas_core import LookbackPeriod, VerificationContext, VerificationRequest
 
 
 @pytest.fixture
@@ -23,11 +23,19 @@ def last_calendar_month() -> LookbackPeriod:
 def verification_request(last_calendar_month: LookbackPeriod) -> VerificationRequest:
     """A standard, valid request for exercising any adapter."""
     return VerificationRequest(
-        verification_id=uuid4(),
-        agency_id="TEST_PROGRAM",
-        application_id="APP-2026-004471",
         first_name="John",
         last_name="Doe",
         lookback_period=last_calendar_month,
         last4_ssn="1234",
+    )
+
+
+@pytest.fixture
+def verification_context() -> VerificationContext:
+    """The identifiers that travel with any request in the suite."""
+    return VerificationContext(
+        verification_id=uuid4(),
+        correlation_id="8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471",
+        agency_id="TEST_PROGRAM",
+        application_id="APP-2026-004471",
     )

@@ -14,13 +14,16 @@ dependencies = [
     "pybreaker>=1.4.1",
     "tenacity>=9.1.4",
     "uvicorn[standard]==0.52.2",
+    "loggingredactor==0.0.7",
 ]
 
 [tool.uv.workspace]
-members = ["packages/*"]
+# packages/adapters/: public adapters that live in this repo.
+members = ["packages/ivaas-core", "packages/adapters/*"]
 
 [tool.uv.sources]
 ivaas-core = { workspace = true }
+example-adapter = { workspace = true }
 
 [tool.uv]
 # sqlparse is a django dependency. This constraint can be removed once the django
@@ -32,6 +35,8 @@ dev = [
     {include-group = "quality"},
     {include-group = "test"},
     "django-stubs>=6.0.7",
+    # Reference adapter, registered by tests only.
+    "example-adapter",
 ]
 quality = [
     "pre-commit>=4.6.0",
@@ -40,7 +45,7 @@ quality = [
 ]
 test = [
     "pytest>=9.1.1",
-    "pytest-django>=4.12.0",
+    "pytest-django>=4.14.0",
     "pytest-cov>=7.1.0",
 ]
 
@@ -59,6 +64,7 @@ select = [
     # Extended rules
     "PT",   # Pytest conventions
     "LOG",  # Logging
+    "G",    # Logging format and usage
     "C4",   # Comprehensions
     "S",    # Bandit-derived security checks
     "A",    # Prevent shadowing Python builtins
@@ -84,7 +90,7 @@ pretty = true
 show_error_context = true
 
 [[tool.mypy.overrides]]
-module = ["environ", "environ.*"]
+module = ["environ", "environ.*", "loggingredactor", "loggingredactor.*"]
 ignore_missing_imports = true
 
 [tool.pytest]

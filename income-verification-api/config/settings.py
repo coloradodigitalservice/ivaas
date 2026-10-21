@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import environ
 
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "income_verification.health_check.HealthCheckMiddleware",
     "income_verification.request_context.RequestContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -104,7 +106,7 @@ USE_TZ = True
 
 # Logging
 
-LOGGING = {
+LOGGING: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
@@ -149,6 +151,9 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
         "enabled": env.bool("CDLE_ADAPTER_ENABLED", default=False),
         "config": {
             "account_url": env("CDLE_ACCOUNT_URL", default=None),
+            "account_identifier": env("CDLE_ACCOUNT_IDENTIFIER", default=None),
+            "user": env("CDLE_USER", default=None),
+            "private_key": env("CDLE_PRIVATE_KEY", default=None),
             "environment": env("CDLE_ENVIRONMENT", default=None),
             "timeout_seconds": env.int("CDLE_TIMEOUT_SECONDS", default=5),
         },
@@ -170,3 +175,10 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
         },
     },
 }
+
+# Each adapter logs under its own top-level package. Route every declared adapter's package
+# through the application's handler, so adapter logs are structured and carry the request
+# context. Other libraries keep Python's defaults and never get a DEBUG-level handler.
+for _declaration in INCOME_SOURCE_ADAPTERS.values():
+    _adapter_package = str(_declaration["class"]).partition(".")[0]
+    LOGGING["loggers"][_adapter_package] = LOGGING["loggers"]["adapter_engine"]

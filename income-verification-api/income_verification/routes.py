@@ -7,6 +7,7 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from ninja import Header, Router
 
+from adapter_engine.engine import engine
 from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     CORRELATION_ID_MAX_LENGTH,
@@ -135,10 +136,10 @@ def income_verification(
 ) -> VerificationResponse:
     agency = get_authenticated_agency(request)
     envelope = payload.to_envelope(correlation_id, agency_id=agency.agency_id)
-    response[CORRELATION_ID_HEADER_NAME] = envelope.correlation_id
+    response[CORRELATION_ID_HEADER_NAME] = envelope.context.correlation_id
     set_verification_log_context(
-        application_id=envelope.application_id,
-        verification_id=str(envelope.verification_id),
+        application_id=envelope.context.application_id,
+        verification_id=str(envelope.context.verification_id),
     )
     logger.info(
         "income verification request accepted",
@@ -149,8 +150,13 @@ def income_verification(
         },
     )
 
+    # TODO: derive the HTTP status from the overall adapter results (every source failed is an
+    #       error; a fallback source succeeding after failures is a success). Always 200 for now.
     return VerificationResponse.model_validate(
-        {"verificationId": envelope.verification_id},
+        {
+            "verificationId": envelope.context.verification_id,
+            "sources": engine.verify(envelope.request, envelope.context),
+        },
     )
 
 

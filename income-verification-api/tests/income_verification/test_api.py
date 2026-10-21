@@ -2,16 +2,20 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Iterator
+from datetime import datetime
 from io import StringIO
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, override_settings
+from example_adapter import ExampleAdapter
+from ivaas_core import SubjectNotFound
 
+from adapter_engine.registry import INCOME_SOURCE_ADAPTERS, registry
 from income_verification.api_error_codes import ERRORS, ErrorCode
 from income_verification.request_context import (
     JsonLogFormatter,
@@ -33,6 +37,23 @@ pytestmark = pytest.mark.usefixtures("configured_api_authentication")
 CORRELATION_ID = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471"
 API_ROOT = "/api"
 INCOME_VERIFICATION_PATH = f"{API_ROOT}/{settings.API_VERSION}/income-verification"
+EXAMPLE_ADAPTER_SETTINGS = {
+    "example": {
+        "class": "example_adapter.ExampleAdapter",
+        "enabled": True,
+        "retry_policy": None,
+        "circuit_breaker": None,
+    }
+}
+
+
+@pytest.fixture(autouse=True)
+def example_adapter_registered() -> Iterator[None]:
+    """Serve every request from the example adapter, whatever the machine's settings enable."""
+    with override_settings(**{INCOME_SOURCE_ADAPTERS: EXAMPLE_ADAPTER_SETTINGS}):
+        registry.refresh_from_settings()
+        yield
+    registry.refresh_from_settings()
 
 
 def authenticated_headers(**headers: str) -> dict[str, str]:
@@ -104,7 +125,9 @@ def test_accepts_verification_request(client: Client) -> None:
     assert response.headers["Correlation-Id"] == CORRELATION_ID
     body = response.json()
     assert UUID(body["verificationId"]).version == 4
-    assert body["sources"] == []
+    [source] = body["sources"]
+    assert datetime.fromisoformat(source.pop("retrievedAt")).tzinfo is not None
+    assert source == {"sourceId": ExampleAdapter.source_id, "status": "OK", "rawIncome": {}}
     logger.info.assert_called_once_with(
         "income verification request accepted",
         extra={
@@ -113,6 +136,20 @@ def test_accepts_verification_request(client: Client) -> None:
             LogField.URL_PATH.value: INCOME_VERIFICATION_PATH,
         },
     )
+
+
+def test_adapter_failure_is_reported_as_the_source_status(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ExampleAdapter, "verify", MagicMock(side_effect=SubjectNotFound()))
+
+    response = post_verification(client, valid_request())
+
+    assert response.status_code == 200
+    [source] = response.json()["sources"]
+    assert source["status"] == "NO_DATA"
+    assert source["retrievedAt"] is None
+    assert source["rawIncome"] is None
 
 
 def test_accepts_full_ssn_instead_of_last_four(client: Client) -> None:
@@ -333,34 +370,30 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
     handler = logging.StreamHandler(stream)
     handler.addFilter(RequestContextFilter())
     handler.setFormatter(JsonLogFormatter())
-    adapter_logger = logging.getLogger("adapter_engine")
-    original_handlers = adapter_logger.handlers
-    adapter_logger.handlers = [handler]
-
-    def emit_downstream_log(message: str, *, extra: dict[str, object]) -> None:
-        logging.getLogger("adapter_engine.downstream").info(
-            "downstream verification processing",
-            extra={
-                LogField.EVENT_NAME.value: "income_verification.downstream.test",
-                "attempt": 1,
-            },
-        )
+    downstream_loggers = [logging.getLogger("adapter_engine"), logging.getLogger("example_adapter")]
+    original_state = [(logger.handlers, logger.level) for logger in downstream_loggers]
+    for logger in downstream_loggers:
+        logger.handlers = [handler]
+        # The example adapter's logger is unconfigured in tests, so it inherits WARNING.
+        logger.setLevel(logging.INFO)
 
     try:
-        with patch("income_verification.routes.logger.info", side_effect=emit_downstream_log):
-            response = post_verification(client, valid_request())
+        response = post_verification(client, valid_request())
     finally:
-        adapter_logger.handlers = original_handlers
+        for logger, (handlers, level) in zip(downstream_loggers, original_state, strict=True):
+            logger.handlers = handlers
+            logger.setLevel(level)
 
     assert response.status_code == 200
-    record = json.loads(stream.getvalue())
-    assert record["event.name"] == "income_verification.downstream.test"
-    assert "attempt" not in record
-    assert record["ivaas.correlation.id"] == CORRELATION_ID
-    assert record["auth.client.id"] == TEST_CLIENT_ID
-    assert record["ivaas.agency.id"] == TEST_AGENCY_ID
-    assert record["ivaas.application.id"] == "APP-2026-004471"
-    assert record["ivaas.verification.id"] == response.json()["verificationId"]
+    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    for logger in downstream_loggers:
+        # Any record from the logger will do; one is enough to prove the context is inherited.
+        record = next(r for r in records if r["logger"].startswith(logger.name))
+        assert record["ivaas.correlation.id"] == CORRELATION_ID
+        assert record["auth.client.id"] == TEST_CLIENT_ID
+        assert record["ivaas.agency.id"] == TEST_AGENCY_ID
+        assert record["ivaas.application.id"] == "APP-2026-004471"
+        assert record["ivaas.verification.id"] == response.json()["verificationId"]
 
 
 def test_async_request_context_is_isolated_between_concurrent_requests() -> None:

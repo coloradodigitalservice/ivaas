@@ -42,6 +42,8 @@ services:
       - ./income-verification-api/.envs/.local/.django
       - ./income-verification-api/.envs/.local/.postgres
       - ./income-verification-api/${ADAPTERS_ENV:-.envs/.local/.adapters}
+      - path: ./income-verification-api/.envs/.local/.secrets
+        required: false
     environment:
       POSTGRES_HOST: postgres
       # Inside the container, localhost is the container itself; the local
