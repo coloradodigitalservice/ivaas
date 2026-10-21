@@ -29,31 +29,31 @@ sequenceDiagram
         participant api as IVaaS API
     end
     participant vmi as DPW VMI
-    
+
     loop whenever applicants trigger income verification flows
         applicant->>programApp: Trigger income verification
-    
+
         opt needs fresh access token
             programApp->>cognito: access token request 🔒
             cognito->>programApp: access token response 🔒
             programApp->>programApp: cache access token
         end
-        
+
         programApp->>api: Create Invitation request 🔒
         note over programApp,api: Include program originating `custom_attributes`
         api->>api: Add IV `custom_attributes` and `metrics_attributes`
         api->>vmi: Create Invitation request 🔒 (VMI_IVAAS_API_KEY)
         vmi->>api: Create Invitation response 🔒
         api->>programApp: Create Invitation response 🔒
-        
+
         programApp->>applicant: Share invitation link with applicant
     end
 
     note over applicant,vmi: Applicants may complete Verify My Income flow any time before the invitation link expires
-    
+
     loop whenever applicant clicks invitation link
         applicant->>vmi: User (or household member) completes Verify My Income flow
-        
+
         par VMI webhook handling
             vmi->>api: Send verification results via webhook message 🔒 (IVAAS_VMI_API_KEY)
             api->>api: Validate webhook headers and message
@@ -63,21 +63,21 @@ sequenceDiagram
             note over programApp,api: Message includes all `custom_attributes` from the invitation request
             programApp->>programApp: Validate webhook headers and message
             programApp->>programApp: Use `custom_attributes` for applicant/application/case matching and routing
-            
+
             opt
                 programApp->>programApp: Process and store results
                 programApp->>applicant: Notify applicant of results or further required action(s)
             end
-            
+
             programApp->>api: 200 response 🔒
             api->>vmi: 200 response 🔒
         and VMI document handling
             vmi->>api: Send verification results via document upload 🔒
             api->>api: Determine document upload's originating program
-            
+
             opt if program is configured to handle VMI document uploads
                 api->>programApp: Send verification results via document upload 🔒
-                
+
                 opt
                     programApp->>programApp: Process and store document
                     programApp->>applicant: Notify applicant of results or further required action(s)
