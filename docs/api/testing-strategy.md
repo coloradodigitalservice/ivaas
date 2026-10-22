@@ -26,7 +26,7 @@ For all E2E scenarios, check source-level results as well as HTTP status, and re
 
 Maintain a small suite of tests with explicit expected results that can be configured and run in any environment (including production):
 
-- **Health and connection:** the API responds, and an authenticated connection test returns the expected agency and environment.
+- **Health and connection:** the API responds, and an authenticated connection test returns the expected program and environment.
 - **Authentication rejection:** a request without a token is rejected.
 - **No income:** a known no-data subject returns the expected no-data status and no income payload, where the provider supplies a stable test subject.
 
@@ -39,7 +39,7 @@ The [E2E suite](../../e2e_tests/test_api.py) uses pytest and Python's standard-l
 | `E2E_BASE_URL`                                    | Application base URL, such as `https://iv.example.org`, without `/api`.     |
 | `E2E_TOKEN_URL`                                   | OAuth client-credentials token endpoint.                                    |
 | `E2E_CLIENT_ID`, `E2E_CLIENT_SECRET`              | Test-client credentials, supplied through the deployer's secret store.      |
-| `E2E_EXPECTED_AGENCY`, `E2E_EXPECTED_ENVIRONMENT` | Expected values from the authenticated connection test.                     |
+| `E2E_EXPECTED_PROGRAM`, `E2E_EXPECTED_ENVIRONMENT` | Expected values from the authenticated connection test.                     |
 | `E2E_API_VERSION`                                 | Optional; defaults to `v1`.                                                 |
 | `E2E_SCOPE`                                       | Optional; defaults to `ivaas/income.verify`.                                |
 | `E2E_NO_INCOME_CASES`                             | Optional path to a private JSON file defining approved no-income scenarios. |
@@ -93,7 +93,7 @@ Set `E2E_NO_INCOME_CASES` to a JSON case file such as:
 
 Request-file paths are relative to the case file, or absolute paths within the runner. Each request contains the normal verification fields for an approved test subject and lookback period. Use unique, non-sensitive case names of 1-64 letters, digits, underscores, or hyphens; names appear in test output and JUnit results.
 
-Pytest runs each scenario as a separate test in the same process or container. The suite generates a unique `applicationId` and correlation IDs, verifies the target agency/environment before submitting, and requires exactly one result for every expected source, with no additional sources. Every source must satisfy the API's no-data response contract, including null income and retrieval fields. Expected source IDs describe the response; they do not select which adapters the application invokes. Requests can still create audit records.
+Pytest runs each scenario as a separate test in the same process or container. The suite generates a unique `applicationId` and correlation IDs, verifies the target program/environment before submitting, and requires exactly one result for every expected source, with no additional sources. Every source must satisfy the API's no-data response contract, including null income and retrieval fields. Expected source IDs describe the response; they do not select which adapters the application invokes. Requests can still create audit records.
 
 Without `E2E_NO_INCOME_CASES`, verification is explicitly skipped. A supplied case file must contain at least one valid scenario; malformed files or missing request fixtures fail the suite. Mixed outcomes and known-income payload assertions belong in the broader adapter tests below.
 
@@ -111,7 +111,7 @@ docker run --rm \
   --mount "type=bind,source=$PWD/e2e-results,target=/results" \
   -e E2E_BASE_URL -e E2E_TOKEN_URL \
   -e E2E_CLIENT_ID -e E2E_CLIENT_SECRET \
-  -e E2E_EXPECTED_AGENCY -e E2E_EXPECTED_ENVIRONMENT \
+  -e E2E_EXPECTED_PROGRAM -e E2E_EXPECTED_ENVIRONMENT \
   ivaas-e2e-test-client:my-release
 ```
 
@@ -129,7 +129,7 @@ FROM ivaas-e2e-test-client:release
 COPY tests/deployed/ /e2e/e2e_tests/adapter_tests/
 ```
 
-The shared [pytest fixtures](../../e2e_tests/conftest.py) provide `base_url`, `access_token`, and `api`. Tests that invoke verification should use `verified_api`, which checks the expected agency and environment before returning the authenticated request function. Both request functions accept a relative API route and a JSON payload (`None` for GET), and return the HTTP status and decoded response. Use fixed route names, with subject data in the payload.
+The shared [pytest fixtures](../../e2e_tests/conftest.py) provide `base_url`, `access_token`, and `api`. Tests that invoke verification should use `verified_api`, which checks the expected program and environment before returning the authenticated request function. Both request functions accept a relative API route and a JSON payload (`None` for GET), and return the HTTP status and decoded response. Use fixed route names, with subject data in the payload.
 
 The inherited default runs only the shared E2E file. To also run the adapter tests, supply `/e2e/e2e_tests/adapter_tests` as an additional pytest argument, together with `--junitxml=/results/e2e-results.xml`. Keep these broader scenarios opt-in for the test environment, with approved fixtures supplied at runtime. Build the derived image from the shared image version associated with the deployed release.
 
@@ -138,7 +138,7 @@ The inherited default runs only the shared E2E file. To also run the adapter tes
 Run one test suite against the deployed income-verification API, covering every adapter the deployment is configured to invoke. A single test runner executes the scenarios for all adapters:
 
 1. After the candidate deployment is ready in the test environment, run the test suite from a connected CI runner or a single test container.
-2. Configure the runner with the API URL, credentials, and expected agency/environment. Supply approved request fixtures and expected source-level outcomes for each scenario. A single request may cover multiple adapters; use separate test cases within the same run when adapters need different test subjects or lookback periods.
+2. Configure the runner with the API URL, credentials, and expected program/environment. Supply approved request fixtures and expected source-level outcomes for each scenario. A single request may cover multiple adapters; use separate test cases within the same run when adapters need different test subjects or lookback periods.
 3. Execute the shared E2E tests and broader verification scenarios against the same deployment. For each scenario, assert exactly one result for every expected `sourceId` and check its status and payload. Verify that the returned set of sources matches the configured orchestration for that request.
 4. Require all scenarios to pass before promotion, with verification coverage for every adapter. Connectivity checks alone or a skipped no-income case do not establish adapter coverage.
 

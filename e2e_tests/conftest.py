@@ -21,7 +21,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         "E2E_TOKEN_URL",
         "E2E_CLIENT_ID",
         "E2E_CLIENT_SECRET",
-        "E2E_EXPECTED_AGENCY",
+        "E2E_EXPECTED_PROGRAM",
         "E2E_EXPECTED_ENVIRONMENT",
     )
     missing = [name for name in required if not os.environ.get(name, "").strip()]

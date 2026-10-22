@@ -78,16 +78,16 @@ def request_json(
 
 
 def check_connection(api: ApiRequest) -> None:
-    """Confirm the configured agency and environment before invoking verification."""
+    """Confirm the configured program and environment before invoking verification."""
     status, body = api("test-connection", None)
     assert status == 200, f"Connection test returned HTTP {status}; expected HTTP 200."
     assert isinstance(body, dict), "Connection test response must be a JSON object."
     assert body.keys() >= {"authenticatedAs", "environment"}, (
         "Connection test response is missing required fields."
     )
-    assert body["authenticatedAs"] == required_env("E2E_EXPECTED_AGENCY"), (
-        "Connection test returned an unexpected agency; check E2E_EXPECTED_AGENCY "
-        "and the application's client-to-agency configuration."
+    assert body["authenticatedAs"] == required_env("E2E_EXPECTED_PROGRAM"), (
+        "Connection test returned an unexpected program; check E2E_EXPECTED_PROGRAM "
+        "and the application's client-to-program configuration."
     )
     assert body["environment"] == required_env("E2E_EXPECTED_ENVIRONMENT"), (
         "Connection test returned an unexpected environment; check E2E_EXPECTED_ENVIRONMENT "
