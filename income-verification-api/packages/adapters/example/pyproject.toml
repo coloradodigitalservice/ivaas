@@ -2,7 +2,7 @@
 name = "example-adapter"
 version = "0.1.0"
 description = "Reference implementation of the ivaas-core adapter contract. Does nothing; never register it outside tests."
-requires-python = ">=3.14"
+requires-python = ">=3.14.9"
 dependencies = ["ivaas-core"]
 
 [build-system]
