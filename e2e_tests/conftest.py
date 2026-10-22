@@ -12,6 +12,25 @@ import pytest
 from e2e_test_client import ApiRequest, RecordProperty, check_connection, request_json, required_env
 
 
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Reject incomplete runner configuration before collecting and executing HTTP tests."""
+    if session.config.option.collectonly:
+        return
+    required = (
+        "E2E_BASE_URL",
+        "E2E_TOKEN_URL",
+        "E2E_CLIENT_ID",
+        "E2E_CLIENT_SECRET",
+        "E2E_EXPECTED_AGENCY",
+        "E2E_EXPECTED_ENVIRONMENT",
+    )
+    missing = [name for name in required if not os.environ.get(name, "").strip()]
+    if missing:
+        raise pytest.UsageError(
+            f"Missing required E2E environment variables: {', '.join(missing)}."
+        )
+
+
 @pytest.fixture(scope="session")
 def base_url() -> str:
     return required_env("E2E_BASE_URL").rstrip("/")

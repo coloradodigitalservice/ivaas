@@ -81,7 +81,15 @@ def check_connection(api: ApiRequest) -> None:
     """Confirm the configured agency and environment before invoking verification."""
     status, body = api("test-connection", None)
     assert status == 200, f"Connection test returned HTTP {status}; expected HTTP 200."
-    assert body == {
-        "authenticatedAs": required_env("E2E_EXPECTED_AGENCY"),
-        "environment": required_env("E2E_EXPECTED_ENVIRONMENT"),
-    }, "Connection test returned an unexpected agency or environment."
+    assert isinstance(body, dict), "Connection test response must be a JSON object."
+    assert body.keys() >= {"authenticatedAs", "environment"}, (
+        "Connection test response is missing required fields."
+    )
+    assert body["authenticatedAs"] == required_env("E2E_EXPECTED_AGENCY"), (
+        "Connection test returned an unexpected agency; check E2E_EXPECTED_AGENCY "
+        "and the application's client-to-agency configuration."
+    )
+    assert body["environment"] == required_env("E2E_EXPECTED_ENVIRONMENT"), (
+        "Connection test returned an unexpected environment; check E2E_EXPECTED_ENVIRONMENT "
+        "and the application's DEPLOYMENT_ENVIRONMENT."
+    )
