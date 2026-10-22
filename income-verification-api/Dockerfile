@@ -5,13 +5,10 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5
 
 FROM ${PYTHON_IMAGE} AS base
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends --only-upgrade \
-        libpcre2-8-0=10.46-1~deb13u3 \
-        libssl3t64=3.5.7-1~deb13u3 \
-        openssl-provider-legacy=3.5.7-1~deb13u3 \
-        openssl=3.5.7-1~deb13u3 \
-  && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update \
+#  && apt-get install -y --no-install-recommends --only-upgrade \
+   # list dependencies to upgrade here
+#  && rm -rf /var/lib/apt/lists/*
 
 FROM ${UV_IMAGE} AS uv
 
