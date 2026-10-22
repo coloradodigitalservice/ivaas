@@ -20,23 +20,23 @@ FROM base AS builder
 
 COPY --from=uv /uv /bin/uv
 ENV UV_PYTHON_DOWNLOADS=0 UV_LINK_MODE=copy
-WORKDIR /smoke
+WORKDIR /e2e
 COPY income-verification-api/pyproject.toml income-verification-api/uv.lock income-verification-api/.python-version ./
 # Frozen uses the existing lock without needing application or workspace source.
 RUN uv sync --frozen --only-group test --no-editable
 
 FROM base AS runtime
 
-ENV PATH="/smoke/.venv/bin:$PATH" \
+ENV PATH="/e2e/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
 
-WORKDIR /smoke
-COPY --from=builder /smoke/.venv /smoke/.venv
-COPY smoke_tests/test_api.py smoke_tests/conftest.py smoke_tests/smoke_client.py smoke_tests/pytest.ini ./smoke_tests/
+WORKDIR /e2e
+COPY --from=builder /e2e/.venv /e2e/.venv
+COPY e2e_tests/test_api.py e2e_tests/conftest.py e2e_tests/e2e_test_client.py e2e_tests/pytest.ini ./e2e_tests/
 RUN mkdir /results && chown 1001:1001 /results
 USER 1001:1001
 
-ENTRYPOINT ["python", "-m", "pytest", "-c", "smoke_tests/pytest.ini", "smoke_tests/test_api.py", "-p", "no:cacheprovider"]
-CMD ["--junitxml=/results/smoke-results.xml"]
+ENTRYPOINT ["python", "-m", "pytest", "-c", "e2e_tests/pytest.ini", "e2e_tests/test_api.py", "-p", "no:cacheprovider"]
+CMD ["--junitxml=/results/e2e-results.xml"]

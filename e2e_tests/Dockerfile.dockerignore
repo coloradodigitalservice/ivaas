@@ -1,0 +1,14 @@
+**
+!income-verification-api/
+!income-verification-api/pyproject.toml
+!income-verification-api/uv.lock
+!income-verification-api/.python-version
+!e2e_tests/
+!e2e_tests/Dockerfile
+!e2e_tests/Dockerfile.dockerignore
+!e2e_tests/test_api.py
+!e2e_tests/conftest.py
+!e2e_tests/e2e_test_client.py
+!e2e_tests/pytest.ini
+income-verification-api/.envs/
+e2e_tests/local.env

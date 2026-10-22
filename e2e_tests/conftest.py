@@ -1,4 +1,4 @@
-"""HTTP and authentication fixtures shared by smoke tests and nested adapter tests."""
+"""HTTP and authentication fixtures shared by E2E tests and nested adapter tests."""
 
 import base64
 import json
@@ -9,21 +9,21 @@ from uuid import uuid4
 
 import pytest
 
-from smoke_client import ApiRequest, RecordProperty, check_connection, request_json, required_env
+from e2e_test_client import ApiRequest, RecordProperty, check_connection, request_json, required_env
 
 
 @pytest.fixture(scope="session")
 def base_url() -> str:
-    return required_env("SMOKE_BASE_URL").rstrip("/")
+    return required_env("E2E_BASE_URL").rstrip("/")
 
 
 @pytest.fixture(scope="session")
 def access_token() -> str:
-    client_id = quote_plus(required_env("SMOKE_CLIENT_ID"), safe="")
-    client_secret = quote_plus(required_env("SMOKE_CLIENT_SECRET"), safe="")
+    client_id = quote_plus(required_env("E2E_CLIENT_ID"), safe="")
+    client_secret = quote_plus(required_env("E2E_CLIENT_SECRET"), safe="")
     credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     status, _, body = request_json(
-        required_env("SMOKE_TOKEN_URL"),
+        required_env("E2E_TOKEN_URL"),
         endpoint="Token endpoint",
         headers={
             "Authorization": f"Basic {credentials}",
@@ -32,7 +32,7 @@ def access_token() -> str:
         data=urlencode(
             {
                 "grant_type": "client_credentials",
-                "scope": os.environ.get("SMOKE_SCOPE", "ivaas/income.verify"),
+                "scope": os.environ.get("E2E_SCOPE", "ivaas/income.verify"),
             }
         ).encode(),
     )
@@ -47,7 +47,7 @@ def access_token() -> str:
 
 @pytest.fixture
 def api(base_url: str, access_token: str, record_property: RecordProperty) -> ApiRequest:
-    prefix = f"{base_url}/api/{os.environ.get('SMOKE_API_VERSION', 'v1')}"
+    prefix = f"{base_url}/api/{os.environ.get('E2E_API_VERSION', 'v1')}"
 
     def request(path: str, payload: dict[str, Any] | None = None) -> tuple[int, Any]:
         correlation_id = str(uuid4())

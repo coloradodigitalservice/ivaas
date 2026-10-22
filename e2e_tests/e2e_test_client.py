@@ -1,4 +1,4 @@
-"""Shared HTTP helpers for IVaaS smoke tests and deployer-owned extensions."""
+"""Shared HTTP helpers for IVaaS E2E tests and deployer-owned extensions."""
 
 import json
 import os
@@ -16,7 +16,7 @@ type RecordProperty = Callable[[str, object], None]
 def required_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
-        pytest.fail(f"Set {name} before running smoke tests.", pytrace=False)
+        pytest.fail(f"Set {name} before running E2E tests.", pytrace=False)
     return value
 
 
@@ -82,6 +82,6 @@ def check_connection(api: ApiRequest) -> None:
     status, body = api("test-connection", None)
     assert status == 200, f"Connection test returned HTTP {status}; expected HTTP 200."
     assert body == {
-        "authenticatedAs": required_env("SMOKE_EXPECTED_AGENCY"),
-        "environment": required_env("SMOKE_EXPECTED_ENVIRONMENT"),
+        "authenticatedAs": required_env("E2E_EXPECTED_AGENCY"),
+        "environment": required_env("E2E_EXPECTED_ENVIRONMENT"),
     }, "Connection test returned an unexpected agency or environment."

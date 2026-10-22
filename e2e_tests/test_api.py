@@ -1,4 +1,4 @@
-"""HTTP smoke tests for an existing deployment; run with `make test-smoke`."""
+"""HTTP E2E tests for an existing deployment; run with `make test-e2e`."""
 
 import json
 import os
@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from smoke_client import ApiRequest, RecordProperty, check_connection, request_json
+from e2e_test_client import ApiRequest, RecordProperty, check_connection, request_json
 
 type NoIncomeCase = tuple[Path, set[str]]
 
@@ -27,7 +27,7 @@ def test_connection(api: ApiRequest) -> None:
 def test_missing_authentication(base_url: str, record_property: RecordProperty) -> None:
     correlation_id = str(uuid4())
     record_property("correlation_id", correlation_id)
-    version = os.environ.get("SMOKE_API_VERSION", "v1")
+    version = os.environ.get("E2E_API_VERSION", "v1")
     status, _, _ = request_json(
         f"{base_url}/api/{version}/test-connection",
         endpoint="Unauthenticated connection endpoint",
@@ -41,7 +41,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Collect one verification test per approved no-income scenario."""
     if "no_income_case" not in metafunc.fixturenames:
         return
-    cases_path = os.environ.get("SMOKE_NO_INCOME_CASES")
+    cases_path = os.environ.get("E2E_NO_INCOME_CASES")
     if not cases_path:
         metafunc.parametrize(
             "no_income_case",
@@ -59,7 +59,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     try:
         cases = json.loads(Path(cases_path).read_text())
     except OSError, ValueError:
-        pytest.fail("SMOKE_NO_INCOME_CASES must name a readable JSON case file.", pytrace=False)
+        pytest.fail("E2E_NO_INCOME_CASES must name a readable JSON case file.", pytrace=False)
     if not isinstance(cases, list) or not cases:
         pytest.fail("No-income cases must be a nonempty JSON array.", pytrace=False)
     parameters: list[NoIncomeCase] = []
@@ -100,7 +100,7 @@ def no_income_request(no_income_case: NoIncomeCase) -> dict[str, Any]:
     except OSError, ValueError:
         pytest.fail("No-income request fixtures must be readable JSON files.", pytrace=False)
     assert isinstance(payload, dict), "No-income request fixture must be a JSON object."
-    return payload | {"applicationId": f"SMOKE-{uuid4()}"}
+    return payload | {"applicationId": f"E2E-{uuid4()}"}
 
 
 def test_no_income(

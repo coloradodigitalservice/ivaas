@@ -1,7 +1,7 @@
 API_DIR := income-verification-api
 DOCKER_API_NAME := income-verification-api
 DOCKER_BASE_STAGE_TAG := ivaas-$(DOCKER_API_NAME):base
-SMOKE_IMAGE ?= ivaas-smoke:local
+E2E_IMAGE ?= ivaas-e2e-test-client:local
 ADAPTERS_ENV ?= .envs/.local/.adapters# CI overrides this with .envs/.ci/.adapters
 ENV := \
 	--env-file .envs/.local/.django \
@@ -13,7 +13,7 @@ COMPOSE := docker compose
 UV := cd $(API_DIR) && uv
 SYNC := $(UV) sync
 # --no-sync: adapter wheels are not in the lockfile. A plain `uv run` syncs first and would uninstall them.
-# `make sync`/`make sync-ci` are the explicit synchronization points.
+# The sync targets are the explicit synchronization points.
 RUN_NO_SYNC := $(UV) run --no-sync
 LOCAL_RUN := $(RUN_NO_SYNC) $(ENV)
 MANAGE := $(LOCAL_RUN) python manage.py
@@ -53,6 +53,10 @@ sync: ## set up .venv and dependencies, including any adapter wheels
 sync-ci: ## set up .venv and dependencies for CI, requiring pyproject.toml and uv.lock to be consistent
 	$(SYNC) --locked
 	@$(MAKE) --no-print-directory adapters-install
+
+.PHONY: sync-e2e
+sync-e2e: ## install only E2E test dependencies on a dedicated test runner
+	$(SYNC) --locked --only-group test
 
 .PHONY: adapters-install
 adapters-install: ## install landing-zone adapter wheels into the venv (no-op when empty)
@@ -113,36 +117,30 @@ migrations: ## generate database migrations
 test: db-up ## run tests
 	$(LOCAL_RUN) pytest
 
-.PHONY: test-smoke
-test-smoke: ## run HTTP smoke tests against SMOKE_BASE_URL (application must already be running)
-	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --project $(API_DIR) --no-sync python -m pytest -c smoke_tests/pytest.ini smoke_tests/test_api.py $(SMOKE_TEST_ARGS)
+.PHONY: test-e2e
+test-e2e: ## run HTTP E2E tests against E2E_BASE_URL (application must already be running)
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --project $(API_DIR) --no-sync $(E2E_ENV) python -m pytest -c e2e_tests/pytest.ini e2e_tests/test_api.py $(E2E_TEST_ARGS)
 
-.PHONY: smoke-image
-smoke-image: ## build the standalone smoke-test image (override SMOKE_IMAGE to set its tag)
-	docker build --file smoke_tests/Dockerfile --tag $(SMOKE_IMAGE) .
+.PHONY: e2e-image
+e2e-image: ## build the E2E test client image (override E2E_IMAGE to set its tag)
+	docker build --file e2e_tests/Dockerfile --tag $(E2E_IMAGE) .
 
-.PHONY: test-smoke-local
-test-smoke-local: ## run smoke tests against the running local application and mock OAuth server
-	SMOKE_BASE_URL=http://127.0.0.1:8000 \
-	SMOKE_TOKEN_URL=http://127.0.0.1:8090/default/token \
-	SMOKE_CLIENT_ID=local-client \
-	SMOKE_CLIENT_SECRET=local-secret \
-	SMOKE_EXPECTED_AGENCY=local-agency \
-	SMOKE_EXPECTED_ENVIRONMENT=local \
-	$(MAKE) --no-print-directory test-smoke
+.PHONY: test-e2e-local
+test-e2e-local: E2E_ENV := --env-file e2e_tests/local.env
+test-e2e-local: test-e2e ## run E2E tests against the running local application and mock OAuth server
 
 .PHONY: quality-fix
 quality-fix: ## Apply available automatic fixes for python package quality violations
-	$(RUN_NO_SYNC) ruff format . ../smoke_tests
-	$(RUN_NO_SYNC) ruff check --fix . ../smoke_tests
+	$(RUN_NO_SYNC) ruff format . ../e2e_tests
+	$(RUN_NO_SYNC) ruff check --fix . ../e2e_tests
 
 .PHONY: quality-check
 quality-check: ## run all required checks
-	$(RUN_NO_SYNC) ruff format --check . ../smoke_tests
-	$(RUN_NO_SYNC) ruff check . ../smoke_tests
+	$(RUN_NO_SYNC) ruff format --check . ../e2e_tests
+	$(RUN_NO_SYNC) ruff check . ../e2e_tests
 	$(MANAGE) check
 	$(LOCAL_RUN) mypy .
-	$(LOCAL_RUN) mypy ../smoke_tests
+	$(LOCAL_RUN) mypy ../e2e_tests
 
 .PHONY: django-secret-key
 django-secret-key: ## generate string for DJANGO_SECRET_KEY

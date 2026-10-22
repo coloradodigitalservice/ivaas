@@ -126,15 +126,15 @@ To run the automated test suite, use the `make test` command:
 make test
 ```
 
-To smoke test the running application, start it with `make run` or `make up`, then run in another terminal:
+To run E2E tests against the running application, start it with `make run` or `make up`, then run in another terminal:
 
 ```shell
-make test-smoke-local
+make test-e2e-local
 ```
 
-This uses the local API and mock OAuth server with the committed local test credentials. It checks health, authenticated connection, and authentication rejection. Verification is skipped unless you supply `SMOKE_NO_INCOME_CASES` with approved request fixtures and expected sources for one or more no-income scenarios. Each scenario runs as a separate test within the same invocation. See the [testing strategy](../api/testing-strategy.md) for the case-file format and deployed-environment configuration.
+This loads the [local E2E settings](../../e2e_tests/local.env) for the local API and mock OAuth server. It checks health, authenticated connection, and authentication rejection. Verification is skipped unless you supply `E2E_NO_INCOME_CASES` with approved request fixtures and expected sources for one or more no-income scenarios. Each scenario runs as a separate test within the same invocation. See the [testing strategy](../api/testing-strategy.md) for the case-file format and deployed-environment configuration.
 
-To build the same standalone test image used in CI, run `make smoke-image`. See [Container Runner](../api/testing-strategy.md#container-runner) for runtime configuration, networking, and report output.
+To build the E2E test client image used in CI, run `make e2e-image`. See [Container Runner](../api/testing-strategy.md#container-runner) for runtime configuration, networking, and report output.
 
 For a complete list of available `make` commands, run:
 

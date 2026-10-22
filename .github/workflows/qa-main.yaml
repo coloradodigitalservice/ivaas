@@ -64,23 +64,14 @@ jobs:
       - name: Health check
         run: curl --fail --silent --show-error http://127.0.0.1:8000/api/health
 
-      - name: Build smoke test image
-        run: make smoke-image
+      - name: Build E2E test client image
+        run: make e2e-image
 
-      - name: Smoke tests against the running image
-        env:
-          SMOKE_BASE_URL: http://127.0.0.1:8000
-          SMOKE_TOKEN_URL: http://127.0.0.1:8090/default/token
-          SMOKE_CLIENT_ID: local-client
-          SMOKE_CLIENT_SECRET: local-secret
-          SMOKE_EXPECTED_AGENCY: local-agency
-          SMOKE_EXPECTED_ENVIRONMENT: local
+      - name: E2E tests against the running image
         run: |
           docker run --rm --network host \
-            -e SMOKE_BASE_URL -e SMOKE_TOKEN_URL \
-            -e SMOKE_CLIENT_ID -e SMOKE_CLIENT_SECRET \
-            -e SMOKE_EXPECTED_AGENCY -e SMOKE_EXPECTED_ENVIRONMENT \
-            ivaas-smoke:local
+            --env-file e2e_tests/local.env \
+            ivaas-e2e-test-client:local
 
       - name: Tear down
         if: always()
