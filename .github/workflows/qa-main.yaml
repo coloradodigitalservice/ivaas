@@ -68,10 +68,7 @@ jobs:
         run: make e2e-image
 
       - name: E2E tests against the running image
-        run: |
-          docker run --rm --network host \
-            --env-file e2e_tests/local.env \
-            ivaas-e2e-test-client:local
+        run: make test-e2e-local
 
       - name: Tear down
         if: always()

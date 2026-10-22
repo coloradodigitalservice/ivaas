@@ -60,7 +60,7 @@ make up
 make test-e2e-local
 ```
 
-`make up` starts the application and its local dependencies in Docker. `make test-e2e-local` loads the committed [local E2E settings](../../e2e_tests/local.env), which CI also passes to the test container at runtime. This file contains only local test values and is excluded from both image build contexts. Existing exported `E2E_*` values take precedence over the file when running through uv.
+`make up` starts the application and its local dependencies in Docker. `make test-e2e-local` loads the committed [local E2E settings](../../e2e_tests/local.env). CI uses the same Make target and settings to test the running application image from the runner. This file contains only local test values and is excluded from both image build contexts. Existing exported `E2E_*` values take precedence over the file when running through uv.
 
 Use `make test-e2e` with the configuration above for other environments and supply deployed credentials from the deployer's secret store. URLs must use HTTPS except on localhost. The HTTP client uses a 30-second socket timeout and does not follow redirects. This does not limit the total request duration; set an overall test deadline in the pipeline or execution environment.
 
@@ -97,7 +97,7 @@ Pytest runs each scenario as a separate test in the same process or container. T
 
 Without `E2E_NO_INCOME_CASES`, verification is explicitly skipped. A supplied case file must contain at least one valid scenario; malformed files or missing request fixtures fail the suite. Mixed outcomes and known-income payload assertions belong in the broader adapter tests below.
 
-CI builds the test image and runs its connectivity and authentication checks against the local application image and mock identity provider. Results remain in the CI logs; this workflow does not upload JUnit artifacts. Deployers run the same suite after deployment with their own configuration and approved fixture, using the IVaaS revision associated with the deployed release. Deployer pipelines should publish the JUnit report even when tests fail to retain results, skips, correlation IDs, and verification IDs. Require the test job to pass before promotion.
+CI builds the test client image and runs the E2E suite directly on the runner against the local application image and mock identity provider. Results remain in the CI logs; this workflow does not upload JUnit artifacts. Deployers run the same suite after deployment with their own configuration and approved fixture, using the IVaaS revision associated with the deployed release. Deployer pipelines should publish the JUnit report even when tests fail to retain results, skips, correlation IDs, and verification IDs. Require the test job to pass before promotion.
 
 #### Container Runner
 
@@ -117,7 +117,7 @@ docker run --rm \
 
 - The default report is `/results/e2e-results.xml`, written to `e2e-results/` on the host in this example. The container returns pytest's exit code. Additional arguments after the image name replace the default `--junitxml=/results/e2e-results.xml` argument; include it if you also pass test-selection options.
 - Supply optional `E2E_*` variables as needed. For verification, mount the case file and its request fixtures together read-only, for example with `--mount type=bind,source=/absolute/path/approved-fixtures,target=/fixtures,readonly` and `-e E2E_NO_INCOME_CASES=/fixtures/no-income-cases.json`. Relative request paths then resolve within that mounted directory. Credentials and private fixtures are supplied at runtime and excluded from the image build context.
-- Container networking must reach the configured URLs; `localhost` inside a container refers to that container. CI uses Linux host networking to reach its local application and mock OAuth server. For local development, `make test-e2e-local` avoids container-network setup.
+- Container networking must reach the configured URLs; `localhost` inside a container refers to that container. Run the test container on a network with access to the API and identity provider. For local development and shared CI, `make test-e2e-local` runs the client directly on the host against the local application and mock OAuth server.
 - Deployers own image publishing, network access, secret injection, and report persistence. Treat task startup failure, timeout, missing results, and a nonzero test exit code as failed validation. A stopped test container alone does not establish success.
 
 #### Adapter Test Images
