@@ -134,7 +134,7 @@ make test-e2e-local
 
 This loads the [local E2E settings](../../e2e_tests/local.env) for the local API and mock OAuth server. It checks health, authenticated connection, and authentication rejection. Verification is skipped unless you supply `E2E_NO_INCOME_CASES` with approved request fixtures and expected sources for one or more no-income scenarios. Each scenario runs as a separate test within the same invocation. See the [testing strategy](../api/testing-strategy.md) for the case-file format and deployed-environment configuration.
 
-To build the E2E test client image used in CI, run `make e2e-image`. See [Container Runner](../api/testing-strategy.md#container-runner) for runtime configuration, networking, and report output.
+To build the E2E test client image used in CI, run `make build-e2e-test-client-image`. See [Container Runner](../api/testing-strategy.md#container-runner) for runtime configuration, networking, and report output.
 
 For a complete list of available `make` commands, run:
 

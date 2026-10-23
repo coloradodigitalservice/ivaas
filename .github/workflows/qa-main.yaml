@@ -65,7 +65,7 @@ jobs:
         run: curl --fail --silent --show-error http://127.0.0.1:8000/api/health
 
       - name: Build E2E test client image
-        run: make e2e-image
+        run: make build-e2e-test-client-image
 
       - name: E2E tests against the running image
         run: make test-e2e-local

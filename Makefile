@@ -121,8 +121,8 @@ test: db-up ## run tests
 test-e2e: ## run HTTP E2E tests against E2E_BASE_URL (application must already be running)
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --project $(API_DIR) --no-sync $(E2E_ENV) python -m pytest -c e2e_tests/pytest.ini e2e_tests/test_api.py $(E2E_TEST_ARGS)
 
-.PHONY: e2e-image
-e2e-image: ## build the E2E test client image (override E2E_IMAGE to set its tag)
+.PHONY: build-e2e-test-client-image
+build-e2e-test-client-image: ## build the E2E test client image (override E2E_IMAGE to set its tag)
 	docker build --file e2e_tests/Dockerfile --tag $(E2E_IMAGE) .
 
 .PHONY: test-e2e-local

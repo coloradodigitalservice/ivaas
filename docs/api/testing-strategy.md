@@ -104,7 +104,7 @@ CI builds the test client image and runs the E2E suite directly on the runner ag
 Build the [E2E test client image](../../e2e_tests/Dockerfile) from the IVaaS repository root. The image runs HTTP tests against an existing API. It uses the existing lockfile's test dependencies and runs pytest as a non-root user. Tag it with the release being tested; the following example assumes the required `E2E_*` variables are already set:
 
 ```shell
-make e2e-image E2E_IMAGE=ivaas-e2e-test-client:my-release
+make build-e2e-test-client-image E2E_IMAGE=ivaas-e2e-test-client:my-release
 mkdir -p e2e-results
 docker run --rm \
   --user "$(id -u):$(id -g)" \
