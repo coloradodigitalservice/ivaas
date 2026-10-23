@@ -32,15 +32,15 @@ sequenceDiagram
     loop as neeeded, verify connection and configurations
     programAdmin->>programApp: Initiate connection test
     opt needs fresh access token
-    programApp->>cognito: access token request 🔒
-    cognito->>programApp: access token response 🔒
-    programApp->>programApp: cache access token
+    programApp->>cognito: Access token request 🔒
+    cognito->>programApp: Access token response 🔒
+    programApp->>programApp: Cache access token
     end
     programApp->>api: Test connection request 🔒
     api->>cognito: Validate token
     api->>api: Validate request
-    api->>api: build response
-    api->>api: log results
+    api->>api: Build response
+    api->>api: Log results
     api->>programApp: Test connection response 🔒
     programApp->>programApp: Log results
     programAdmin->>programApp: Verify results of test
