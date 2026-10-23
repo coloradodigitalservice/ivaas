@@ -1,20 +1,11 @@
-# python:3.14.7-slim-trixie
-ARG PYTHON_IMAGE=python@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
-# ghcr.io/astral-sh/uv:0.12.15
-ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:62f8c047d0a0e9ece6b53fc63df902585a67a47a7f318ddec4a37db586edc8e3
+# python:3.14.9-slim-trixie
+ARG PYTHON_IMAGE=python@sha256:b347e2dcbc7f0b6f9fb7182e9da6a187fb10ae715e0692518c1aed0eec94a700
+# ghcr.io/astral-sh/uv:0.13.5
+ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff
 
 FROM ${UV_IMAGE} AS uv
 
 FROM ${PYTHON_IMAGE} AS base
-
-# Match the application image's base-system security fixes.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends --only-upgrade \
-        libpcre2-8-0=10.46-1~deb13u3 \
-        libssl3t64=3.5.7-1~deb13u3 \
-        openssl-provider-legacy=3.5.7-1~deb13u3 \
-        openssl=3.5.7-1~deb13u3 \
-  && rm -rf /var/lib/apt/lists/*
 
 FROM base AS builder
 
