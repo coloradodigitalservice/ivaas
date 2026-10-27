@@ -17,7 +17,9 @@ pytestmark = pytest.mark.usefixtures("configured_api_authentication", "example_w
 def example_webhook_adapter() -> Iterator[None]:
     with (
         override_settings(
-            ROOT_URLCONF="tests.webhook_adapters.urls", # Alternatively, use clear_url_caches() on setup and teardown
+            # Alternative to overriding ROOT_URLCONF is reloading config.urls to re-run its include loop,
+            # but there are some gotchas with that approach
+            ROOT_URLCONF="tests.webhook_adapters.urls",
             WEBHOOK_ADAPTERS={
                 "example_webhook_adapter": {
                     "enabled": True,
