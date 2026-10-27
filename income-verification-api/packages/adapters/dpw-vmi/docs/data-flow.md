@@ -11,6 +11,11 @@ Programs must coordinate the configuration and implementation of several interac
 3. (Optional) The ability to receive VMI verification results via document upload
    - If using, programs must configure IVaaS access to upload VMI verification documents
 
+## Data Flow (Pilot)
+
+During the initial pilot phase, the pilot program will use a direct integration to DPW's VMI for creating invitations.
+Webhook events will route through IVaaS.
+
 ## Data Flow
 
 > [!NOTE]
@@ -18,6 +23,7 @@ Programs must coordinate the configuration and implementation of several interac
 >
 > Error cases can be added with `option` and/or `break`, but will significantly impact readability at this stage.
 
+### Invite generation
 ```mermaid
 sequenceDiagram
     autonumber
@@ -50,8 +56,22 @@ sequenceDiagram
     end
 
     note over applicant,vmi: Applicants may complete Verify My Income flow any time before the invitation link expires
+```
 
-    loop whenever applicant clicks invitation link
+### ReportSubmission Webhook
+```mermaid
+    sequenceDiagram
+    autonumber
+
+    actor applicant
+    participant programApp as Program Application
+    box IVaaS Environment
+        participant cognito as IV Cognito
+        participant api as IVaaS API
+    end
+    participant vmi as DPW VMI
+    
+    loop whenever applicant completes VMI flow
         applicant->>vmi: User (or household member) completes Verify My Income flow
 
         par VMI webhook handling
@@ -71,18 +91,39 @@ sequenceDiagram
 
             programApp->>api: 200 response 🔒
             api->>vmi: 200 response 🔒
-        and VMI document handling
-            vmi->>api: Send verification results via document upload 🔒
-            api->>api: Determine document upload's originating program
-
-            opt if program is configured to handle VMI document uploads
-                api->>programApp: Send verification results via document upload 🔒
-
-                opt
-                    programApp->>programApp: Process and store document
-                    programApp->>applicant: Notify applicant of results or further required action(s)
-                end
-            end
         end
+   end
+```
+
+### Document results and TransmissionComplete webhook
+```mermaid
+    sequenceDiagram
+    autonumber
+
+    actor applicant
+    participant programApp as Program Application
+    box IVaaS Environment
+        participant cognito as IV Cognito
+        participant api as IVaaS API
+          participant s3 as IV S3 VMI Inbox
+    end
+    participant vmi as DPW VMI
+    
+    loop whenever applicant completes VMI flow
+    applicant->>vmi: User (or household member) completes Verify My Income flow
+    loop VMI document handling
+        vmi->>s3: Upload document to S3 🔒
+        vmi->>api: Send TransmissionComplete event via webhook message 🔒
+        api->>api: Determine document upload's originating program via `confirmation_code`
+   
+        opt if program is configured to handle VMI document uploads
+            api->>s3: Fetch document from S3 🔒
+            s3->>api: Return document 🔒
+            api->>programApp: Upload document per program configuration 🔒
+            api->>programApp: Send TransmissionComplete event via webhook message 🔒
+            programApp->>programApp: Process and store document
+            programApp->>api: 200 response 🔒
+        end
+    api->>vmi: 200 response 🔒
     end
 ```
