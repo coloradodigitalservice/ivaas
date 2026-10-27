@@ -8,7 +8,7 @@ from django.test import Client, override_settings
 
 from tests.income_verification.security.authentication_test_support import TEST_ACCESS_TOKEN
 
-API_ROOT = "/api/example-webhook/v1"
+WEBHOOK_ADAPTER_ROOT = "/api/example-webhook/v1"
 WEBHOOK_KEY = "example-webhook-test-key"
 pytestmark = pytest.mark.usefixtures("configured_api_authentication", "example_webhook_adapter")
 
@@ -37,7 +37,7 @@ def example_webhook_adapter() -> Iterator[None]:
 
 def test_creates_invitation_for_authenticated_program(client: Client) -> None:
     response = client.post(
-        f"{API_ROOT}/invitations",
+        f"{WEBHOOK_ADAPTER_ROOT}/invitations",
         headers={"Authorization": f"Bearer {TEST_ACCESS_TOKEN}"},
     )
 
@@ -48,14 +48,14 @@ def test_creates_invitation_for_authenticated_program(client: Client) -> None:
 
 
 def test_rejects_invitation_without_token(client: Client) -> None:
-    response = client.post(f"{API_ROOT}/invitations")
+    response = client.post(f"{WEBHOOK_ADAPTER_ROOT}/invitations")
 
     assert response.status_code == 401
 
 
 def test_accepts_event_with_webhook_key(client: Client) -> None:
     response = client.post(
-        f"{API_ROOT}/events",
+        f"{WEBHOOK_ADAPTER_ROOT}/events",
         data=json.dumps({"event": "example"}),
         content_type="application/json",
         headers={"X-Example-Webhook-Key": WEBHOOK_KEY},
@@ -67,7 +67,7 @@ def test_accepts_event_with_webhook_key(client: Client) -> None:
 
 def test_rejects_event_with_wrong_webhook_key(client: Client) -> None:
     response = client.post(
-        f"{API_ROOT}/events",
+        f"{WEBHOOK_ADAPTER_ROOT}/events",
         data=json.dumps({"event": "example"}),
         content_type="application/json",
         headers={"X-Example-Webhook-Key": "wrong-key"},
