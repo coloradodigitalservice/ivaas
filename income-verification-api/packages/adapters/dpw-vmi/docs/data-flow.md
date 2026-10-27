@@ -47,7 +47,7 @@ sequenceDiagram
     participant programApp as Program Application
     participant api as IVaaS API
     participant vmi as DPW VMI
-    
+
     loop whenever applicant completes VMI flow
         applicant->>vmi: User (or household member) completes Verify My Income flow
 
@@ -84,12 +84,12 @@ sequenceDiagram
     end
     participant api as IVaaS API
     participant vmi as DPW VMI
-    
+
     loop whenever applicant completes VMI flow
         applicant->>vmi: User (or household member) completes Verify My Income flow
         vmi->>programS3: Upload document to program's S3 bucket 🔒
         vmi->>api: Send TransmissionComplete event via webhook message 🔒
-   
+
         opt if program is configured to handle VMI document uploads (pilot program will be)
             api->>programApp: Send TransmissionComplete event via webhook message 🔒
             programApp->>programApp: Fetch, process, & match document via `confirmation_code`
@@ -150,7 +150,7 @@ sequenceDiagram
     participant programApp as Program Application
     participant api as IVaaS API
     participant vmi as DPW VMI
-    
+
     loop whenever applicant completes VMI flow
         applicant->>vmi: User (or household member) completes Verify My Income flow
 
@@ -187,13 +187,13 @@ sequenceDiagram
         participant s3 as IV S3 VMI Inbox
     end
     participant vmi as DPW VMI
-    
+
     loop whenever applicant completes VMI flow
         applicant->>vmi: User (or household member) completes Verify My Income flow
         vmi->>s3: Upload document to S3 🔒
         vmi->>api: Send TransmissionComplete event via webhook message 🔒
         api->>api: Determine document upload's originating program via `confirmation_code`
-   
+
         opt if program is configured to handle VMI document uploads
             api->>s3: Fetch document from S3 🔒
             s3->>api: Return document 🔒
