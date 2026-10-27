@@ -15,18 +15,18 @@ pytestmark = pytest.mark.usefixtures("configured_api_authentication", "example_w
 
 @pytest.fixture
 def example_webhook_adapter() -> Iterator[None]:
-    # Django installs apps before sibling setting overrides, so ready() needs an outer mapping.
     with (
         override_settings(
+            ROOT_URLCONF="tests.webhook_adapters.urls",
             WEBHOOK_ADAPTERS={
                 "example_webhook_adapter": {
                     "enabled": True,
                     "config": {"api_key": WEBHOOK_KEY},
                 }
-            }
+            },
         ),
+        # Django rebuilds the app registry before applying sibling overrides.
         override_settings(
-            ROOT_URLCONF="tests.webhook_adapters.urls",
             INSTALLED_APPS=[*settings.INSTALLED_APPS, "example_webhook_adapter"],
         ),
     ):
