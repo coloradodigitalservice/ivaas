@@ -1,12 +1,9 @@
 [project]
-name = "example-income-webhook-adapter"
+name = "example-webhook-adapter"
 version = "0.1.0"
 description = "Example webhook adapter registered only by IVaaS tests."
 requires-python = ">=3.14.9"
 dependencies = ["django", "django-ninja"]
-
-[tool.uv.build-backend]
-module-name = "example_webhook_adapter"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]

@@ -37,10 +37,9 @@ the same signed-token verification path without AWS credentials or an external i
 
 ## Adapters
 
-To fetch data from specific/proprietary income sources, IVaaS uses "adapters".
-Adapters are responsible for fetching and transforming data from various income data sources into a format that IVaaS can process and return to clients.
+There are two distinct types of adapters: [API](#api-adapters) and [webhook](#webhook-adapters) adapters.
 
-Adapters encapsulate logic and implementation details relating to the data sources they interact with, so that the IVaaS application needs only to be concerned with invoking the relevant adapter(s) based on incoming client requests.
+Adapters encapsulate logic and implementation details relating to the data sources they interact with, so that the IVaaS application needs only to be concerned with invoking the relevant adapter(s) based on incoming requests or events.
 
 ### Adapter development
 
@@ -54,32 +53,38 @@ The source code for jurisdiction-specific adapters (e.g. a state unemployment in
 
 Privately hosted adapter code _will_ complicate build pipelines and development processes due to the inherent access restrictions. This approach is suitable for adapters with private source code, even if an IVaaS installation/implementation is public, since the adapter wheels are .gitignored.
 
+### API Adapters
+
+To fetch data from specific or proprietary income sources, IVaaS uses API income source adapters.
+These adapters are responsible for fetching and transforming data from various income data sources into a format that IVaaS can process and return to clients.
+
 #### Best practices
 
-Adapter development requires only that the resulting adapter implement the contracts defined by the [ivaas-core package](../../income-verification-api/packages/ivaas-core):
+API adapter development requires only that the resulting adapter implement the contracts defined by the [ivaas-core package](../../income-verification-api/packages/ivaas-core):
 
-- Adapters should be implementations of the [IncomeSourceAdapter](../../income-verification-api/packages/ivaas-core/src/ivaas_core/adapter.py) abstract base class.
+- API adapters should be implementations of the [IncomeSourceAdapter](../../income-verification-api/packages/ivaas-core/src/ivaas_core/adapter.py) abstract base class.
 - Proper error handling by IVaaS requires exceptions raised by adapters to be implementations of [IncomeSourceError](../../income-verification-api/packages/ivaas-core/src/ivaas_core/exceptions.py).
 - The [example-adapter](../../income-verification-api/packages/adapters/example) package is a minimal reference implementation of the contract. It does nothing and is registered and exercised only by tests.
 
-The adapter must be built into a wheel and dropped into the designated "landing-zone". See [adapter installation](#adapter-installation)
+The adapter must be built into a wheel and dropped into the designated "landing-zone". See [adapter installation](#installation)
 
 It is recommended (but optional) for local development, to configure `ADAPTERS_CHECKOUT` in the [Makefile](../../Makefile) to take advantage of `make dev-adapters` fast feedback loops.
 
-### Adapter installation
+#### Installation
 
 Adapter code that is ready to be registered, tested, and deployed can be installed as follows:
 
-1. Configure the adapter under the `INCOME_SOURCE_ADAPTERS` key in [settings.py](../../income-verification-api/config/settings.py). See [Adapter Configuration](#adapter-configuration) below for details.
-2. Ensure the adapter's built wheel is dropped into the "landing-zone", [custom-adapters/wheels](../../income-verification-api/custom-adapters/wheels)
-3. `make adapters-install` will install the adapter into the IVaaS virtual environment. The default docker build performs this step automatically.
+1. If the adapter is publicly published or part of the IVaaS public adapters, simply include it as a project dependency.
+   Otherwise, ensure the custom/private adapter's built wheel is dropped into the "landing-zone", [custom-adapters/wheels](../../income-verification-api/custom-adapters/wheels)
+2. Configure the adapter under the `INCOME_SOURCE_ADAPTERS` key in [settings.py](../../income-verification-api/config/settings.py).See [API adapter configuration](#configuration) below for details.
+3. For custom/private adapters, `make adapters-install` will install the adapter into the IVaaS virtual environment. The default docker build performs this step automatically.
 
 On application startup, IVaaS will validate and register adapters.
 
 > [!TIP]
 > IVaaS prints confirmation of the registered, active adapters in the application logs on startup.
 
-### Adapter configuration
+#### Configuration
 
 Every adapter is declared as one entry under `INCOME_SOURCE_ADAPTERS` in [settings.py](../../income-verification-api/config/settings.py).
 The entry's key is the adapter's name in logs and error messages.
@@ -112,22 +117,22 @@ INCOME_SOURCE_ADAPTERS = {
 **All keys are required**.
 IVaaS validates every entry at startup and refuses to start on a missing key or an invalid value, so a misconfigured adapter is caught before it can serve a request.
 
-#### `class`
+##### `class`
 
 The import path of the adapter class. The class must implement `IncomeSourceAdapter` from ivaas-core and must be importable from an installed wheel.
 
 IVaaS routes the adapter's top-level package logger (the first segment of this path) through its own structured log handler at `DJANGO_LOG_LEVEL`, so an adapter that logs with `logging.getLogger(__name__)` gets JSON output with the request context.
 
-#### `enabled`
+##### `enabled`
 
 Whether IVaaS registers the adapter at startup. Disabled adapters are skipped but still validated.
 
-#### `config`
+##### `config`
 
 Keyword arguments passed to the adapter's constructor. IVaaS treats these as opaque; the adapter decides what it needs.
 A value of `None` means the environment variable was not set, and IVaaS reports it as missing configuration when the adapter is enabled.
 
-#### `retry_policy`
+##### `retry_policy`
 
 How IVaaS retries a call to the adapter that fails because the data source timed out or could not be reached.
 
@@ -145,7 +150,7 @@ Backoff shapes:
 | `fixed`       | `seconds`                        | The same pause before every retry.                                                                      |
 | `exponential` | `initial_seconds`, `max_seconds` | The pause doubles after each retry, plus a small random amount (jitter), never exceeding `max_seconds`. |
 
-#### `circuit_breaker`
+##### `circuit_breaker`
 
 Protects IVaaS and the data source when the source is down. Each retry attempt that times out or cannot reach the source counts as a failure; a success resets the count. After `failure_threshold` consecutive failures the breaker opens, and every call to that adapter fails immediately, without contacting the source, until `reset_timeout_seconds` have passed. The next call is then allowed through as a trial: success closes the breaker, failure opens it for another reset period.
 
@@ -160,3 +165,40 @@ Every failed attempt and every breaker trip is logged with the adapter's name an
 
 > [!NOTE]
 > The worst-case time a single request can spend on one adapter is roughly `max_attempts` times the adapter's timeout, plus the backoffs in between. Size `max_attempts` and the adapter's timeout together with that ceiling in mind.
+
+### Webhook adapters
+
+Integrations where income data is _pushed_ through IVaaS (e.g. consent-based user flows) to programs are also supported via webhook adapters.
+These adapters expose the relevant/necessary endpoints to receive webhook messages.
+
+#### Best practices
+
+The [example webhook adapter](../../income-verification-api/packages/adapters/example-webhook) is a test-only reference implementation
+showing the complete convention with an invitation route and an inbound event route.
+
+Each enabled webhook adapter is a Django app that exposes a `urls` module.
+Income webhook adapters own both program-facing routes and the inbound routes a provider calls back asynchronously.
+
+#### Installation
+
+Install the adapter package, then declare it under `WEBHOOK_ADAPTERS` as described below.
+
+#### Configuration
+
+Declare each webhook adapter under `WEBHOOK_ADAPTERS`, keyed by its Django app module path:
+
+```python
+WEBHOOK_ADAPTERS = {
+    "example_webhook_adapter": {
+        "enabled": env.bool("EXAMPLE_WEBHOOK_ADAPTER_ENABLED", default=False),
+        "config": {
+            "api_key": env("EXAMPLE_WEBHOOK_API_KEY", default=None),
+        },
+    },
+}
+```
+
+Each webhook adapter validates its own configuration at startup.
+
+IVaaS includes webhook adapter URL configurations, and the adapter owns the rest of its versioned base path using the
+convention `/api/<adapter>/<versioned>/<route>`. Webhook adapter versions do not follow `API_VERSION`.

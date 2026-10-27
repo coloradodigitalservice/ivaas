@@ -24,7 +24,7 @@ members = ["packages/ivaas-core", "packages/adapters/*"]
 [tool.uv.sources]
 ivaas-core = { workspace = true }
 example-adapter = { workspace = true }
-example-income-webhook-adapter = { workspace = true }
+example-webhook-adapter = { workspace = true }
 
 [tool.uv]
 # sqlparse is a django dependency. This constraint can be removed once the django
@@ -38,7 +38,7 @@ dev = [
     "django-stubs>=6.0.7",
     # Reference adapters, registered by tests only.
     "example-adapter",
-    "example-income-webhook-adapter",
+    "example-webhook-adapter",
 ]
 quality = [
     "pre-commit>=4.6.0",

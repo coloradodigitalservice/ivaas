@@ -9,4 +9,4 @@ It is a uv workspace member installed through the `dev` dependency group, so
 it is present in a development checkout and absent from the runtime image.
 
 For the settings entry that registers an adapter, see
-[Adapter configuration](../../../../docs/configuration/ivaas-configuration.md#adapter-configuration).
+[Adapter configuration](../../../../docs/configuration/ivaas-configuration.md#configuration).

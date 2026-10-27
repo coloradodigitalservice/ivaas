@@ -9,7 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "example-adapter",
-    "example-income-webhook-adapter",
+    "example-webhook-adapter",
     "income-verification-api",
     "ivaas-core",
 ]
@@ -349,9 +349,9 @@ dependencies = [
 requires-dist = [{ name = "ivaas-core", editable = "packages/ivaas-core" }]
 
 [[package]]
-name = "example-income-webhook-adapter"
+name = "example-webhook-adapter"
 version = "0.1.0"
-source = { editable = "packages/adapters/example-income-webhook" }
+source = { editable = "packages/adapters/example-webhook" }
 dependencies = [
     { name = "django" },
     { name = "django-ninja" },
@@ -442,7 +442,7 @@ dependencies = [
 dev = [
     { name = "django-stubs" },
     { name = "example-adapter" },
-    { name = "example-income-webhook-adapter" },
+    { name = "example-webhook-adapter" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -479,7 +479,7 @@ requires-dist = [
 dev = [
     { name = "django-stubs", specifier = ">=6.0.7" },
     { name = "example-adapter", editable = "packages/adapters/example" },
-    { name = "example-income-webhook-adapter", editable = "packages/adapters/example-income-webhook" },
+    { name = "example-webhook-adapter", editable = "packages/adapters/example-webhook" },
     { name = "mypy", specifier = ">=2.1.0" },
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "pytest", specifier = ">=9.1.1" },
