@@ -19,7 +19,7 @@ Webhook events will route through IVaaS.
 ## Data Flow
 
 > [!NOTE]
-> Currently, this diagram only shows the "happy path".
+> Currently, these diagrams only show the "happy path".
 >
 > Error cases can be added with `option` and/or `break`, but will significantly impact readability at this stage.
 
