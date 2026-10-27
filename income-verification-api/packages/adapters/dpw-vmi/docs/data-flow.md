@@ -110,8 +110,7 @@ sequenceDiagram
     participant vmi as DPW VMI
     
     loop whenever applicant completes VMI flow
-    applicant->>vmi: User (or household member) completes Verify My Income flow
-    loop VMI document handling
+        applicant->>vmi: User (or household member) completes Verify My Income flow
         vmi->>s3: Upload document to S3 🔒
         vmi->>api: Send TransmissionComplete event via webhook message 🔒
         api->>api: Determine document upload's originating program via `confirmation_code`
@@ -124,6 +123,6 @@ sequenceDiagram
             programApp->>programApp: Process and store document
             programApp->>api: 200 response 🔒
         end
-    api->>vmi: 200 response 🔒
+        api->>vmi: 200 response 🔒
     end
 ```
