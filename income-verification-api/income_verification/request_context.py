@@ -23,7 +23,7 @@ from income_verification.log_redaction import redacted_message
 class RequestLogContext:
     correlation_id: str | None = None
     client_id: str | None = None
-    agency_id: str | None = None
+    program_id: str | None = None
     application_id: str | None = None
     verification_id: str | None = None
 
@@ -55,7 +55,7 @@ class LogField(StrEnum):
     EXCEPTION_ORIGIN_FUNCTION = "exception.origin.function"
     EXCEPTION_ORIGIN_LINE = "exception.origin.line"
     CORRELATION_ID = "ivaas.correlation.id"
-    AGENCY_ID = "ivaas.agency.id"
+    PROGRAM_ID = "ivaas.program.id"
     APPLICATION_ID = "ivaas.application.id"
     VERIFICATION_ID = "ivaas.verification.id"
     SOURCE_ID = "ivaas.source.id"
@@ -87,9 +87,9 @@ def set_client_log_context(client_id: str) -> None:
     _update_request_log_context(client_id=client_id)
 
 
-def set_agency_log_context(agency_id: str) -> None:
-    """Add the non-PII IVaaS agency identity resolved during authentication."""
-    _update_request_log_context(agency_id=agency_id)
+def set_program_log_context(program_id: str) -> None:
+    """Add the non-PII IVaaS program identity resolved during authentication."""
+    _update_request_log_context(program_id=program_id)
 
 
 def _bind_request_log_context(request: HttpRequest) -> Token[RequestLogContext]:
@@ -110,8 +110,8 @@ class RequestContextFilter(logging.Filter):
             setattr(record, LogField.CORRELATION_ID.value, context.correlation_id)
         if context.client_id is not None:
             setattr(record, LogField.AUTH_CLIENT_ID.value, context.client_id)
-        if context.agency_id is not None:
-            setattr(record, LogField.AGENCY_ID.value, context.agency_id)
+        if context.program_id is not None:
+            setattr(record, LogField.PROGRAM_ID.value, context.program_id)
         if context.application_id is not None:
             setattr(record, LogField.APPLICATION_ID.value, context.application_id)
         if context.verification_id is not None:

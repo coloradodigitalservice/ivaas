@@ -115,7 +115,7 @@ def test_redacts_api_and_core_request_objects(identity_key: str, identity_value:
             "lookbackPeriod": {"startDate": "2026-01-01", "endDate": "2026-06-30"},
         }
     )
-    envelope = request.to_envelope("test-correlation", agency_id="test-agency")
+    envelope = request.to_envelope("test-correlation", program_id="test-program")
     core_request = envelope.request
 
     for value in (request, core_request, envelope, {"envelope": [core_request]}):

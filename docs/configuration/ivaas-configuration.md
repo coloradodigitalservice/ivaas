@@ -15,19 +15,19 @@ Every environment uses the same signed-access-token verification path. Configure
 - `AUTH_TOKEN_URL`: client-credentials token endpoint advertised in generated OpenAPI.
 - `AUTH_REQUIRED_SCOPE`: scope required by program-facing operations; defaults to
   `ivaas/income.verify`.
-- `AUTH_CLIENT_AGENCY_MAP`: JSON object mapping verified OAuth client IDs to IVaaS agency IDs.
+- `AUTH_CLIENT_PROGRAM_MAP`: JSON object mapping verified OAuth client IDs to IVaaS program IDs.
 - `AUTH_JWKS_CACHE_SECONDS`: local JWKS document cache lifetime; defaults to 300 seconds.
 - `AUTH_JWKS_TIMEOUT_SECONDS`: JWKS request timeout; defaults to five seconds.
 - `DEPLOYMENT_ENVIRONMENT`: environment name returned by `/api/v1/test-connection`.
 
 IVaaS accepts only RS256 access tokens with the configured issuer, a future expiration, an
-`access` token use, the required scope, and a client ID present in `AUTH_CLIENT_AGENCY_MAP`.
-It validates tokens using public signing keys and never needs consuming agencies' client secrets.
-Both JWKS duration settings must be greater than zero, and the client-to-agency map must contain at
+`access` token use, the required scope, and a client ID present in `AUTH_CLIENT_PROGRAM_MAP`.
+It validates tokens using public signing keys and never needs consuming programs' client secrets.
+Both JWKS duration settings must be greater than zero, and the client-to-program map must contain at
 least one entry. Invalid authentication configuration fails application startup rather than
 falling back to unauthenticated behavior.
 
-The client-to-agency map is deployment-time onboarding configuration. Adding or changing an entry
+The client-to-program map is deployment-time onboarding configuration. Adding or changing an entry
 requires deploying or restarting IVaaS; there is currently no runtime onboarding API or durable
 onboarding store.
 
@@ -48,11 +48,11 @@ Adapters encapsulate logic and implementation details relating to the data sourc
 
 Adapter development can take place wherever source-code constraints allow.
 
-Adapters that may be beneficial to other IVaaS installations should be published publicly. [TODO: Exact details of where/how pending Equifax adapter as an example]
+If an adapter can be used by multiple jurisdictions (i.e. commercial or federal data sources), it can be housed in this repository or in a separate public repository. [TODO: Exact details of standards & processes pending Equifax adapter as an example]
 
-The source code for adapters where state-specific datasource implementation details are sensitive can be hosted privately.
-Privately hosted adapter code _will_ complicate build pipelines and development processes due to the inherent access restrictions.
-This approach is suitable for adapters with private source code, even if an IVaaS installation/implementation is public, since the adapter wheels are .gitignored.
+The source code for jurisdiction-specific adapters (e.g. a state unemployment insurance database) can be hosted publicly or privately.
+
+Privately hosted adapter code _will_ complicate build pipelines and development processes due to the inherent access restrictions. This approach is suitable for adapters with private source code, even if an IVaaS installation/implementation is public, since the adapter wheels are .gitignored.
 
 #### Best practices
 

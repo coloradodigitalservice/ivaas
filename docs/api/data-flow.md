@@ -32,15 +32,15 @@ sequenceDiagram
     loop as neeeded, verify connection and configurations
     programAdmin->>programApp: Initiate connection test
     opt needs fresh access token
-    programApp->>cognito: access token request 🔒
-    cognito->>programApp: access token response 🔒
-    programApp->>programApp: cache access token
+    programApp->>cognito: Access token request 🔒
+    cognito->>programApp: Access token response 🔒
+    programApp->>programApp: Cache access token
     end
     programApp->>api: Test connection request 🔒
     api->>cognito: Validate token
     api->>api: Validate request
-    api->>api: build response
-    api->>api: log results
+    api->>api: Build response
+    api->>api: Log results
     api->>programApp: Test connection response 🔒
     programApp->>programApp: Log results
     programAdmin->>programApp: Verify results of test
@@ -48,7 +48,7 @@ sequenceDiagram
     end
 ```
 
-## Income Verification
+## Income Verification API
 
 ```mermaid
 sequenceDiagram
@@ -59,54 +59,30 @@ sequenceDiagram
     box IVaaS Environment
     participant cognito as IV Cognito
     participant api as IVaaS API
+    participant adapter as Income Source Adapter
     end
+    participant source as Income Source
 
     loop whenever users trigger income verification flows
     user->>programApp: Trigger income verification
 
     opt needs fresh access token
-    programApp->>cognito: access token request 🔒
-    cognito->>programApp: access token response 🔒
-    programApp->>programApp: cache access token
+    programApp->>cognito: Access token request 🔒
+    cognito->>programApp: Access token response 🔒
+    programApp->>programApp: Cache access token
     end
 
     programApp->>api: Income data request 🔒
     api->>cognito: Validate token
     api->>api: Validate request
 
-    par fetch data from configured datasources
-    %% CDLE
-    opt if the program requests data from CDLE FAMLI
-    create participant datasource1 as IV Snowflake CDLE Data Share
-    api-->datasource1: invoke adapter
-    api->>datasource1: SQL REST API Query 🔒
-    datasource1->>api: Query result(s) 🔒
-    api->>api: Validate datasource results
-    api->>api: Package datasource results for response
-    api->>datasource1: Log audit metadata
-    note over datasource1: (metadata is shared with CDLE)
-    destroy datasource1
-    api-->datasource1: finalize adapter invocation
-    end
-
-    and
-
-    %% Equifax
-    opt if the program requests data from Equifax API
-    create participant datasource2 as Equifax API
-    api-->datasource2: invoke adapter
-    opt needs fresh access token
-    api->>datasource2: access token request 🔒
-    datasource2->>api: access token response 🔒
-    api->>api: cache access token
-    end
-    api->>datasource2: Instant Client Insights for Eligibility Request 🔒
-    datasource2->>api: Instant Client Insights for Eligibility Response 🔒
-    api->>api: Validate datasource results
-    api->>api: Package datasource results for response
-    destroy datasource2
-    api-->datasource2: finalize adapter invocation
-    end
+    loop for each configued adapter
+    api ->> adapter: Invoke adapter
+    adapter <<->> source: Authenticate against data source 🔒
+    adapter ->> source: Request Income Data 🔒
+    source ->> adapter: Return Income Data 🔒
+    adapter ->> adapter: Parse, validate, and package data
+    adapter ->> api: Return packaged response
     end
 
     api->>api: Package and consolidate adapter responses

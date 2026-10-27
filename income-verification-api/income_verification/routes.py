@@ -21,9 +21,9 @@ from income_verification.schemas import (
     VerificationResponse,
 )
 from income_verification.security import (
-    AgencyOAuth2ClientCredentials,
+    ProgramOAuth2ClientCredentials,
     get_api_authentication,
-    get_authenticated_agency,
+    get_authenticated_program,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ def _openapi_responses(success_description: str) -> dict[int, dict[str, object]]
 # Ninja replace the generated security array instead of merging a weaker, empty-scope alternative.
 OAUTH2_OPENAPI_SECURITY_REQUIREMENT = (
     {
-        AgencyOAuth2ClientCredentials.__name__: [
+        ProgramOAuth2ClientCredentials.__name__: [
             get_api_authentication().required_scope,
         ]
     },
@@ -134,8 +134,8 @@ def income_verification(
     payload: VerificationRequest,
     correlation_id: CorrelationId,
 ) -> VerificationResponse:
-    agency = get_authenticated_agency(request)
-    envelope = payload.to_envelope(correlation_id, agency_id=agency.agency_id)
+    program = get_authenticated_program(request)
+    envelope = payload.to_envelope(correlation_id, program_id=program.program_id)
     response[CORRELATION_ID_HEADER_NAME] = envelope.context.correlation_id
     set_verification_log_context(
         application_id=envelope.context.application_id,
@@ -182,7 +182,7 @@ def test_connection(
     response: HttpResponse,
     correlation_id: CorrelationId,
 ) -> TestConnectionResponse:
-    principal = get_authenticated_agency(request)
+    principal = get_authenticated_program(request)
     response[CORRELATION_ID_HEADER_NAME] = correlation_id
     logger.info(
         "test connection request accepted",
@@ -194,7 +194,7 @@ def test_connection(
     )
     return TestConnectionResponse.model_validate(
         {
-            "authenticatedAs": principal.agency_id,
+            "authenticatedAs": principal.program_id,
             "environment": settings.DEPLOYMENT_ENVIRONMENT,
         }
     )

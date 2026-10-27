@@ -1,23 +1,23 @@
 """Public authentication facade for the income verification application."""
 
 from income_verification.security.authentication import (
-    AgencyOAuth2ClientCredentials,
-    AuthenticatedAgency,
+    AuthenticatedProgram,
     AuthenticationFailure,
     AuthenticationInfrastructureFailure,
     AuthFailureReason,
     AuthorizationFailure,
-    get_authenticated_agency,
+    ProgramOAuth2ClientCredentials,
+    get_authenticated_program,
 )
 from income_verification.security.configuration import get_api_authentication
 
 __all__ = [
-    "AgencyOAuth2ClientCredentials",
     "AuthFailureReason",
-    "AuthenticatedAgency",
+    "AuthenticatedProgram",
     "AuthenticationFailure",
     "AuthenticationInfrastructureFailure",
     "AuthorizationFailure",
+    "ProgramOAuth2ClientCredentials",
     "get_api_authentication",
-    "get_authenticated_agency",
+    "get_authenticated_program",
 ]

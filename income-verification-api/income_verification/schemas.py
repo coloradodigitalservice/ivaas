@@ -91,14 +91,14 @@ class VerificationRequest(ApiSchema):
             lookback_period=self.lookback_period,
         )
 
-    def to_envelope(self, correlation_id: str, *, agency_id: str) -> VerificationRequestEnvelope:
+    def to_envelope(self, correlation_id: str, *, program_id: str) -> VerificationRequestEnvelope:
         """Issue this verification its id and build what the adapters receive."""
         return VerificationRequestEnvelope(
             request=self._to_core_request(),
             context=VerificationContext(
                 verification_id=uuid4(),
                 correlation_id=correlation_id,
-                agency_id=agency_id,
+                program_id=program_id,
                 application_id=self.application_id,
             ),
         )
