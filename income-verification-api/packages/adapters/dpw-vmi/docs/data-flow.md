@@ -16,6 +16,87 @@ Programs must coordinate the configuration and implementation of several interac
 During the initial pilot phase, the pilot program will use a direct integration to DPW's VMI for creating invitations.
 Webhook events will route through IVaaS.
 
+### Invite generation
+```mermaid
+sequenceDiagram
+    autonumber
+
+    actor applicant
+    participant programApp as Program Application
+    participant vmi as DPW VMI
+
+    loop whenever applicants trigger income verification flows
+        applicant->>programApp: Trigger income verification
+        programApp->>vmi: Create Invitation request 🔒
+        note over programApp,vmi: Include necessary `custom_attributes`
+        vmi->>programApp: Create Invitation response 🔒
+        programApp->>applicant: Share invitation link with applicant
+    end
+
+    note over applicant,vmi: Applicants may complete Verify My Income flow any time before the invitation link expires
+```
+
+### ReportSubmission Webhook
+```mermaid
+    sequenceDiagram
+    autonumber
+
+    actor applicant
+    participant programApp as Program Application
+    participant api as IVaaS API
+    participant vmi as DPW VMI
+    
+    loop whenever applicant completes VMI flow
+        applicant->>vmi: User (or household member) completes Verify My Income flow
+
+        par VMI webhook handling
+            vmi->>api: Send verification results via webhook message 🔒 (IVAAS_VMI_API_KEY)
+            api->>api: Validate webhook headers and message
+            note over api: Program routing is singular to the pilot program
+            api->>api: Build program-specific, signed webhook message
+            api->>programApp: Send verification results via webhook message 🔒 (PROGRAM_VMI_API_KEY)
+            note over programApp,api: Message includes all `custom_attributes` from the invitation request
+            programApp->>programApp: Validate webhook headers and message
+            programApp->>programApp: Use `custom_attributes` for applicant/application/case matching and routing
+
+            opt
+                programApp->>programApp: Process and store results
+                programApp->>applicant: Notify applicant of results or further required action(s)
+            end
+
+            programApp->>api: 200 response 🔒
+            api->>vmi: 200 response 🔒
+        end
+   end
+```
+
+### Document results and TransmissionComplete webhook
+```mermaid
+    sequenceDiagram
+    autonumber
+
+    actor applicant
+    box Program Environment
+       participant programApp as Program Application
+       participant programS3 as Program S3 VMI Inbox
+    end
+    participant api as IVaaS API
+    participant vmi as DPW VMI
+    
+    loop whenever applicant completes VMI flow
+        applicant->>vmi: User (or household member) completes Verify My Income flow
+        vmi->>programS3: Upload document to program's S3 bucket 🔒
+        vmi->>api: Send TransmissionComplete event via webhook message 🔒
+   
+        opt if program is configured to handle VMI document uploads (pilot program will be)
+            api->>programApp: Send TransmissionComplete event via webhook message 🔒
+            programApp->>programApp: Fetch, process, & match document via `confirmation_code`
+            programApp->>api: 200 response 🔒
+        end
+        api->>vmi: 200 response 🔒
+    end
+```
+
 ## Data Flow
 
 > [!NOTE]
@@ -65,10 +146,7 @@ sequenceDiagram
 
     actor applicant
     participant programApp as Program Application
-    box IVaaS Environment
-        participant cognito as IV Cognito
-        participant api as IVaaS API
-    end
+    participant api as IVaaS API
     participant vmi as DPW VMI
     
     loop whenever applicant completes VMI flow
@@ -103,9 +181,8 @@ sequenceDiagram
     actor applicant
     participant programApp as Program Application
     box IVaaS Environment
-        participant cognito as IV Cognito
         participant api as IVaaS API
-          participant s3 as IV S3 VMI Inbox
+        participant s3 as IV S3 VMI Inbox
     end
     participant vmi as DPW VMI
     
