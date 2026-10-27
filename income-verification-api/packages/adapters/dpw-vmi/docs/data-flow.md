@@ -1,5 +1,7 @@
 # Digital Public Works (DPW) - Verify My Income (VMI) Adapter Data Flow
 
+Based on he https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md
+
 ## Program Client Onboarding
 
 Programs must coordinate the configuration and implementation of several interactions with IVaaS:
