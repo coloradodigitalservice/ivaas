@@ -1,0 +1,423 @@
+openapi: 3.1.1
+
+info:
+  title: IVaaS DPW Verify My Income adapter
+  version: 0.0.1-draft
+  summary: Endpoints IVaaS exposes for the DPW Verify My Income (VMI) integration, and the webhook IVaaS delivers to programs.
+  description: |
+    **STATUS: DRAFT**. Details needing refinement are marked "TBD".
+
+    This document describes the webhook adapter facilitating integrations with Digital Public Works' Verify My Income product.
+
+    ## Phases
+
+    **Phase 1 (current).** Programs create invitation links directly with DPW. IVaaS has no
+    control over the custom attributes attached to a link, so `client_information` in the
+    report contains only what the program agreed with DPW at onboarding. A maximum of one 
+    program is configurable for the adapter, and every report is delivered to that program.
+
+    🚧 **Phase 2 (future).** Programs create invitation links through IVaaS
+    (`POST /api/dpw-vmi/v1/invitations`). IVaaS attaches routing attributes to each link, DPW
+    echoes them in `client_information`, and IVaaS uses them to deliver each report to the
+    program that created the link. 
+    Everything marked "phase 2" below is planned for a future time.
+    TBD: `TransmissionComplete` events carry no `client_information`, so routing them needs a
+    lookup from confirmation code to program.
+
+    ## What programs should expect
+
+    - The forwarded body is DPW's JSON exactly as received. Its schema is DPW's: see the
+      [*Webhooks Data Transmission Spec v1*](https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md).
+    - One invitation link can produce several reports, because links can be shared with
+      household members. Deduplicate reports on `X-VMI-Confirmation-Code`, which is unique per
+      report.
+    - VMI sends events other than reports under its webhook contract 2, notably
+      `TransmissionComplete`, marked by the top-level `event_type`. IVaaS forwards every event
+      the same way. Respond `2xx` to any `event_type` you do not handle, as DPW asks of all
+      receivers.
+    - A report may be delivered more than once. VMI retries IVaaS on transient failures, and
+      IVaaS asks VMI to retry when a program is unreachable.
+    - Report bodies carry personally identifiable information. Do not log them.
+
+servers:
+  - url: https://test.income-verification.colorado.gov/
+    description: "TBD: Test environment"
+  - url: https://income-verification.colorado.gov/
+    description: "TBD: Production"
+
+tags:
+  - name: program
+    description: Program-facing. Authenticated with the OAuth scheme of the main IVaaS API.
+  - name: provider
+    description: VMI-facing. Authenticated by the request signature.
+
+paths:
+  /api/dpw-vmi/v1/invitations:
+    post:
+      tags: [program]
+      summary: Create a VMI invitation link (🚧 phase 2, not implemented)
+      operationId: createDpwVmiInvitation
+      x-ivaas-status: planned
+      description: |
+        🚧 **Phase 2. Not implemented.** Recorded here so the full integration is visible.
+
+        IVaaS calls DPW's invitation API on the program's behalf and returns the link. IVaaS
+        attaches these custom attributes to the link, and DPW echoes them unchanged in the
+        report's `client_information`:
+
+        | Attribute | Source |
+        |---|---|
+        | `program_id` | The authenticated program, added by IVaaS |
+        | `correlation_id` | The `Correlation-Id` request header. Sent by the program, appended by IVaaS |
+        | `verification_id` | Generated and appended by IVaaS. Returned in the response |
+        | `application_id` | The request body's `custom_attributes`, required |
+        | `case_id`, `county_id` | The request body's `custom_attributes`, optional |
+
+        Programs may only pass attributes this schema declares, which must first be added as configuration changes by DPW.
+      security:
+        - ProgramOAuth2ClientCredentialsTest: [ivaas/income.verify]
+        - ProgramOAuth2ClientCredentialsProduction: [ivaas/income.verify]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationRequest"
+      responses:
+        "201":
+          description: Invitation created.
+          headers:
+            Correlation-Id:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+        "400":
+          description: Request validation failed.
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: DPW rejected IVaaS's credentials. An IVaaS configuration problem.
+          $ref: "#/components/responses/Error"
+        "502":
+          description: DPW rejected the invitation request IVaaS built.
+          $ref: "#/components/responses/Error"
+        "503":
+          description: DPW was unreachable or timed out. Retry later.
+          $ref: "#/components/responses/Error"
+
+  /api/dpw-vmi/v1/income-report:
+    post:
+      tags: [provider]
+      summary: Receive an income report from VMI
+      operationId: receiveDpwVmiIncomeReport
+      description: |
+        Modelled from https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md        
+        
+        Called by DPW's VMI platform when an applicant completes the VMI flow. IVaaS verifies
+        the timestamp freshness and the signature, then forwards the body unchanged to the
+        program's webhook and answers with a status VMI acts on. IVaaS is a contract 2 receiver
+        in DPW's terms: it authenticates by `X-VMI-Signature`. Forwards every `event_type`. 
+        VMI's rules, from its *Webhooks Data Transmission Spec*: 
+        * `200` marks the record delivered
+        * `400`, `413` and `422` send it to VMI's error queue without retry
+        * `401`, `429`, `500`, `503` and `504` are retried up to five more times over ten minutes, then sent to the error queue.
+
+        The response body on errors follows the descriptive format DPW's spec encourages
+        (`DpwVmiError`). It is advisory: VMI acts on the status code.
+      security:
+        - VmiSignature: []
+      parameters:
+        - $ref: "#/components/parameters/VmiTimestamp"
+        - $ref: "#/components/parameters/VmiConfirmationCode"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomeReport"
+      responses:
+        "200":
+          description: The program accepted the report. VMI marks the record delivered.
+        "400":
+          description: |
+            The body is not a JSON object, or (🚧 phase 2) it lacks the routing attributes IVaaS
+            planted. Terminal: VMI sends the record to its error queue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DpwVmiError"
+        "401":
+          description: |
+            The signature or the timestamp failed verification, or a required header is missing.
+            The body does not say which. VMI retries, so a persistent `401` points at a key or
+            clock mismatch between VMI and IVaaS. Timestamps more than five minutes from IVaaS's
+            clock are rejected; VMI signs every attempt, including retries, at send time.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DpwVmiError"
+        "422":
+          description: |
+            The program rejected the report with a `4xx` other than `429`, or (🚧 phase 2) the
+            routing attributes name no configured program. Terminal: VMI sends the record to
+            its error queue, because redelivering the same bytes is unlikely to change the
+            program's answer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DpwVmiError"
+        "503":
+          description: |
+            The program was unreachable, timed out, answered `429` or `5xx`. VMI retries. A
+            program outage longer than VMI's ten-minute retry window loses the delivery to
+            VMI's error queue; durable delivery is a planned follow-up.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DpwVmiError"
+        "500":
+          description: IVaaS failed unexpectedly. VMI retries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DpwVmiError"
+
+webhooks:
+  incomeReport:
+    post:
+      summary: Income report delivered to the program's configured webhook URL
+      operationId: deliverDpwVmiIncomeReport
+      description: |
+        IVaaS posts each report it receives from VMI to the webhook URL configured for the
+        program, within the same request that VMI made. The destination URL and the program's
+        signing key come from IVaaS configuration agreed at onboarding, never from the report.
+
+        **The body is VMI's report, byte for byte.** IVaaS adds nothing and removes nothing.
+        The headers are recomputed by IVaaS with the program's key, using the same scheme VMI
+        uses toward IVaaS, so a program verifies IVaaS exactly the way IVaaS verifies VMI.
+        No key travels in any header: the deprecated `X-VMI-API-Key` is not sent, and the
+        signing key is only ever used to sign.
+
+        ## Verifying the signature
+
+        `X-VMI-Signature` is the lowercase hex HMAC-SHA512, keyed with the program's signing key,
+        over the string `{X-VMI-Timestamp}:{body}` where `body` is the raw request bytes. This is
+        the scheme DPW documents for VMI's own deliveries. Compare in constant time and reject a
+        request whose timestamp or signature does not verify; reject timestamps outside a
+        freshness window of your choosing (IVaaS uses five minutes toward VMI).
+
+        ## Responding
+
+        | Program response | What IVaaS tells VMI | Effect |
+        |---|---|---|
+        | `2xx` | `200` | Delivered |
+        | `429`, `5xx`, timeout, unreachable | `503` | VMI retries; expect redelivery |
+        | other `4xx` | `422` | Terminal; VMI's error queue |
+        | `3xx` | `422` | Redirects are not followed; the configured URL is wrong |
+
+        Respond quickly. VMI waits 60 seconds for IVaaS's response, and IVaaS answers VMI only
+        after the program has answered, so the whole round trip (VMI to IVaaS to the program and
+        back) must finish inside those 60 seconds. IVaaS waits a bounded time for the program
+        (TBD: ten seconds) and treats a slower program as unreachable (`503` to VMI, so VMI
+        retries).
+      security:
+        - VmiSignature: []
+      parameters:
+        - $ref: "#/components/parameters/VmiTimestamp"
+        - $ref: "#/components/parameters/VmiConfirmationCode"
+        - name: Correlation-Id
+          in: header
+          required: false
+          description: |
+            🚧 **Phase 2.** The `correlation_id` the program supplied when it created the invitation
+            through IVaaS, so the program matches the report the way it matches other IVaaS
+            responses. Absent in phase 1.
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomeReport"
+      responses:
+        "2XX":
+          description: The program accepted the report. Any `2xx` counts.
+        "4XX":
+          description: |
+            The program rejected the report. `429` makes IVaaS ask VMI to retry; any other
+            `4xx` is terminal.
+        "5XX":
+          description: The program failed. IVaaS asks VMI to retry.
+
+components:
+  securitySchemes:
+    ProgramOAuth2ClientCredentialsTest:
+      $ref: "../../../../../docs/api/open-api-spec.yaml#/components/securitySchemes/ProgramOAuth2ClientCredentialsTest"
+    ProgramOAuth2ClientCredentialsProduction:
+      $ref: "../../../../../docs/api/open-api-spec.yaml#/components/securitySchemes/ProgramOAuth2ClientCredentialsProduction"
+    VmiSignature:
+      type: apiKey
+      in: header
+      name: X-VMI-Signature
+      description: |
+        `{X-VMI-Timestamp}:{raw request body}`, HMAC-SHA512 signed with the receiver's api key key, represented as 
+        lowercase hex, matching `^[0-9a-f]{128}$`. 
+        Between IVaaS and DPW the key is generated and shares with DPW at onboarding, one per environment. 
+        Between a program and IVaaS it is the key the program configured and shared with IVaaS. 
+        
+        (Modelled as an `apiKey` scheme because OpenAPI has no type for request signing. The key itself is never sent)
+
+  parameters:
+    CorrelationId:
+      $ref: "../../../../../docs/api/open-api-spec.yaml#/components/parameters/CorrelationId"
+
+    VmiTimestamp:
+      name: X-VMI-Timestamp
+      in: header
+      required: true
+      description: Seconds since the Unix epoch at signing time. Part of the signed string.
+      schema:
+        type: integer
+        format: int64
+      example: 1764709880
+
+    VmiConfirmationCode:
+      name: X-VMI-Confirmation-Code
+      in: header
+      required: true
+      description: |
+        VMI's unique confirmation code for the submitted record. Always equal to the body's
+        code: `report_metadata.confirmation_code` in a `ReportSubmission`, `confirmation_code`
+        in a `TransmissionComplete`. Unique per report; the key to deduplicate reports on.
+      schema:
+        type: string
+      example: LALDH00100001
+
+  headers:
+    CorrelationId:
+      $ref: "../../../../../docs/api/open-api-spec.yaml#/components/headers/CorrelationId"
+
+  responses:
+    Error:
+      $ref: "../../../../../docs/api/open-api-spec.yaml#/components/responses/Error"
+    Unauthorized:
+      $ref: "../../../../../docs/api/open-api-spec.yaml#/components/responses/Unauthorized"
+
+  schemas:
+    IncomeReport:
+      type: object
+      description: |
+        VMI's income report  webhook event. The schema is owned by DPW and
+        documented in the [*Webhooks Data Transmission Spec v1*](https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md). IVaaS forwards it
+        unchanged and does not validate it beyond being a valid JSON object.
+
+        Top-level members of a `ReportSubmission`, as DPW defines them.
+
+        `client_information` is the only member whose contents involve IVaaS:
+
+        - **Phase 1:** the attributes the program agreed with DPW at onboarding, expected to be
+          `case_id` and `county_id`, plus `additional_jobs_to_report`, which VMI adds for every
+          partner. IVaaS does not read them.
+        - 🚧 **Phase 2:** additionally `program_id`, `correlation_id`, `verification_id` and
+          `application_id`, planted by IVaaS at link creation and used for routing and request/flow tracing.
+      additionalProperties: true
+      properties:
+        event_type:
+          type: string
+          description: |
+            `ReportSubmission` for a report, `TransmissionComplete` for a companion-file notice.
+            Absent under DPW's legacy contract 1, which means a report.
+        report_metadata:
+          type: object
+          description: Defined by DPW. Includes `confirmation_code`.
+          additionalProperties: true
+        client_information:
+          type: object
+          description: Varies by partner. See the description above for what IVaaS expects in each phase.
+          additionalProperties: true
+        employment_records:
+          type: array
+          description: Defined by DPW.
+          items:
+            type: object
+            additionalProperties: true
+
+    DpwVmiError:
+      type: object
+      description: |
+        The descriptive error body DPW's spec encourages partners to return. Advisory only:
+        VMI acts on the HTTP status code. IVaaS never includes report content in it.
+      properties:
+        error_code:
+          type: string
+          description: Machine-readable identifier, for example `VALIDATION_ERROR`.
+        message:
+          type: string
+          description: Human-readable explanation.
+        errors:
+          type: array
+          description: Field-level detail, when there is any.
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              reason:
+                type: string
+
+    InvitationRequest:
+      type: object
+      description: "🚧 **Phase 2.** Unknown fields are rejected: programs may only pass what IVaaS has agreed to attach."
+      additionalProperties: false
+      required: [custom_attributes]
+      properties:
+        language:
+          type: string
+          description: "TBD: Program x DPW supported language codes."
+        expiration_days:
+          type: integer
+          minimum: 1
+          description: "How long the link stays valid. Configurable at DPW onboarding."
+        custom_attributes:
+          type: object
+          description: |
+            The program's own attributes, passed through to DPW's `custom_attributes` and echoed
+            back in the report's `client_information`.
+            IVaaS adds additional attributes in the request to DPW. 
+            Only the attributes listed here are accepted; adding one is a DPW onboarding change first.
+          additionalProperties: false
+          required: [application_id]
+          properties:
+            application_id:
+              type: string
+              description: The program's benefits application identifier. One application may produce several links.
+            case_id:
+              type: string
+            county_id:
+              type: string
+
+    InvitationResponse:
+      type: object
+      description: "🚧 **Phase 2.**"
+      required: [url, expiration_date, verification_id]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The VMI invitation link to give the applicant.
+        expiration_date:
+          type: string
+          format: date
+        language:
+          type: string
+        verification_id:
+          type: string
+          format: uuid
+          description: IVaaS's identifier for this link, echoed in `client_information.verification_id` on every report it produces.
