@@ -8,7 +8,7 @@ Public adapters in the IVaaS repository should include tests in each applicable 
 
 ## Unit Testing
 
-Unit tests provide the fastest feedback on logic and regressions. They should cover validation, transformations, and error handling, and run locally without deployed infrastructure or live services.
+Unit tests should run quickly and frequently, providing the fastest feedback on logic and regressions. They should cover validation, transformations, and error handling. Unit tests should run locally without dependencies on deployed infrastructure or live services.
 
 ## Integration Testing with Mocks
 
