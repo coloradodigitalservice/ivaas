@@ -1,0 +1,6 @@
+extend = "../income-verification-api/pyproject.toml"
+
+[lint.per-file-ignores]
+"test_*.py" = ["INP001", "S101"]
+"conftest.py" = ["INP001", "S101"]
+"e2e_test_client.py" = ["INP001", "S101"]
