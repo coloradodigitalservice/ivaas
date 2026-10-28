@@ -19,7 +19,7 @@ servers:
   - url: https://test.incomecheck.colorado.gov/
     description: Test environment
   - url: https://incomecheck.colorado.gov/
-    description: "TBD: Production"
+    description: Production environment
 
 security:
   - ProgramOAuth2ClientCredentialsTest: [ivaas/income.verify]
