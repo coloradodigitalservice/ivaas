@@ -13,13 +13,13 @@ info:
 
     **Phase 1 (current).** Programs create invitation links directly with DPW. IVaaS has no
     control over the custom attributes attached to a link, so `client_information` in the
-    report contains only what the program agreed with DPW at onboarding. A maximum of one 
+    report contains only what the program agreed with DPW at onboarding. A maximum of one
     program is configurable for the adapter, and every report is delivered to that program.
 
     🚧 **Phase 2 (future).** Programs create invitation links through IVaaS
     (`POST /api/dpw-vmi/v1/invitations`). IVaaS attaches routing attributes to each link, DPW
     echoes them in `client_information`, and IVaaS uses them to deliver each report to the
-    program that created the link. 
+    program that created the link.
     Everything marked "phase 2" below is planned for a future time.
     TBD: `TransmissionComplete` events carry no `client_information`, so routing them needs a
     lookup from confirmation code to program.
@@ -112,8 +112,8 @@ paths:
       summary: Receive a webhook event from VMI
       operationId: receiveDpwVmiWebhookEvent
       description: |
-        Modelled from https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md        
-        
+        Modelled from https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md
+
         IVaaS verifies the timestamp, the signature and the confirmation code, forwards the body
         unchanged to the program's webhook, and answers VMI per the mapping on the
         `reportSubmission` webhook. IVaaS is a contract 2 receiver in DPW's terms. For any
