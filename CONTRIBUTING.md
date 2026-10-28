@@ -1,6 +1,6 @@
 # How to Contribute
 
-We're so thankful you're considering contributing to an open source project of the State of Colorado government! If you're unsure about anything, just ask. Submit an issue or pull request or send an email to [OIT_ColoradoDigitalService@state.co.us](mailto:OIT_ColoradoDigitalService@state.co.us). The worst that can happen is you'll be politely asked to change something. We appreciate all friendly contributions.
+We're so thankful you're considering contributing to this open source project! If you're unsure about anything, just ask. Submit an issue or pull request or send an email to [OIT_ColoradoDigitalService@state.co.us](mailto:OIT_ColoradoDigitalService@state.co.us). The worst that can happen is you'll be politely asked to change something. We appreciate all friendly contributions.
 
 We encourage you to read this project's CONTRIBUTING policy (you are here), its [LICENSE](./LICENSE), its [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md) and its [README](./README.md).
 
@@ -8,7 +8,7 @@ We encourage you to read this project's CONTRIBUTING policy (you are here), its 
 
 ### Team Specific Guidelines
 
-This project is maintained by the State of Colorado Governor's Office of Information Technology in collaboration with other stakeholders.
+This project is maintained by the [Benefits Transformation Fund](https://benefitstransformation.org) in collaboration with the State of Colorado Governor's Office of Information Technology and other stakeholders.
 
 For information about building the software, see the project [README](./README.md).
 
@@ -62,6 +62,6 @@ For information about our Security, Vulnerability, and Responsible Disclosure Po
 
 ## License
 
-This project is primarily licensed under the MIT License, though see the [LICENSE](./LICENSE) for more details.
+This project is primarily licensed under the Apache 2.0 License, though see the [LICENSE](./LICENSE) for more details.
 
-All contributions to this project will be released under the MIT License. By submitting a pull request or issue, you are agreeing to comply with this license. If there is some element of the pull request that is not or cannot be MIT licensed, add a note to the pull request explaining that exception.
+All contributions to this project will be released under the Apache 2.0 License. By submitting a pull request or issue, you are agreeing to comply with this license. If there is some element of the pull request that is not or cannot be licensed this way, please explain the incompatibility in the pull request.
