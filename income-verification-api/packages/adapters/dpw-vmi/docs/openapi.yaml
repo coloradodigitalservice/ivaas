@@ -109,8 +109,8 @@ paths:
   /api/dpw-vmi/v1/income-report:
     post:
       tags: [provider]
-      summary: Receive an income report from VMI
-      operationId: receiveDpwVmiIncomeReport
+      summary: Receive a webhook event from VMI
+      operationId: receiveDpwVmiWebhookEvent
       description: |
         Modelled from https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md        
         
@@ -183,14 +183,16 @@ webhooks:
       operationId: deliverDpwVmiReportSubmission
       description: |
         IVaaS forwards the raw body to the program's configured URL within the same request VMI
-        made, re-signed with the program's configured key. Neither value comes from the report.
+        made, signed with the program's configured key and a fresh `X-IVaaS-Timestamp`. URL and
+        key come from configuration, never from the report. `X-VMI-Timestamp` and
+        `X-VMI-Confirmation-Code` pass through unchanged; `X-VMI-Signature` and `X-VMI-API-Key`
+        are never forwarded.
 
         ## Verifying the signature
 
-        `X-VMI-Signature` is the lowercase hex HMAC-SHA512 of `{X-VMI-Timestamp}:{raw body}`,
-        keyed with the program's key: the same scheme DPW uses for VMI. Compare
-        in constant time, reject mismatches, and reject stale timestamps (IVaaS defaults to 5
-        minutes when validating incoming messages from VMI).
+        `X-IVaaS-Signature` is the lowercase hex HMAC-SHA512 of `{X-IVaaS-Timestamp}:{raw body}`,
+        keyed with the program's key. Compare in constant time, reject mismatches, and reject
+        stale timestamps (IVaaS defaults to 5 minutes when validating incoming messages from VMI).
 
         ## Responding
 
@@ -207,9 +209,10 @@ webhooks:
         back. IVaaS waits a shorter time for the program (TBD: 30 seconds) and maps a timeout to
         `503`.
       security:
-        - VmiSignature: []
+        - IvaasSignature: []
       parameters:
-        - $ref: "#/components/parameters/VmiTimestamp"
+        - $ref: "#/components/parameters/IvaasTimestamp"
+        - $ref: "#/components/parameters/VmiTimestampPassthrough"
         - $ref: "#/components/parameters/VmiConfirmationCode"
         - name: Correlation-Id
           in: header
@@ -240,12 +243,12 @@ webhooks:
       summary: Companion-file notice delivered to the program's configured webhook URL
       operationId: deliverDpwVmiTransmissionComplete
       description: |
-        See DPW's spec for when VMI sends this event. IVaaS uses the same URL, headers, signing
-        and response mapping as `reportSubmission`.
+        See DPW's spec for this event's meaning. IVaaS forwards it exactly like `reportSubmission`.
       security:
-        - VmiSignature: []
+        - IvaasSignature: []
       parameters:
-        - $ref: "#/components/parameters/VmiTimestamp"
+        - $ref: "#/components/parameters/IvaasTimestamp"
+        - $ref: "#/components/parameters/VmiTimestampPassthrough"
         - $ref: "#/components/parameters/VmiConfirmationCode"
       requestBody:
         required: true
@@ -272,12 +275,18 @@ components:
       in: header
       name: X-VMI-Signature
       description: |
-        Lowercase hex HMAC-SHA512 of `{X-VMI-Timestamp}:{raw request body}`, keyed with the
-        receiver's configured signing key, matching `^[0-9a-f]{128}$`. Between VMI and IVaaS the
-        key is one IVaaS generates per environment and shares with DPW at onboarding; between
-        IVaaS and a program it is the key the program configured in IVaaS. The key itself is
-        never sent. Modelled as an `apiKey` scheme because OpenAPI has no type for request
-        signing.
+        VMI to IVaaS. Lowercase hex HMAC-SHA512 of `{X-VMI-Timestamp}:{raw request body}`, keyed
+        with the key IVaaS generates per environment and shares with DPW at onboarding, matching
+        `^[0-9a-f]{128}$`. The key itself is never sent. Modelled as an `apiKey` scheme because
+        OpenAPI has no type for request signing.
+    IvaasSignature:
+      type: apiKey
+      in: header
+      name: X-IVaaS-Signature
+      description: |
+        IVaaS to a program. Lowercase hex HMAC-SHA512 of `{X-IVaaS-Timestamp}:{raw request
+        body}`, keyed with the key the program configured in IVaaS, matching `^[0-9a-f]{128}$`.
+        The key itself is never sent.
 
   parameters:
     CorrelationId:
@@ -287,7 +296,29 @@ components:
       name: X-VMI-Timestamp
       in: header
       required: true
-      description: Seconds since the Unix epoch at signing time. Part of the signed string.
+      description: Seconds since the Unix epoch when VMI signed. Part of VMI's signed string.
+      schema:
+        type: integer
+        format: int64
+      example: 1764709880
+
+    IvaasTimestamp:
+      name: X-IVaaS-Timestamp
+      in: header
+      required: true
+      description: Seconds since the Unix epoch when IVaaS signed. Part of IVaaS's signed string.
+      schema:
+        type: integer
+        format: int64
+      example: 1764709881
+
+    VmiTimestampPassthrough:
+      name: X-VMI-Timestamp
+      in: header
+      required: true
+      description: |
+        VMI's timestamp, forwarded unchanged for latency triage. Not part of IVaaS's signed
+        string.
       schema:
         type: integer
         format: int64
