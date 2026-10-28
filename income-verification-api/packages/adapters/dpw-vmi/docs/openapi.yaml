@@ -36,9 +36,9 @@ info:
     - Report bodies carry personally identifiable information. Do not log them.
 
 servers:
-  - url: https://test.income-verification.colorado.gov/
-    description: "TBD: Test environment"
-  - url: https://income-verification.colorado.gov/
+  - url: https://test.incomecheck.colorado.gov/
+    description: Test environment
+  - url: https://incomecheck.colorado.gov/
     description: "TBD: Production"
 
 tags:
