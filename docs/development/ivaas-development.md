@@ -33,7 +33,15 @@ mise install
 1. If the IVaaS implementation is already configured to use adapters (see [Adapters](../configuration/ivaas-configuration.md#adapters) documentation),
    you will need to first download/build each configured adapter according to its own documentation (See [Adapter installation](../configuration/ivaas-configuration.md#adapter-installation))
 
-2. Use the setup command to install project dependencies:
+1. As the codebase is currently pre-configured with an adapter, contact the project team for details
+   about that adapter's repository. Clone the repository, then:
+   - `cd` to the cloned repo
+   - `make build` to generate an installable wheel
+   - `mv` the generated .whl file to the location specified in the adapter installation instructions
+   - `./scripts/local_cdle_secret.sh` to generate a private key for local use
+   - `cd -` back to this repo
+
+1. Use the setup command to install project dependencies:
    ```shell
    make setup
    ```
