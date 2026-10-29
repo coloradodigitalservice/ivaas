@@ -1,5 +1,5 @@
-# python:3.14.9-slim-trixie
-ARG PYTHON_IMAGE=python@sha256:b347e2dcbc7f0b6f9fb7182e9da6a187fb10ae715e0692518c1aed0eec94a700
+# python:3.14.10-slim-trixie
+ARG PYTHON_IMAGE=python@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999
 # ghcr.io/astral-sh/uv:0.13.5
 ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff
 
