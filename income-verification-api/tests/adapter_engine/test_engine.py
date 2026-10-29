@@ -100,10 +100,10 @@ def test_without_policies_calls_adapter_once(
     ("error", "status", "level"),
     [
         (SubjectNotFound("no records"), SourceStatus.NO_DATA, logging.INFO),
-        (SourceTimeout("timed out"), SourceStatus.UNAVAILABLE, logging.WARNING),
-        (SourceUnavailable("refused"), SourceStatus.UNAVAILABLE, logging.WARNING),
-        (SourceResponseInvalid("unparseable"), SourceStatus.ERROR, logging.WARNING),
-        (IncomeSourceError("other"), SourceStatus.ERROR, logging.WARNING),
+        (SourceTimeout("timed out"), SourceStatus.UNAVAILABLE, logging.ERROR),
+        (SourceUnavailable("refused"), SourceStatus.UNAVAILABLE, logging.ERROR),
+        (SourceResponseInvalid("unparseable"), SourceStatus.ERROR, logging.ERROR),
+        (IncomeSourceError("other"), SourceStatus.ERROR, logging.ERROR),
     ],
 )
 def test_contract_exception_becomes_the_source_status(

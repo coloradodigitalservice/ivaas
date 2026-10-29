@@ -46,9 +46,9 @@ class AdapterEngine:
         try:
             income = _verify_with_policies(name, initialized_adapter, request, context)
         except IncomeSourceError as error:
-            # No data is an ordinary answer; every other status is a failure worth attention.
+            # No data is an ordinary answer; every other status failed the request.
             logger.log(
-                logging.INFO if error.status is SourceStatus.NO_DATA else logging.WARNING,
+                logging.INFO if error.status is SourceStatus.NO_DATA else logging.ERROR,
                 "income source adapter %r completed without returning income data",
                 name,
                 extra={
