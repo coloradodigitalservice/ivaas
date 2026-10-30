@@ -45,7 +45,7 @@ Adapters encapsulate logic and implementation details relating to the data sourc
 
 After `make setup`, run `make api-key` from the IVaaS repository root. It
 prints a random UUIDv4 as 32 lowercase hexadecimal characters without
-hyphens and does not create a file. Check an adapter's requirements before
+hyphens. Check an adapter's requirements before
 using this format. Generate a separate key for each integration and
 environment.
 
