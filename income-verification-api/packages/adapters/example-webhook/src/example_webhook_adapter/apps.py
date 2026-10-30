@@ -12,6 +12,6 @@ class ExampleWebhookAdapterConfig(AppConfig):
 
     @override
     def ready(self) -> None:
-        from example_webhook_adapter.api import configured_api_key
+        from example_webhook_adapter.security import configured_api_key
 
         configured_api_key()
