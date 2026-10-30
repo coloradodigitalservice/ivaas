@@ -34,8 +34,6 @@ smoke-results/
 !**/.envs/.local/
 !**/.envs/.ci/
 **/.envs/.local/.secrets
-# Locally generated credentials; never commit API keys.
-.local-secrets/
 
 ## mypy
 .mypy_cache/

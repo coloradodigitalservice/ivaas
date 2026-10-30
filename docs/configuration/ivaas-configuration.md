@@ -41,6 +41,21 @@ There are two distinct types of adapters: [API](#api-adapters) and [webhook](#we
 
 Adapters encapsulate logic and implementation details relating to the data sources they interact with, so that the IVaaS application needs only to be concerned with invoking the relevant adapter(s) based on incoming requests or events.
 
+### Generating API keys
+
+After `make setup`, run `make api-key` from the IVaaS repository root. It
+prints a random UUIDv4 as 32 lowercase hexadecimal characters without
+hyphens and does not create a file. Check an adapter's requirements before
+using this format. Generate a separate key for each integration and
+environment.
+
+Manually copy each key into your team's secret store with its purpose,
+environment, and creation date, then confirm that the saved value can be
+retrieved. Terminal scrollback may retain the key; handle it as a secret and
+clear it according to your team's policy. Never commit a key or put it in a
+ticket or command argument. Sharing a key with a partner is a separate manual
+step through an approved secure channel.
+
 ### Adapter development
 
 #### Source code location and visibility

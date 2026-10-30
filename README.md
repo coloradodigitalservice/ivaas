@@ -33,8 +33,7 @@ This project began as a collaboration between the State of Colorado and the Bene
 
 ## Configuration
 
-For documentation related to configuring IVaaS, see [ivaas-configuration](docs/configuration/ivaas-configuration.md).
-For deployer-generated integration credentials, see [Generating API keys](docs/security/api-key-generation.md).
+For IVaaS configuration, including API key generation, see [ivaas-configuration](docs/configuration/ivaas-configuration.md).
 
 ## Development
 
