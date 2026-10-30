@@ -63,6 +63,7 @@ make migrate
 Secrets and local overrides go in a .gitignored `income-verification-api/.envs/.local/.secrets`.
 Never commit the file.
 Each adapter is responsible for documenting the settings it needs, and how to generate them, if necessary.
+For a repeatable way to generate integration API keys, see [Generating API keys](../configuration/ivaas-configuration.md#generating-api-keys).
 
 > [!TIP]
 > Validate Compose settings with `docker compose config -q`, because plain
