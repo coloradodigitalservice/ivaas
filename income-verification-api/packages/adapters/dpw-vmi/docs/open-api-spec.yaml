@@ -97,7 +97,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
-          description: DPW rejected IVaaS's credentials. An IVaaS configuration problem.
+          description: Any error internal to IVaaS. Even DPW rejecting IVaaS's credentials, which is indicative of an IVaaS configuration problem.
           $ref: "#/components/responses/Error"
         "502":
           description: DPW rejected the invitation request IVaaS built.
@@ -112,7 +112,7 @@ paths:
       summary: Receive a webhook event from VMI
       operationId: receiveDpwVmiWebhookEvent
       description: |
-        Modelled from https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md
+        Modelled from [the DPW reference implementation](https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md)
 
         IVaaS verifies the timestamp, the signature and the confirmation code, forwards the body
         unchanged to the program's webhook, and answers VMI per the mapping on the
