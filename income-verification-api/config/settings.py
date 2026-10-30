@@ -140,8 +140,9 @@ LOGGING: dict[str, Any] = {
     },
 }
 
-# Income datasources
-#
+# Adapter configurations
+
+## API Adapters
 # The class paths and config keys are opaque strings to the application instantiated by the
 # adapter registry
 
@@ -176,9 +177,21 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
     },
 }
 
-# Each adapter logs under its own top-level package. Route every declared adapter's package
-# through the application's handler, so adapter logs are structured and carry the request
-# context. Other libraries keep Python's defaults and never get a DEBUG-level handler.
+## Webhook Adapters
+# Each key is a Django app module name.
+# TODO: Entries have this shape:
+# "adapter_module": {"enabled": env.bool("<ADAPTER>_ADAPTER_ENABLED", default=False),
+#                    "config": {"api_key": env("<ADAPTER>_API_KEY", default=None)}}
+WEBHOOK_ADAPTERS: Mapping[str, Mapping[str, object]] = {}
+INSTALLED_APPS += [name for name, declaration in WEBHOOK_ADAPTERS.items() if declaration["enabled"]]
+
+# Each adapter logs under its own package. Route every declared adapter's package through the
+# application's handler, so adapter logs are structured and carry the request context. Other
+# libraries keep Python's defaults and never get a DEBUG-level handler.
 for _declaration in INCOME_SOURCE_ADAPTERS.values():
     _adapter_package = str(_declaration["class"]).partition(".")[0]
     LOGGING["loggers"][_adapter_package] = LOGGING["loggers"]["adapter_engine"]
+
+for _adapter_module, _declaration in WEBHOOK_ADAPTERS.items():
+    if _declaration["enabled"]:
+        LOGGING["loggers"][_adapter_module] = LOGGING["loggers"]["adapter_engine"]

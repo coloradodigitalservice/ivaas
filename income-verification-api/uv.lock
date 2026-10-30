@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "dpw-vmi-adapter",
     "example-adapter",
+    "example-webhook-adapter",
     "income-verification-api",
     "ivaas-core",
 ]
@@ -354,6 +355,21 @@ dependencies = [
 requires-dist = [{ name = "ivaas-core", editable = "packages/ivaas-core" }]
 
 [[package]]
+name = "example-webhook-adapter"
+version = "0.1.0"
+source = { editable = "packages/adapters/example-webhook" }
+dependencies = [
+    { name = "django" },
+    { name = "django-ninja" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "django" },
+    { name = "django-ninja" },
+]
+
+[[package]]
 name = "filelock"
 version = "3.32.2"
 source = { registry = "https://pypi.org/simple" }
@@ -432,6 +448,7 @@ dependencies = [
 dev = [
     { name = "django-stubs" },
     { name = "example-adapter" },
+    { name = "example-webhook-adapter" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -468,6 +485,7 @@ requires-dist = [
 dev = [
     { name = "django-stubs", specifier = ">=6.0.7" },
     { name = "example-adapter", editable = "packages/adapters/example" },
+    { name = "example-webhook-adapter", editable = "packages/adapters/example-webhook" },
     { name = "mypy", specifier = ">=2.1.0" },
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "pytest", specifier = ">=9.1.1" },
