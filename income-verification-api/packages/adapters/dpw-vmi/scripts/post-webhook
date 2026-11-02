@@ -5,12 +5,10 @@ set -eu
 : "${1:?Usage: post-webhook PAYLOAD}"
 
 timestamp=$(date +%s)
+# Get confirmation code from payload
 confirmation_code=$(python3 -c 'import json, pathlib, sys; payload = json.loads(pathlib.Path(sys.argv[1]).read_bytes()); print(payload.get("confirmation_code") or payload["report_metadata"]["confirmation_code"])' "$1")
-signature=$(
-	(printf '%s:' "$timestamp"; cat "$1") |
-		python3 -c 'import hashlib, hmac, os, sys; print(hmac.new(os.environ["DPW_VMI_WEBHOOK_API_KEY"].encode(), sys.stdin.buffer.read(), hashlib.sha512).hexdigest())'
-)
-[ "${#signature}" -eq 128 ]
+# Generate signature
+signature=$(python3 -c 'import os, sys; from dpw_vmi_adapter.signing import sign; print(sign(sys.stdin.buffer.read(), key=os.environ["DPW_VMI_WEBHOOK_API_KEY"], timestamp=sys.argv[1]))' "$timestamp" < "$1")
 
 curl --fail-with-body --show-error \
 	--header 'Content-Type: application/json' \

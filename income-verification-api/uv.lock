@@ -431,6 +431,7 @@ wheels = [
 name = "income-verification-api"
 version = "0.1.0"
 source = { virtual = "." }
+default-groups = ["adapters", "dev"]
 dependencies = [
     { name = "django" },
     { name = "django-environ" },
@@ -445,6 +446,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+adapters = [
+    { name = "dpw-vmi-adapter" },
+]
 dev = [
     { name = "django-stubs" },
     { name = "example-adapter" },
@@ -482,6 +486,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+adapters = [{ name = "dpw-vmi-adapter", editable = "packages/adapters/dpw-vmi" }]
 dev = [
     { name = "django-stubs", specifier = ">=6.0.7" },
     { name = "example-adapter", editable = "packages/adapters/example" },
