@@ -18,6 +18,9 @@ RUN_NO_SYNC := $(UV) run --no-sync
 LOCAL_RUN := $(RUN_NO_SYNC) $(ENV)
 MANAGE := $(LOCAL_RUN) python manage.py
 
+# To use nested, adapter-specific Makefile commands, add them here:
+include $(API_DIR)/packages/adapters/dpw-vmi/Makefile
+
 # ============================================================================
 # Custom adapters.
 #
@@ -31,7 +34,7 @@ ADAPTER_MODULES := $(abspath $(ADAPTERS_CHECKOUT))/adapters/*/
 
 .PHONY: help
 help: ## print the help documentation
-	@grep -E '^[/a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -hE '^[/a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: setup
 setup: sync install-hooks ## set up the local development environment
