@@ -451,6 +451,7 @@ adapters = [
 ]
 dev = [
     { name = "django-stubs" },
+    { name = "dpw-vmi-adapter" },
     { name = "example-adapter" },
     { name = "example-webhook-adapter" },
     { name = "mypy" },
@@ -489,6 +490,7 @@ requires-dist = [
 adapters = [{ name = "dpw-vmi-adapter", editable = "packages/adapters/dpw-vmi" }]
 dev = [
     { name = "django-stubs", specifier = ">=6.0.7" },
+    { name = "dpw-vmi-adapter", editable = "packages/adapters/dpw-vmi" },
     { name = "example-adapter", editable = "packages/adapters/example" },
     { name = "example-webhook-adapter", editable = "packages/adapters/example-webhook" },
     { name = "mypy", specifier = ">=2.1.0" },

@@ -35,8 +35,7 @@ constraint-dependencies = ["sqlparse>=0.6.0"]
 default-groups = ["dev", "adapters"]
 
 [dependency-groups]
-# Public adapters installed by this deployment. Each state lists its adapters here;
-# an empty list is the generic IVaaS posture. Private adapters remain side-loaded wheels.
+# Public adapters installed by this deployment. (Empty = generic posture)
 adapters = [
     "dpw-vmi-adapter",
 ]
@@ -44,6 +43,8 @@ dev = [
     {include-group = "quality"},
     {include-group = "test"},
     "django-stubs>=6.0.7",
+    # Public adapters developed and tested in this repository.
+    "dpw-vmi-adapter",
     # Reference adapters, registered by tests only.
     "example-adapter",
     "example-webhook-adapter",
