@@ -43,6 +43,16 @@ API_AUTHENTICATION: Mapping[str, object] = {
     "JWKS_TIMEOUT_SECONDS": env.float("AUTH_JWKS_TIMEOUT_SECONDS", default=5.0),
 }
 
+# Program-specific configuration. Program IDs are stable lowercase machine identifiers.
+# The presence of an adapter subkey enrolls that program in the adapter.
+PROGRAMS: Mapping[str, Mapping[str, Mapping[str, object]]] = {
+    "cobees": {
+        "dpw_vmi": {
+            "webhook_api_key": env("COBEES_VMI_WEBHOOK_API_KEY", default=None),
+        },
+    },
+}
+
 
 # Application definition
 

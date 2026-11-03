@@ -27,3 +27,20 @@ class DpwVmiAdapterConfig(AppConfig):
             raise ImproperlyConfigured("DPW VMI webhook timestamp maximum age must be positive.")
         self.webhook_api_key = api_key
         self.webhook_timestamp_max_age_seconds = max_age
+
+        from dpw_vmi_adapter.programs import configured_programs
+
+        programs = configured_programs()
+        if not programs:
+            raise ImproperlyConfigured(
+                "dpw_vmi_adapter requires at least one program with a 'dpw_vmi' "
+                "configuration in PROGRAMS."
+            )
+
+        # TODO: Once VMI returns program_id in webhook custom attributes, remove this check
+        #       and route each request to its identified program.
+        if len(programs) > 1:
+            raise ImproperlyConfigured(
+                "dpw_vmi_adapter currently supports only one program with a 'dpw_vmi' "
+                f"configuration in PROGRAMS; found {len(programs)}."
+            )
