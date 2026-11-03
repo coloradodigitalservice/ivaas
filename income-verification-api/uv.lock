@@ -342,6 +342,16 @@ wheels = [
 name = "dpw-vmi-adapter"
 version = "0.1.0"
 source = { editable = "packages/adapters/dpw-vmi" }
+dependencies = [
+    { name = "django" },
+    { name = "django-ninja" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "django" },
+    { name = "django-ninja" },
+]
 
 [[package]]
 name = "example-adapter"
