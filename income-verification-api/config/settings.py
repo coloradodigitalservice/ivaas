@@ -43,8 +43,8 @@ API_AUTHENTICATION: Mapping[str, object] = {
     "JWKS_TIMEOUT_SECONDS": env.float("AUTH_JWKS_TIMEOUT_SECONDS", default=5.0),
 }
 
-# Program-specific configuration. Program IDs are stable lowercase machine identifiers.
-# The presence of an adapter subkey enrolls that program in the adapter.
+# Program-specific configuration. Program IDs are stable machine and human identifiers.
+# The presence of an adapter subkey implies integration with the corresponding adapter.
 PROGRAMS: Mapping[str, Mapping[str, Mapping[str, object]]] = {
     "cobees": {
         "dpw_vmi": {
