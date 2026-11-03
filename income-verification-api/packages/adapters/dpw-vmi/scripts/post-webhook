@@ -5,6 +5,7 @@ set -eu
 : "${1:?Usage: post-webhook PAYLOAD}"
 
 timestamp=$(date +%s)
+webhook_path=${DPW_VMI_WEBHOOK_PATH:-/dpw-vmi/v1/income-report}
 # Get confirmation code from payload
 confirmation_code=$(python3 -c 'import json, pathlib, sys; payload = json.loads(pathlib.Path(sys.argv[1]).read_bytes()); print(payload.get("confirmation_code") or payload["report_metadata"]["confirmation_code"])' "$1")
 # Generate signature
@@ -16,4 +17,4 @@ curl --fail-with-body --show-error \
 	--header "X-VMI-Signature: $signature" \
 	--header "X-VMI-Confirmation-Code: $confirmation_code" \
 	--data-binary "@$1" \
-	http://127.0.0.1:8000/api/dpw-vmi/v1/income-report
+	"http://127.0.0.1:8000/api/${webhook_path#/}"
