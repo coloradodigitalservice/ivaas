@@ -22,6 +22,7 @@ dependencies = [
 members = ["packages/ivaas-core", "packages/adapters/*"]
 
 [tool.uv.sources]
+dpw-vmi-adapter = { workspace = true }
 ivaas-core = { workspace = true }
 example-adapter = { workspace = true }
 example-webhook-adapter = { workspace = true }
@@ -30,12 +31,20 @@ example-webhook-adapter = { workspace = true }
 # sqlparse is a django dependency. This constraint can be removed once the django
 # dependency constraint for sqlparse catches up.
 constraint-dependencies = ["sqlparse>=0.6.0"]
+# default-groups replaces uv's default, so keep the development group explicit.
+default-groups = ["dev", "adapters"]
 
 [dependency-groups]
+# Public adapters installed by this deployment. (Empty = generic posture)
+adapters = [
+    "dpw-vmi-adapter",
+]
 dev = [
     {include-group = "quality"},
     {include-group = "test"},
     "django-stubs>=6.0.7",
+    # Public adapters developed and tested in this repository.
+    "dpw-vmi-adapter",
     # Reference adapters, registered by tests only.
     "example-adapter",
     "example-webhook-adapter",

@@ -19,6 +19,12 @@
       "description": "Must match the application's API_VERSION setting."
     },
     {
+      "key": "dpwVmiWebhookPath",
+      "value": "/dpw-vmi/v1/income-report",
+      "type": "string",
+      "description": "Must match DPW_VMI_WEBHOOK_PATH when the DPW VMI adapter is enabled."
+    },
+    {
       "key": "correlationId",
       "value": "",
       "type": "string",
@@ -885,6 +891,37 @@
                   "pm.test('returns 400', () => pm.response.to.have.status(400));",
                   "pm.test('returns INVALID_REQUEST', () => {",
                   "  pm.expect(pm.response.json().code).to.equal('INVALID_REQUEST');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DPW VMI webhook",
+      "item": [
+        {
+          "name": "Acknowledge webhook",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
+            "description": "Skeleton endpoint. Authentication, header and body validation, and delivery to a program are separate tickets."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('acknowledges the webhook', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({ received: true });",
                   "});"
                 ]
               }

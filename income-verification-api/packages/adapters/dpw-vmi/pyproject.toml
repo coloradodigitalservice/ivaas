@@ -2,8 +2,8 @@
 name = "dpw-vmi-adapter"
 version = "0.1.0"
 description = "Webhook adapter for Digital Public Works Verify My Income (VMI)."
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.14.9"
+dependencies = ["django", "django-ninja"]
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]
