@@ -342,6 +342,16 @@ wheels = [
 name = "dpw-vmi-adapter"
 version = "0.1.0"
 source = { editable = "packages/adapters/dpw-vmi" }
+dependencies = [
+    { name = "django" },
+    { name = "django-ninja" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "django" },
+    { name = "django-ninja" },
+]
 
 [[package]]
 name = "example-adapter"
@@ -431,6 +441,7 @@ wheels = [
 name = "income-verification-api"
 version = "0.1.0"
 source = { virtual = "." }
+default-groups = ["adapters", "dev"]
 dependencies = [
     { name = "django" },
     { name = "django-environ" },
@@ -445,8 +456,12 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+adapters = [
+    { name = "dpw-vmi-adapter" },
+]
 dev = [
     { name = "django-stubs" },
+    { name = "dpw-vmi-adapter" },
     { name = "example-adapter" },
     { name = "example-webhook-adapter" },
     { name = "mypy" },
@@ -482,8 +497,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+adapters = [{ name = "dpw-vmi-adapter", editable = "packages/adapters/dpw-vmi" }]
 dev = [
     { name = "django-stubs", specifier = ">=6.0.7" },
+    { name = "dpw-vmi-adapter", editable = "packages/adapters/dpw-vmi" },
     { name = "example-adapter", editable = "packages/adapters/example" },
     { name = "example-webhook-adapter", editable = "packages/adapters/example-webhook" },
     { name = "mypy", specifier = ">=2.1.0" },
