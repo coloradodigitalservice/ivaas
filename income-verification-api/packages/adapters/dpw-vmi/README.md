@@ -25,9 +25,5 @@ key is issued by DPW to IVaaS.
 
 ## Development
 
-The DPW VMI adapter declares its own [Makefile](./Makefile) for development and testing tasks.
-To use these tasks from the IVaaS root, include it in the root [Makefile](../../../../Makefile):
-
-```makefile
-include $(API_DIR)/packages/adapters/dpw-vmi/Makefile
-```
+The DPW VMI adapter declares its own [Makefile](./Makefile) for development and testing tasks, and is included in the
+root [Makefile](../../../../Makefile) for convenience.
