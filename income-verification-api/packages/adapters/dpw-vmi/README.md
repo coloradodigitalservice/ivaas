@@ -1,8 +1,15 @@
 # DPW VMI adapter
 
-Future webhook adapter for Digital Public Works Verify My Income (VMI).
+Public webhook adapter for Digital Public Works Verify My Income (VMI).
 
-See the [data flow](docs/data-flow.md) for the proposed implementation.
+## Webhook URL
+
+When installed, the adapter is enabled by default. Set `DPW_VMI_ADAPTER_ENABLED=False` to remove
+its endpoint.
+`DPW_VMI_WEBHOOK_PATH` sets the route beneath IVaaS's `/api` prefix and defaults to
+`/dpw-vmi/v1/income-report`.
+
+See the [data flow](docs/data-flow.md) for the planned integration.
 
 ## Webhook signing key
 

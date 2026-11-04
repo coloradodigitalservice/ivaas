@@ -179,10 +179,14 @@ INCOME_SOURCE_ADAPTERS: Mapping[str, Mapping[str, object]] = {
 
 ## Webhook Adapters
 # Each key is a Django app module name.
-# TODO: Entries have this shape:
-# "adapter_module": {"enabled": env.bool("<ADAPTER>_ADAPTER_ENABLED", default=False),
-#                    "config": {"api_key": env("<ADAPTER>_API_KEY", default=None)}}
-WEBHOOK_ADAPTERS: Mapping[str, Mapping[str, object]] = {}
+WEBHOOK_ADAPTERS: Mapping[str, Mapping[str, object]] = {
+    "dpw_vmi_adapter": {
+        "enabled": env.bool("DPW_VMI_ADAPTER_ENABLED", default=True),
+        "config": {
+            "webhook_path": env.str("DPW_VMI_WEBHOOK_PATH", default="/dpw-vmi/v1/income-report"),
+        },
+    },
+}
 INSTALLED_APPS += [name for name, declaration in WEBHOOK_ADAPTERS.items() if declaration["enabled"]]
 
 # Each adapter logs under its own package. Route every declared adapter's package through the
