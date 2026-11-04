@@ -2,7 +2,6 @@
 
 import logging
 import re
-import unicodedata
 from collections.abc import Mapping
 from copy import copy
 from dataclasses import fields, is_dataclass
@@ -24,35 +23,6 @@ _SECRET_ASSIGNMENT_PATTERN = re.compile(
     r"[\"']?[^\"',\s;}]+[\"']?",
     re.IGNORECASE,
 )
-
-# Control characters, format control characters, line/para separators, surrogate code points
-_ESCAPE_CATEGORIES = frozenset({"Cc", "Cf", "Zl", "Zp", "Cs", "Co"})
-_NAMED = {"\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t"}
-MAX_STR_LEN = 8192
-_TRUNC = "...[truncated]"
-
-
-def _escape(ch: str) -> str:
-    if ch == "\\":
-        return "\\\\"
-    named = _NAMED.get(ch)
-    if named:
-        return named
-    cp = ord(ch)
-    return f"\\u{cp:04x}"
-
-
-def sanitize(value: str | None, max_len: int = MAX_STR_LEN) -> str | None:
-    if value is None:
-        return None
-    if len(value) > max_len:
-        value = value[:max_len] + "...[truncated]"
-    if value.isprintable() and "\\" not in value:
-        return value
-    return "".join(
-        _escape(ch) if ch == "\\" or unicodedata.category(ch) in _ESCAPE_CATEGORIES else ch
-        for ch in value
-    )
 
 
 _LOG_KEY_SEPARATORS = re.compile(r"[-_\s]")

@@ -16,7 +16,7 @@ from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     validated_correlation_id,
 )
-from income_verification.log_redaction import redacted_message, sanitize
+from income_verification.log_redaction import redacted_message
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,10 +133,7 @@ class JsonLogFormatter(logging.Formatter):
         }
         for field in LogField:
             if hasattr(record, field.value):
-                raw_value = getattr(record, field.value)
-                payload[field.value] = (
-                    sanitize(raw_value) if isinstance(raw_value, str) else raw_value
-                )
+                payload[field.value] = getattr(record, field.value)
         if record.exc_info and record.exc_info[0] is not None:
             payload[LogField.EXCEPTION_TYPE.value] = record.exc_info[0].__name__
         # Exception messages, tracebacks, and raw stack_info are intentionally omitted.
