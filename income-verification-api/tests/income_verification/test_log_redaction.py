@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
+from income_verification.log_redaction import MAX_STR_LEN, sanitize
 from income_verification.request_context import JsonLogFormatter, LogField
 from income_verification.schemas import VerificationRequest
 
@@ -196,3 +197,61 @@ def test_cyclic_container_fails_closed() -> None:
 
     assert "SensitiveGivenName" not in output
     assert json.loads(output)["message"] == "[REDACTED: log message could not be safely formatted]"
+
+
+def test_sanitize_input_none() -> None:
+    assert sanitize(None) is None
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("a\nb", "a\\nb"),
+        ("\nab", "\\nab"),
+        ("ab\n", "ab\\n"),
+        ("a\r\nb", "a\\r\\nb"),
+        ("a\r\nba\r\nb", "a\\r\\nba\\r\\nb"),
+        ("aa\tbb", "aa\\tbb"),
+        ("aa\t\t\tbb", "aa\\t\\t\\tbb"),
+        ("\x0acc", "\\ncc"),
+        ("x\u000az", "x\\nz"),
+        ("x\u2066z", "x\\u2066z"),
+        ("x\x9f\u2066z", "x\\u009f\\u2066z"),
+        ("abc\u200e[def", "abc\\u200e[def"),
+    ],
+)
+def test_sanitize(message: str, expected: str) -> None:
+    assert sanitize(message) == expected
+    assert json.loads(json.dumps(message)) != expected
+    assert json.loads(json.dumps(sanitize(message))) == expected
+
+
+@pytest.mark.parametrize(
+    ("message", "args", "expected"),
+    [
+        ("a\nb", (), "a\\nb"),
+        ("\nab", (), "\\nab"),
+        ("ab\n", (), "ab\\n"),
+        ("a\r\nb", (), "a\\r\\nb"),
+        ("a\r\nba\r\nb", (), "a\\r\\nba\\r\\nb"),
+        ("aa\tbb", (), "aa\\tbb"),
+        ("aa\t\t\tbb", (), "aa\\t\\t\\tbb"),
+        ("\x0acc", (), "\\ncc"),
+        ("x\u000az", (), "x\\nz"),
+        ("x\u2066z", (), "x\\u2066z"),
+        ("x\x9f\u2066z", (), "x\\u009f\\u2066z"),
+        ("abc\u200e[def", (), "abc\\u200e[def"),
+    ],
+)
+def test_json_log_formatter_sanitizes_log_field(
+    message: str, args: tuple[object, ...], expected: str
+) -> None:
+    record = _record(message, *args)
+    setattr(record, LogField.URL_PATH, message)
+
+    assert json.loads(JsonLogFormatter().format(record))[LogField.URL_PATH] == expected
+
+
+def test_truncation():
+    out = sanitize("x" * (MAX_STR_LEN + 10))
+    assert out.endswith("...[truncated]")

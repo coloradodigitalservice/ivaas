@@ -24,6 +24,31 @@ _SECRET_ASSIGNMENT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Control characters, DEL, Unicode line/para separators, zero-width chars, bidi overrides/isolates
+_ESCAPE_PATTERN = re.compile(
+    r"[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u2069]"
+)
+_NAMED = {"\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t"}
+MAX_STR_LEN = 8192
+_TRUNC = "...[truncated]"
+
+
+def _escape(match: re.Match[str]) -> str:
+    ch = match.group()
+    named = _NAMED.get(ch)
+    if named:
+        return named
+    cp = ord(ch)
+    return f"\\u{cp:04x}"
+
+
+def sanitize(value: str | None, max_len: int = MAX_STR_LEN) -> str | None:
+    if value is None:
+        return None
+    if len(value) > max_len:
+        value = value[:max_len] + "...[truncated]"
+    return _ESCAPE_PATTERN.sub(_escape, value)
+
 
 _LOG_KEY_SEPARATORS = re.compile(r"[-_\s]")
 
