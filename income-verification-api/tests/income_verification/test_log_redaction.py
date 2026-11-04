@@ -248,6 +248,6 @@ def test_json_log_formatter_sanitizes_log_field(message: str, expected: str) -> 
     assert json.loads(JsonLogFormatter().format(record))[LogField.URL_PATH] == expected
 
 
-def test_truncation():
-    out = sanitize("x" * (MAX_STR_LEN + 10))
+def test_truncation() -> None:
+    out = str(sanitize("x" * (MAX_STR_LEN + 10)))
     assert out.endswith("...[truncated]")
