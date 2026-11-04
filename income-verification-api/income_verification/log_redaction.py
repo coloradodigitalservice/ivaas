@@ -2,6 +2,7 @@
 
 import logging
 import re
+import unicodedata
 from collections.abc import Mapping
 from copy import copy
 from dataclasses import fields, is_dataclass
@@ -24,17 +25,16 @@ _SECRET_ASSIGNMENT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Control characters, DEL, Unicode line/para separators, zero-width chars, bidi overrides/isolates
-_ESCAPE_PATTERN = re.compile(
-    r"[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u2069]"
-)
+# Control characters, format control characters, line/para separators, surrogate code points
+_ESCAPE_CATEGORIES = frozenset({"Cc", "Cf", "Zl", "Zp", "Cs", "Co"})
 _NAMED = {"\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t"}
 MAX_STR_LEN = 8192
 _TRUNC = "...[truncated]"
 
 
-def _escape(match: re.Match[str]) -> str:
-    ch = match.group()
+def _escape(ch: str) -> str:
+    if ch == "\\":
+        return "\\\\"
     named = _NAMED.get(ch)
     if named:
         return named
@@ -47,7 +47,12 @@ def sanitize(value: str | None, max_len: int = MAX_STR_LEN) -> str | None:
         return None
     if len(value) > max_len:
         value = value[:max_len] + "...[truncated]"
-    return _ESCAPE_PATTERN.sub(_escape, value)
+    if value.isprintable() and "\\" not in value:
+        return value
+    return "".join(
+        _escape(ch) if ch == "\\" or unicodedata.category(ch) in _ESCAPE_CATEGORIES else ch
+        for ch in value
+    )
 
 
 _LOG_KEY_SEPARATORS = re.compile(r"[-_\s]")
