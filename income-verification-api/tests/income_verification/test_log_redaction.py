@@ -28,15 +28,19 @@ sanitize_cases = pytest.mark.parametrize(
         ("\x0acc", "\\ncc"),
         ("x\u2066z", "x\\u2066z"),
         ("x\x9f\u2066z", "x\\u009f\\u2066z"),
-        ("x\u000az", "x\\nz"), # from Cc category (named)
-        ("x\u007fz", "x\\u007fz"), # from Cc category (unnamed)
-        ("abc\u200e[def", "abc\\u200e[def"), # from Cf category
-        ("a\u2028z", "a\\u2028z"), # from Zl category
-        ("a\u2029z", "a\\u2029z"), # from Zp category
-        ("a\ud800z", "a\\ud800z"), # from Cs category
-        ("a\u000d\u200b\u2028\u2029\udc00z", "a\\r\\u200b\\u2028\\u2029\\udc00z"), # one from each category (Cc, Cf, Zl, Zp, Cs)
+        ("x\u000az", "x\\nz"),  # from Cc category (named)
+        ("x\u007fz", "x\\u007fz"),  # from Cc category (unnamed)
+        ("abc\u200e[def", "abc\\u200e[def"),  # from Cf category
+        ("a\u2028z", "a\\u2028z"),  # from Zl category
+        ("a\u2029z", "a\\u2029z"),  # from Zp category
+        ("a\ud800z", "a\\ud800z"),  # from Cs category
+        (
+            "a\u000d\u200b\u2028\u2029\udc00z",
+            "a\\r\\u200b\\u2028\\u2029\\udc00z",
+        ),  # one from each category (Cc, Cf, Zl, Zp, Cs)
     ],
 )
+
 
 def _record(message: object, *args: object) -> logging.LogRecord:
     return logging.LogRecord(
@@ -237,9 +241,7 @@ def test_sanitize(message: str, expected: str) -> None:
 
 
 @sanitize_cases
-def test_json_log_formatter_sanitizes_log_field(
-    message: str, expected: str
-) -> None:
+def test_json_log_formatter_sanitizes_log_field(message: str, expected: str) -> None:
     record = _record(message)
     setattr(record, LogField.URL_PATH, message)
 
