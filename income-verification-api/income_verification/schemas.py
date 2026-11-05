@@ -182,7 +182,10 @@ class SourceResult(ApiSchema):
         description="When the source answered. Only with OK.",
     )
     raw_income: Mapping[str, object] | None = Field(
-        description="The source's raw payload, in the shape its adapter defines. Only with OK.",
+        description=(
+            "The raw income the source reported, as returned by its adapter. Shape and contents "
+            "are adapter-specific; IVaaS passes them through unchanged. Null unless status is OK."
+        ),
     )
 
 
