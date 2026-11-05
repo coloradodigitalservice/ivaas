@@ -134,14 +134,11 @@ class ProgramOAuth2ClientCredentials(AuthBase):
         self.authenticator = authenticator
         self.required_scope = required_scope
         self.openapi_description = (
-            "Amazon Cognito access token obtained through the OAuth 2.0 client-credentials "
-            "grant and sent as `Authorization: Bearer <token>`. IVaaS accepts a token only when "
-            "it is signed with RS256 by a key published at this environment's JWKS endpoint "
-            "and identified by the token's `kid`, was issued by this environment's configured "
-            "issuer, has `token_use` set to `access`, has an unexpired `exp`, and carries a "
-            f"`client_id`. A token without the `{required_scope}` scope, or whose `client_id` "
-            "is not mapped to an IVaaS program, is rejected with 403. The `aud` claim is not "
-            "checked."
+            "OAuth 2.0 client-credentials access token from this environment's configured token "
+            "endpoint, sent as `Authorization: Bearer <token>`. IVaaS verifies the token against "
+            "the configured issuer and signing keys, requires the "
+            f"`{required_scope}` scope, and resolves the verified client identity to an "
+            "onboarded IVaaS program."
         )
         self.openapi_flows = {
             "clientCredentials": {

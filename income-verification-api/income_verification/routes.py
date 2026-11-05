@@ -50,12 +50,12 @@ OPTIONAL_CORRELATION_ID_RESPONSE_HEADER = {
 _ERROR_RESPONSE_SUMMARIES = {
     HTTPStatus.BAD_REQUEST: "Request validation failed.",
     HTTPStatus.UNAUTHORIZED: (
-        "Authentication failed because the Bearer token is missing, expired, or does not meet "
-        "the security scheme's token requirements."
+        "Authentication failed because the Bearer token is missing, expired, malformed, or "
+        "fails verification."
     ),
     HTTPStatus.FORBIDDEN: (
-        "The authenticated token lacks the required scope, or its client_id is not mapped "
-        "to an IVaaS program."
+        "The authenticated token lacks the required scope, or its verified client identity is "
+        "not mapped to an IVaaS program."
     ),
     HTTPStatus.INTERNAL_SERVER_ERROR: "An unexpected internal server error occurred.",
     HTTPStatus.SERVICE_UNAVAILABLE: (
