@@ -122,11 +122,9 @@ class SourceResult(ApiSchema):
         ),
     )
     retrieved_at: datetime | None = Field(
-        default=None,
         description="When the source answered. Only with OK.",
     )
     raw_income: Mapping[str, object] | None = Field(
-        default=None,
         description="The source's raw payload, in the shape its adapter defines. Only with OK.",
     )
 
