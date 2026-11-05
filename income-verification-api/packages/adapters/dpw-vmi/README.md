@@ -22,3 +22,8 @@ each environment.
 DPW uses this shared secret to sign webhook requests; under webhook contract
 2, the key itself is not sent in `X-VMI-API-Key`. The separate invitation API
 key is issued by DPW to IVaaS.
+
+## Development
+
+The DPW VMI adapter declares its own [Makefile](./Makefile) for development and testing tasks, and is included in the
+root [Makefile](../../../../Makefile) for convenience.

@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+: "${DPW_VMI_WEBHOOK_API_KEY:?Set DPW_VMI_WEBHOOK_API_KEY in .secrets to your local webhook signing key}"
+: "${1:?Usage: post-webhook PAYLOAD}"
+
+timestamp=$(date +%s)
+webhook_path=${DPW_VMI_WEBHOOK_PATH:-/dpw-vmi/v1/income-report}
+# Get confirmation code from payload
+confirmation_code=$(python3 -c 'import json, pathlib, sys; payload = json.loads(pathlib.Path(sys.argv[1]).read_bytes()); print(payload.get("confirmation_code") or payload["report_metadata"]["confirmation_code"])' "$1")
+# Generate signature
+signature=$(python3 -c 'import os, sys; from dpw_vmi_adapter.signing import sign; print(sign(sys.stdin.buffer.read(), key=os.environ["DPW_VMI_WEBHOOK_API_KEY"], timestamp=sys.argv[1]))' "$timestamp" < "$1")
+
+curl --fail-with-body --show-error \
+	--header 'Content-Type: application/json' \
+	--header "X-VMI-Timestamp: $timestamp" \
+	--header "X-VMI-Signature: $signature" \
+	--header "X-VMI-Confirmation-Code: $confirmation_code" \
+	--data-binary "@$1" \
+	"http://127.0.0.1:8000/api/${webhook_path#/}"

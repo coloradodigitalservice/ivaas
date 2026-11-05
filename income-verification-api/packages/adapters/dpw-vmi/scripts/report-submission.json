@@ -1,0 +1,171 @@
+{
+  "event_type": "ReportSubmission",
+  "report_metadata": {
+    "confirmation_code": "LALDH00100001",
+    "filenames": {
+      "encrypted_s3": "CBVPilot_00012345_20260513_ConfLALDH00100001.tar.gz.gpg"
+    },
+    "report_date_range": {
+      "start_date": "2025-11-01",
+      "end_date": "2026-02-01"
+    },
+    "consent_timestamp_utc": "2026-02-01T10:30:00Z"
+  },
+  "client_information": {
+    "case_id": "LOCAL-CASE-001",
+    "county_id": "LOCAL-COUNTY",
+    "additional_jobs_to_report": true
+  },
+  "employment_records": [
+    {
+      "employment_type": "W2",
+      "employer_information": {
+        "employer_name": "General Hospital Systems",
+        "employer_phone": "312-555-0456",
+        "employer_address": {
+          "line1": "710 N Fairbanks Ct",
+          "line2": "Floor 4",
+          "city": "Chicago",
+          "state": "IL",
+          "postal_code": "60611",
+          "country": "United States"
+        }
+      },
+      "employment_status": "EMPLOYED",
+      "employment_start_date": "2025-12-29",
+      "employment_end_date": null,
+      "employee_information": {
+        "first_name": "Elena",
+        "last_name": "Thompson",
+        "full_name": "Elena Thompson",
+        "ssn": "XXX-XX-4455"
+      },
+      "pay_frequency": "BIWEEKLY",
+      "base_compensation": {
+        "rate": 12.50,
+        "interval": "HOURLY"
+      },
+      "gig_monthly_summaries": null,
+      "w2_monthly_summaries": [
+        {
+          "month": 1,
+          "year": "2026",
+          "total_hours": 168.0,
+          "number_of_paychecks": 2,
+          "gross_income": 2440.00,
+          "partial_month": false,
+          "partial_month_start": null,
+          "partial_month_end": null
+        }
+      ],
+      "gig_payments": null,
+      "w2_payments": [
+        {
+          "pay_date": "2026-01-09",
+          "pay_period": {
+            "start": "2025-12-29",
+            "end": "2026-01-04"
+          },
+          "gross_pay": 1050.00,
+          "net_pay": 843.16,
+          "hours_worked": 80.0,
+          "base_hours_paid": 80.0,
+          "gross_pay_ytd": 1050.00,
+          "gross_pay_line_items": [
+            { "name": "Regular Pay (Hourly)", "amount": 850.00 },
+            { "name": "Weekend - Premium", "amount": 28.92 },
+            { "name": "Weekend Prem Night Diff", "amount": 1.08 },
+            { "name": "Sick Time with shift", "amount": 50.00 },
+            { "name": "Paid Time Off - Misc", "amount": 100.00 },
+            { "name": "Imputed Income - Bravo Award", "amount": 20.00 }
+          ],
+          "deductions": [
+            { "name": "Medical", "type": "PRETAX", "amount": 50.00 },
+            { "name": "401k", "type": "PRETAX", "amount": 25.00 }
+          ],
+          "direct_deposit_accounts": ["1234", "4567"],
+          "payout_card_accounts": ["8910"]
+        },
+        {
+          "pay_date": "2026-01-23",
+          "pay_period": {
+            "start": "2026-01-05",
+            "end": "2026-01-18"
+          },
+          "gross_pay": 1390.00,
+          "net_pay": 978.19,
+          "hours_worked": 88.0,
+          "base_hours_paid": 80.0,
+          "gross_pay_ytd": 2440.00,
+          "gross_pay_line_items": [
+            { "name": "Regular", "amount": 1000.00 },
+            { "name": "Overtime", "amount": 150.00 },
+            { "name": "Tips", "amount": 10.00 },
+            { "name": "Other", "amount": 230.00 }
+          ],
+          "deductions": [
+            { "name": "Medical", "type": "PRETAX", "amount": 50.00 },
+            { "name": "401k", "type": "PRETAX", "amount": 40.00 }
+          ]
+        }
+      ]
+    },
+    {
+      "employment_type": "GIG",
+      "employer_information": {
+        "employer_name": "DoorDash",
+        "employer_phone": null,
+        "employer_address": {
+          "line1": "303 2nd St",
+          "line2": "South Tower",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94107",
+          "country": "United States"
+        }
+      },
+      "employment_status": "ACTIVE",
+      "employment_start_date": "2025-05-20",
+      "employment_end_date": null,
+      "employee_information": {
+        "first_name": "Elena",
+        "last_name": "Thompson",
+        "full_name": "Elena Thompson",
+        "ssn": "XXX-XX-4455"
+      },
+      "pay_frequency": "VARIABLE",
+      "base_compensation": null,
+      "gig_monthly_summaries": [
+        {
+          "month": 12,
+          "year": "2025",
+          "total_hours": 128.50,
+          "gross_earnings": 1336.45,
+          "mileage_expenses": [
+            { "rate": 70.0, "miles": 942 }
+          ]
+        },
+        {
+          "month": 1,
+          "year": "2026",
+          "total_hours": 45.20,
+          "gross_earnings": 620.75,
+          "mileage_expenses": [
+            { "rate": 72.5, "miles": 310.4 }
+          ]
+        }
+      ],
+      "w2_monthly_summaries": null,
+      "gig_payments": [
+        { "pay_date": "2026-01-26", "amount": 340.25 },
+        { "pay_date": "2026-01-19", "amount": 280.50 },
+        { "pay_date": "2025-12-29", "amount": 315.10 },
+        { "pay_date": "2025-12-22", "amount": 420.75 },
+        { "pay_date": "2025-12-15", "amount": 290.40 },
+        { "pay_date": "2025-12-08", "amount": 310.20 }
+      ],
+      "w2_payments": null
+    }
+  ],
+  "paystub_images_included": true
+}
