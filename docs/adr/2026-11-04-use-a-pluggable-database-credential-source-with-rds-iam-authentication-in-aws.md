@@ -3,7 +3,7 @@ status: "proposed"
 deciders: []
 ---
 
-# Use a pluggable database credential source with RDS IAM authentication on AWS
+# Use a pluggable database credential source with RDS IAM authentication in AWS
 
 ## Context and Problem Statement
 
