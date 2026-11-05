@@ -50,9 +50,8 @@ OPTIONAL_CORRELATION_ID_RESPONSE_HEADER = {
 _ERROR_RESPONSE_SUMMARIES = {
     HTTPStatus.BAD_REQUEST: "Request validation failed.",
     HTTPStatus.UNAUTHORIZED: (
-        "Authentication failed because the Bearer token is missing, expired, malformed, has "
-        "missing or invalid required claims, has an invalid signature or signing key, was "
-        "issued by the wrong issuer, or has a token_use other than access."
+        "Authentication failed because the Bearer token is missing, expired, or does not meet "
+        "the security scheme's token requirements."
     ),
     HTTPStatus.FORBIDDEN: (
         "The authenticated token lacks the required scope, or its client_id is not mapped "
