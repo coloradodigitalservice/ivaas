@@ -42,7 +42,7 @@ The application reads its database password through a small abstraction. Each de
 
 ### Static credentials everywhere
 
-Every environment, local and deployed, uses a static password stored in a secret store.
+Every environment, local and deployed, uses static passwords for database authentication.
 
 * `+` one credential path in every environment, including local development
 * `+` works with any PostgreSQL deployment and client without token generation
