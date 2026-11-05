@@ -25,6 +25,12 @@
       "description": "Must match DPW_VMI_WEBHOOK_PATH when the DPW VMI adapter is enabled."
     },
     {
+      "key": "dpwVmiWebhookKey",
+      "value": "",
+      "type": "string",
+      "description": "Set in the selected Postman environment to match the running API's DPW_VMI_WEBHOOK_API_KEY. Do not save the key in the collection."
+    },
+    {
       "key": "correlationId",
       "value": "",
       "type": "string",
@@ -901,6 +907,7 @@
     },
     {
       "name": "DPW VMI webhook",
+      "description": "One-time setup: select a Postman environment and add dpwVmiWebhookKey as a Secure variable. Set its local value to DPW_VMI_WEBHOOK_API_KEY for the selected environment.",
       "item": [
         {
           "name": "Acknowledge webhook",
@@ -909,11 +916,37 @@
               "type": "noauth"
             },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event_type\":\"ReportSubmission\"}"
+            },
             "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
-            "description": "Skeleton endpoint. Authentication, header and body validation, and delivery to a program are separate tickets."
+            "description": "Signs the raw request body with the shared DPW VMI webhook key."
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = require('crypto-js');",
+                  "const key = pm.variables.get('dpwVmiWebhookKey');",
+                  "if (!key) throw new Error('Set dpwVmiWebhookKey in the selected Postman environment.');",
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const signedBody = `${timestamp}:${pm.request.body.raw}`;",
+                  "const signature = CryptoJS.HmacSHA512(signedBody, key).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Timestamp', value: timestamp });",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Signature', value: signature });"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -922,6 +955,35 @@
                   "pm.test('returns 200', () => pm.response.to.have.status(200));",
                   "pm.test('acknowledges the webhook', () => {",
                   "  pm.expect(pm.response.json()).to.deep.equal({ received: true });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject unsigned webhook",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
+            "description": "Missing signing headers return the same public error as other webhook authentication failures."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 401', () => pm.response.to.have.status(401));",
+                  "pm.test('returns the DPW VMI error body', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({",
+                  "    error_code: 'WEBHOOK_AUTHENTICATION_FAILED',",
+                  "    message: 'Webhook authentication failed. Check headers, timestamp, and signature.'",
+                  "  });",
                   "});"
                 ]
               }

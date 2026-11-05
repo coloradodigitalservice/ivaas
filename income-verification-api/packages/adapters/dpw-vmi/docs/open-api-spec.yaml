@@ -192,7 +192,8 @@ webhooks:
 
         `X-IVaaS-Signature` is the lowercase hex HMAC-SHA512 of `{X-IVaaS-Timestamp}:{raw body}`,
         keyed with the program's key. Compare in constant time, reject mismatches, and reject
-        stale timestamps (IVaaS defaults to 5 minutes when validating incoming messages from VMI).
+        stale timestamps (IVaaS defaults to a five-minute window when validating incoming messages
+        from VMI).
 
         ## Responding
 
@@ -384,7 +385,8 @@ components:
       description: |
         DPW defines this event in its webhook spec; IVaaS forwards it unchanged.
       additionalProperties: true
-      required: [event_type, confirmation_code, transmission_method, completed_at]
+      required:
+        [event_type, confirmation_code, transmission_method, completed_at]
       properties:
         event_type:
           const: TransmissionComplete

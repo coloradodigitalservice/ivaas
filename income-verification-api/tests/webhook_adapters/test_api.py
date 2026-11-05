@@ -21,10 +21,11 @@ def example_webhook_adapter() -> Iterator[None]:
             # loop, but there are some gotchas with that approach
             ROOT_URLCONF="tests.webhook_adapters.urls",
             WEBHOOK_ADAPTERS={
+                **settings.WEBHOOK_ADAPTERS,
                 "example_webhook_adapter": {
                     "enabled": True,
                     "config": {"api_key": WEBHOOK_KEY},
-                }
+                },
             },
         ),
         # Django rebuilds the app registry before applying sibling overrides.
