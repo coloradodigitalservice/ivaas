@@ -9,8 +9,6 @@ deciders: []
 
 The IVaaS Django application uses a PostgreSQL database. Migrations need DDL rights to create and alter schema. Regular application functionality only needs to read and write data. Should migrations and the running application share one database user, or use separate users?
 
-How migrations are executed is out of scope. A separate ADR covers it.
-
 ## Decision Outcome
 
 Use separate database users for Django migrations and application runtime, because each type of task should run with only the privileges it needs.
@@ -19,7 +17,7 @@ Use separate database users for Django migrations and application runtime, becau
 
 * Tables and sequences created by migrations are owned by the migration user. We must grant the application user access to them and set default privileges for the migration user so future objects are covered.
 * If using static credentials, we manage two credentials.
-* Migrations must run in an execution context that can read the migration user's secret. The application runtime must not be able to read it. The ADR on migration execution must work within this constraint.
+* Migrations must run in an execution context that can read the migration user's secret. The application runtime must not be able to read it.
 
 ## Options Considered
 
