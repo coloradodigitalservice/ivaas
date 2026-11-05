@@ -139,7 +139,6 @@ class JsonLogFormatter(logging.Formatter):
         # Exception messages, tracebacks, and raw stack_info are intentionally omitted.
         return json.dumps(
             payload,
-            ensure_ascii=False,
             separators=(",", ":"),
         )
 
