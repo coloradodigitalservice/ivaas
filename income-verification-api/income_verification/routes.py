@@ -1,6 +1,7 @@
 """Version-neutral routes for the program-facing IVaaS API."""
 
 import logging
+from http import HTTPStatus
 from typing import Annotated
 
 from django.conf import settings
@@ -8,6 +9,7 @@ from django.http import HttpRequest, HttpResponse
 from ninja import Header, Router
 
 from adapter_engine.engine import engine
+from income_verification.api_error_codes import ERRORS
 from income_verification.correlation_id import (
     CORRELATION_ID_HEADER_NAME,
     CORRELATION_ID_MAX_LENGTH,
@@ -45,34 +47,43 @@ OPTIONAL_CORRELATION_ID_RESPONSE_HEADER = {
     **CORRELATION_ID_RESPONSE_HEADER,
     "required": False,
 }
-ERROR_RESPONSE_MODELS = {
-    400: Error,
-    401: Error,
-    403: Error,
-    500: Error,
-    503: Error,
+_ERROR_RESPONSE_SUMMARIES = {
+    HTTPStatus.BAD_REQUEST: "Request validation failed.",
+    HTTPStatus.UNAUTHORIZED: (
+        "Authentication failed because the Bearer token is missing, expired, malformed, has "
+        "missing or invalid required claims, has an invalid signature or signing key, was "
+        "issued by the wrong issuer, or has a token_use other than access."
+    ),
+    HTTPStatus.FORBIDDEN: (
+        "The authenticated token lacks the required scope, or its client_id is not mapped "
+        "to an IVaaS program."
+    ),
+    HTTPStatus.INTERNAL_SERVER_ERROR: "An unexpected internal server error occurred.",
+    HTTPStatus.SERVICE_UNAVAILABLE: (
+        "Authentication could not proceed because trusted token-signing keys were unavailable."
+    ),
 }
+ERROR_RESPONSE_MODELS = {status.value: Error for status in _ERROR_RESPONSE_SUMMARIES}
+
+
+def _error_response_description(status: HTTPStatus, summary: str) -> str:
+    codes = "\n".join(
+        f"- `{code.value}`: {definition.message}"
+        for code, definition in ERRORS.items()
+        if definition.status_code == status
+    )
+    return (
+        f"{summary}\n\nError codes defined for this HTTP status "
+        f"(not every operation produces every code):\n{codes}"
+    )
+
+
 ERROR_OPENAPI_RESPONSES: dict[int, dict[str, object]] = {
-    400: {
-        "description": "Request validation failed.",
+    status.value: {
+        "description": _error_response_description(status, summary),
         "headers": {CORRELATION_ID_HEADER_NAME: OPTIONAL_CORRELATION_ID_RESPONSE_HEADER},
-    },
-    401: {
-        "description": "Authentication failed.",
-        "headers": {CORRELATION_ID_HEADER_NAME: OPTIONAL_CORRELATION_ID_RESPONSE_HEADER},
-    },
-    403: {
-        "description": "The authenticated caller is not authorized.",
-        "headers": {CORRELATION_ID_HEADER_NAME: OPTIONAL_CORRELATION_ID_RESPONSE_HEADER},
-    },
-    500: {
-        "description": "An internal server error occurred.",
-        "headers": {CORRELATION_ID_HEADER_NAME: OPTIONAL_CORRELATION_ID_RESPONSE_HEADER},
-    },
-    503: {
-        "description": "Service unavailable.",
-        "headers": {CORRELATION_ID_HEADER_NAME: OPTIONAL_CORRELATION_ID_RESPONSE_HEADER},
-    },
+    }
+    for status, summary in _ERROR_RESPONSE_SUMMARIES.items()
 }
 
 

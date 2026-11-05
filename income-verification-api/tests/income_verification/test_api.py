@@ -287,7 +287,8 @@ def test_rejects_both_ssn_forms(client: Client) -> None:
 
 
 def test_accepts_null_ssn_alongside_last_four(client: Client) -> None:
-    # While we prefer not sending extra keys, we are tolerant of null values since the tolerant code is simpler as well.
+    # While we prefer not sending extra keys, we tolerate null values because the tolerant code
+    # is also simpler.
     payload = valid_request()
     payload["ssn"] = None
 

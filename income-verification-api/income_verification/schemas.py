@@ -150,5 +150,10 @@ class TestConnectionResponse(ApiSchema):
 
 
 class Error(ApiSchema):
-    code: ErrorCode
+    code: ErrorCode = Field(
+        description=(
+            "Stable machine-readable code documented on each operation's error response. New "
+            "codes may be added; handle unrecognized values according to the HTTP status."
+        )
+    )
     message: str
