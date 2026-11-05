@@ -1,11 +1,22 @@
 """Check DPW VMI webhook configuration at startup."""
 
 from importlib import import_module
+from runpy import run_path
 
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 from dpw_vmi_adapter.apps import DpwVmiAdapterConfig
+
+from config import settings as settings_module
+
+
+def test_default_webhook_timestamp_max_age_is_300_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS", raising=False)
+    configuration = run_path(settings_module.__file__)["WEBHOOK_ADAPTERS"]["dpw_vmi_adapter"][
+        "config"
+    ]
+    assert configuration["webhook_timestamp_max_age_seconds"] == 300
 
 
 @pytest.mark.parametrize(

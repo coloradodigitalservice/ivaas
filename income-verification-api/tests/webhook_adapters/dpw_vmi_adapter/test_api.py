@@ -78,6 +78,7 @@ def test_webhook_is_acknowledged(
             "invalid_signature",
         ),
         (signed_headers(body=b"different"), "does not match", "signature_mismatch"),
+        (signed_headers(key="wrong-key"), "does not match", "signature_mismatch"),
         (signed_headers(timestamp=str(SIGNED_AT + 301)), "in the future", "future_timestamp"),
         (signed_headers(timestamp=str(SIGNED_AT - 301)), "too old", "expired_timestamp"),
     ],
