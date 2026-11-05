@@ -7,7 +7,7 @@ deciders: []
 
 ## Context and Problem Statement
 
-The IVaaS Django application is designed to be used with a PostgreSQL database, with separate database users for migrations and application runtime (see [Use separate database users for Django migrations and application runtime](2026-11-04-use-separate-database-users-for-django-migrations-and-application-runtime.md)). The code base should be reusable by teams deploying to AWS, Azure or other clouds, using that provider's managed PostgreSQL. Local development uses static credentials. What type of credentials should the two database users use in AWS?
+The IVaaS Django application is designed to be used with a PostgreSQL database. The code base should be reusable by teams deploying to AWS, Azure or other clouds, using that provider's managed PostgreSQL. Local development uses static credentials. What type of credentials should the two database users use in AWS?
 
 ### Decision Drivers
 
