@@ -39,8 +39,14 @@ class VerificationRequest(ApiSchema):
     model_config = ConfigDict(
         json_schema_extra={
             "oneOf": [
-                {"required": ["ssn"]},
-                {"required": ["last4Ssn"]},
+                {
+                    "required": ["ssn"],
+                    "properties": {"ssn": {"type": "string"}},
+                },
+                {
+                    "required": ["last4Ssn"],
+                    "properties": {"last4Ssn": {"type": "string"}},
+                },
             ]
         }
     )
