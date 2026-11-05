@@ -117,9 +117,13 @@ CorrelationId = Annotated[
         max_length=CORRELATION_ID_MAX_LENGTH,
         pattern=CORRELATION_ID_PATTERN,
         description=(
-            "Request correlation identifier. Authentication is evaluated before route "
-            "validation; when both authentication and this header are invalid, the auth error "
-            "takes precedence and the invalid identifier is discarded."
+            "A version-4 UUID, optionally followed by `:` and a program reference using letters, "
+            "digits, `.`, `_`, `~`, `/`, or `-`, with at most 128 characters in total. IVaaS "
+            "logs it and echoes it on the response; error responses echo it only when it is "
+            "valid. It may be reused across retries of the same request, is distinct from the "
+            "access token's `jti`, and must not contain PII or credentials. Authentication is "
+            "evaluated first: when both authentication and this header are invalid, the "
+            "authentication error is returned and the invalid identifier is discarded."
         ),
     ),
 ]

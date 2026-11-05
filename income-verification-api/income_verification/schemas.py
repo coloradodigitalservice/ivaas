@@ -36,8 +36,36 @@ class ApiSchema(Schema):
 
 
 class VerificationRequest(ApiSchema):
+    """Claimant and date range for an income verification.
+
+    Exactly one of `ssn` or `last4Ssn` must have a non-null value. The unused one may be omitted
+    or null.
+    """
+
     model_config = ConfigDict(
         json_schema_extra={
+            "examples": [
+                {
+                    "applicationId": "APP-2026-004471",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "last4Ssn": "1234",
+                    "lookbackPeriod": {
+                        "startDate": "2026-01-01",
+                        "endDate": "2026-06-30",
+                    },
+                },
+                {
+                    "applicationId": "APP-2026-004471",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "ssn": "123001234",
+                    "lookbackPeriod": {
+                        "startDate": "2026-01-01",
+                        "endDate": "2026-06-30",
+                    },
+                },
+            ],
             "oneOf": [
                 {
                     "required": ["ssn"],
@@ -47,7 +75,7 @@ class VerificationRequest(ApiSchema):
                     "required": ["last4Ssn"],
                     "properties": {"last4Ssn": {"type": "string"}},
                 },
-            ]
+            ],
         }
     )
 
@@ -55,20 +83,43 @@ class VerificationRequest(ApiSchema):
         min_length=1,
         max_length=128,
         pattern=r"^[\x20-\x7E]+$",
+        description=(
+            "The program's identifier for the benefits application this verification supports. "
+            "It is opaque to IVaaS, and one application may have many verifications. IVaaS logs "
+            "it and passes it to income sources; it is not returned in the response. Must not "
+            "contain claimant PII."
+        ),
     )
     first_name: str = Field(
         min_length=NAME_MIN_LENGTH,
         max_length=NAME_MAX_LENGTH,
         pattern=NAME_PATTERN,
+        description="Claimant's legal first name.",
     )
     last_name: str = Field(
         min_length=NAME_MIN_LENGTH,
         max_length=NAME_MAX_LENGTH,
         pattern=NAME_PATTERN,
+        description="Claimant's legal last name.",
     )
-    ssn: str | None = Field(default=None, pattern=SSN_PATTERN, repr=False)
-    last4_ssn: str | None = Field(default=None, pattern=LAST4_SSN_PATTERN, repr=False)
-    lookback_period: CoreLookbackPeriod
+    ssn: str | None = Field(
+        default=None,
+        pattern=SSN_PATTERN,
+        repr=False,
+        description="The claimant's full nine-digit SSN, digits only, without separators.",
+    )
+    last4_ssn: str | None = Field(
+        default=None,
+        pattern=LAST4_SSN_PATTERN,
+        repr=False,
+        description="The last four digits of the claimant's SSN.",
+    )
+    lookback_period: CoreLookbackPeriod = Field(
+        description=(
+            "The date window to return income for. Both bounds are inclusive, and endDate must "
+            "not precede startDate."
+        ),
+    )
 
     @model_validator(mode="after")
     def request_must_be_valid(self) -> Self:
