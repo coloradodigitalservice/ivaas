@@ -18,6 +18,13 @@ AUTHENTICATION_ERROR = {
     "error_code": "WEBHOOK_AUTHENTICATION_FAILED",
     "message": "Webhook authentication failed. Check headers, timestamp, and signature.",
 }
+PROGRAMS = {
+    "test-program": {
+        "dpw_vmi": {
+            "webhook_api_key": "test-webhook-api-key",
+        },
+    },
+}
 
 
 def signed_headers(
@@ -42,6 +49,7 @@ def dpw_vmi_adapter() -> Iterator[None]:
                     },
                 }
             },
+            PROGRAMS=PROGRAMS,
         ),
         override_settings(
             INSTALLED_APPS=list(dict.fromkeys([*settings.INSTALLED_APPS, "dpw_vmi_adapter"]))

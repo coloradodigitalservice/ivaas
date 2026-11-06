@@ -10,6 +10,14 @@ from dpw_vmi_adapter.apps import DpwVmiAdapterConfig
 
 from config import settings as settings_module
 
+PROGRAMS = {
+    "test-program": {
+        "dpw_vmi": {
+            "webhook_api_key": "test-webhook-api-key",
+        },
+    },
+}
+
 
 def test_default_webhook_timestamp_max_age_is_300_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS", raising=False)
@@ -43,7 +51,8 @@ def test_invalid_webhook_configuration_fails_startup(
                         "webhook_timestamp_max_age_seconds": max_age,
                     },
                 }
-            }
+            },
+            PROGRAMS=PROGRAMS,
         ),
         pytest.raises(ImproperlyConfigured, match=message),
     ):
