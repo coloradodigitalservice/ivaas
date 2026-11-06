@@ -42,9 +42,9 @@ Deployed environments use static credentials, stored in a secret store.
 * `-` each adopting team must build and operate password rotation for its cloud
 * `-` in AWS, single-user rotation causes a brief window of failed connections; alternating-users rotation avoids it but needs a superuser secret and a cloned user per rotated user, whose permissions must be kept in sync
 
-### Pluggable credential source with RDS IAM authentication on AWS
+### Pluggable credential source with RDS IAM authentication in AWS
 
-The application reads its database password through a small abstraction. Each deployment configures which source to use. Deployed AWS environments use RDS IAM authentication tokens. Local development uses static credentials.
+The application reads its database password through a small abstraction. Each deployment configures which source to use via environment variable toggle. Deployed AWS environments use RDS IAM authentication tokens. Local development uses static credentials.
 
 * `+` no long-lived passwords for the application's database users in deployed AWS environments
 * `+` no password rotation to operate in deployed AWS environments
