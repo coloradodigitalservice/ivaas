@@ -27,7 +27,7 @@ def test_default_webhook_timing_configuration(monkeypatch: pytest.MonkeyPatch) -
         "config"
     ]
     assert configuration["webhook_timestamp_max_age_seconds"] == 300
-    assert configuration["program_timeout_seconds"] == 10
+    assert configuration["program_timeout_seconds"] == 30
 
 
 @pytest.mark.parametrize(
