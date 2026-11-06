@@ -48,7 +48,8 @@ API_AUTHENTICATION: Mapping[str, object] = {
 PROGRAMS: Mapping[str, Mapping[str, Mapping[str, object]]] = {
     "cobees": {
         "dpw_vmi": {
-            "webhook_api_key": env("COBEES_VMI_WEBHOOK_API_KEY", default=None),
+            "webhook_url": env("COBEES_VMI_WEBHOOK_URL", default=None),
+            "webhook_signing_key": env("COBEES_VMI_WEBHOOK_SIGNING_KEY", default=None),
         },
     },
 }
