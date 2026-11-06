@@ -25,6 +25,7 @@ from income_verification.request_context import (
     set_client_log_context,
     set_program_log_context,
     set_verification_log_context,
+    set_webhook_request_id,
 )
 from tests.income_verification.security.authentication_test_support import (
     TEST_ACCESS_TOKEN,
@@ -394,6 +395,37 @@ def test_downstream_logs_inherit_verification_context(client: Client) -> None:
         assert record["ivaas.program.id"] == TEST_PROGRAM_ID
         assert record["ivaas.application.id"] == "APP-2026-004471"
         assert record["ivaas.verification.id"] == response.json()["verificationId"]
+
+
+def test_webhook_request_id_context_is_request_scoped() -> None:
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.addFilter(RequestContextFilter())
+    handler.setFormatter(JsonLogFormatter())
+    logger = logging.getLogger("webhook_context_test")
+    original_handlers = logger.handlers
+    original_level = logger.level
+    original_propagate = logger.propagate
+    logger.handlers = [handler]
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    def get_response(request: HttpRequest) -> HttpResponse:
+        set_webhook_request_id("test-webhook-request")
+        logger.info("inside request")
+        return HttpResponse()
+
+    try:
+        RequestContextMiddleware(get_response)(RequestFactory().get("/webhook"))
+        logger.info("outside request")
+    finally:
+        logger.handlers = original_handlers
+        logger.setLevel(original_level)
+        logger.propagate = original_propagate
+
+    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    assert records[0]["webhook_request_id"] == "test-webhook-request"
+    assert "webhook_request_id" not in records[1]
 
 
 def test_async_request_context_is_isolated_between_concurrent_requests() -> None:
