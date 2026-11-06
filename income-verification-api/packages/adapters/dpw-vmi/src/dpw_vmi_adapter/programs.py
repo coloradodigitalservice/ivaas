@@ -45,7 +45,7 @@ def configured_programs() -> tuple[DpwVmiProgram, ...]:
 def _validated_webhook_url(program_id: str, value: object) -> str:
     if not isinstance(value, str) or not _is_url(value):
         raise ImproperlyConfigured(
-            f"PROGRAMS[{program_id!r}]['dpw_vmi']['webhook_url'] must be an HTTPS URL."
+            f"PROGRAMS[{program_id!r}]['dpw_vmi']['webhook_url'] must be a valid URL."
         )
     return value
 
@@ -65,4 +65,7 @@ def _is_url(value: str) -> bool:
         _ = parsed.port
     except ValueError:
         return False
-    return parsed.scheme in { "https", "http" } and parsed.hostname is not None and parsed.username is None
+    allowed_schemes = {"http", "https"} if settings.DEBUG else {"https"}
+    return (
+        parsed.scheme in allowed_schemes and parsed.hostname is not None and parsed.username is None
+    )
