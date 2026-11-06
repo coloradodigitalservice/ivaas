@@ -198,6 +198,7 @@ WEBHOOK_ADAPTERS: Mapping[str, Mapping[str, object]] = {
             "webhook_timestamp_max_age_seconds": env.int(
                 "DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS", default=300
             ),
+            "program_timeout_seconds": env.int("DPW_VMI_PROGRAM_TIMEOUT_SECONDS", default=10),
         },
     },
 }
