@@ -184,6 +184,10 @@ WEBHOOK_ADAPTERS: Mapping[str, Mapping[str, object]] = {
         "enabled": env.bool("DPW_VMI_ADAPTER_ENABLED", default=True),
         "config": {
             "webhook_path": env.str("DPW_VMI_WEBHOOK_PATH", default="/dpw-vmi/v1/income-report"),
+            "webhook_api_key": env.str("DPW_VMI_WEBHOOK_API_KEY", default=""),
+            "webhook_timestamp_max_age_seconds": env.int(
+                "DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS", default=300
+            ),
         },
     },
 }

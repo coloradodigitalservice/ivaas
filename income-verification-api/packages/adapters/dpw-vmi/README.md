@@ -23,6 +23,14 @@ DPW uses this shared secret to sign webhook requests; under webhook contract
 2, the key itself is not sent in `X-VMI-API-Key`. The separate invitation API
 key is issued by DPW to IVaaS.
 
+Set `DPW_VMI_WEBHOOK_API_KEY` in `.envs/.local/.secrets` when the adapter is enabled.
+IVaaS checks the lowercase hex HMAC-SHA512 of `<X-VMI-Timestamp>:<raw body>`
+before processing a webhook. `DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS` sets
+the allowed difference from IVaaS's clock in either direction (default 300 seconds;
+must be positive). Invalid headers, signatures, or timestamps return `401`
+with a generic `error_code` and `message`. The specific failure is logged
+without the key, signature, or body.
+
 ## Development
 
 The DPW VMI adapter declares its own [Makefile](./Makefile) for development and testing tasks, and is included in the

@@ -8,10 +8,11 @@ def test_missing_webhook_adapter_setting_fails_startup() -> None:
     with (
         override_settings(
             WEBHOOK_ADAPTERS={
+                **settings.WEBHOOK_ADAPTERS,
                 "example_webhook_adapter": {
                     "enabled": True,
                     "config": {"api_key": None},
-                }
+                },
             }
         ),
         pytest.raises(ImproperlyConfigured),
