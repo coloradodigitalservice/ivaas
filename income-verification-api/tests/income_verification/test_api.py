@@ -286,6 +286,17 @@ def test_rejects_both_ssn_forms(client: Client) -> None:
     )
 
 
+def test_accepts_null_ssn_alongside_last_four(client: Client) -> None:
+    # While we prefer not sending extra keys, we tolerate null values because the tolerant code
+    # is also simpler.
+    payload = valid_request()
+    payload["ssn"] = None
+
+    response = post_verification(client, payload)
+
+    assert response.status_code == 200
+
+
 def test_logs_validation_count_without_rejected_value(
     client: Client,
     captured_income_verification_logs: StringIO,

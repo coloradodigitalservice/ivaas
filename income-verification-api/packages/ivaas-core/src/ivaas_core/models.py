@@ -129,8 +129,8 @@ class SourceIncome:
 
     The application must wrap this in the API's per-source envelope (source id,
     status). `retrieved_at` is an instant and must be timezone-aware.
-    `raw_income` is the source's PII-stripped raw payload. Its shape is adapter-specific and is
-    defined alongside the adapter that produces it.
+    The adapter defines `raw_income`'s shape and contents, and
+    documents them alongside the adapter.
     """
 
     retrieved_at: datetime

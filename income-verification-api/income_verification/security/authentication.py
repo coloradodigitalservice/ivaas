@@ -134,8 +134,11 @@ class ProgramOAuth2ClientCredentials(AuthBase):
         self.authenticator = authenticator
         self.required_scope = required_scope
         self.openapi_description = (
-            "Machine-to-machine Bearer access token. The verified client_id is resolved "
-            "to an onboarded IVaaS program."
+            "OAuth 2.0 client-credentials access token from this environment's configured token "
+            "endpoint, sent as `Authorization: Bearer <token>`. IVaaS verifies the token against "
+            "the configured issuer and signing keys, requires the "
+            f"`{required_scope}` scope, and resolves the verified client identity to an "
+            "onboarded IVaaS program."
         )
         self.openapi_flows = {
             "clientCredentials": {
