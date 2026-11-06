@@ -1,6 +1,6 @@
 ---
 status: "proposed"
-deciders: []
+deciders: CDS-IVAAS
 ---
 
 # Use static credentials for Django database users

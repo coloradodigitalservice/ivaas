@@ -1,6 +1,6 @@
 ---
 status: "proposed"
-deciders: []
+deciders: CDS-IVAAS
 ---
 
 # Use separate database users for Django migrations and application runtime
