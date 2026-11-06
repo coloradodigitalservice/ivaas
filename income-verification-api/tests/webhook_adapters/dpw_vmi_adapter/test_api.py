@@ -4,10 +4,13 @@ import hashlib
 import hmac
 import logging
 from collections.abc import Iterator
+from unittest.mock import Mock
+from uuid import UUID
 
 import pytest
 from django.conf import settings
 from django.test import Client, override_settings
+from dpw_vmi_adapter.forwarding import ProgramResponse
 
 WEBHOOK_PATH = "/dpw-vmi/v1/income-report"
 WEBHOOK_URL = f"/api{WEBHOOK_PATH}"
@@ -21,7 +24,8 @@ AUTHENTICATION_ERROR = {
 PROGRAMS = {
     "test-program": {
         "dpw_vmi": {
-            "webhook_api_key": "test-webhook-api-key",
+            "webhook_url": "https://program.example/webhook",
+            "webhook_signing_key": "test-webhook-signing-key",
         },
     },
 }
@@ -32,6 +36,13 @@ def signed_headers(
 ) -> dict[str, str]:
     signature = hmac.new(key.encode(), timestamp.encode() + b":" + body, hashlib.sha512).hexdigest()
     return {"X-VMI-Timestamp": timestamp, "X-VMI-Signature": signature}
+
+
+@pytest.fixture(autouse=True)
+def forward_webhook_mock(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    mock = Mock(return_value=ProgramResponse(200, b"", None))
+    monkeypatch.setattr("dpw_vmi_adapter.api.forward_webhook", mock)
+    return mock
 
 
 @pytest.fixture
@@ -46,6 +57,7 @@ def dpw_vmi_adapter() -> Iterator[None]:
                         "webhook_path": WEBHOOK_PATH,
                         "webhook_api_key": WEBHOOK_KEY,
                         "webhook_timestamp_max_age_seconds": 300,
+                        "program_timeout_seconds": 10,
                     },
                 }
             },
@@ -61,15 +73,179 @@ def dpw_vmi_adapter() -> Iterator[None]:
 @pytest.mark.usefixtures("dpw_vmi_adapter")
 @pytest.mark.parametrize("received_at", [SIGNED_AT - 300, SIGNED_AT + 300])
 def test_webhook_is_acknowledged(
-    client: Client, monkeypatch: pytest.MonkeyPatch, received_at: int
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    forward_webhook_mock: Mock,
+    received_at: int,
 ) -> None:
     monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: received_at)
+    log_context_mock = Mock()
+    monkeypatch.setattr("dpw_vmi_adapter.api.set_webhook_request_id", log_context_mock)
+    with caplog.at_level(logging.INFO, logger="dpw_vmi_adapter.api"):
+        response = client.post(
+            WEBHOOK_URL, data=BODY, content_type="application/json", headers=signed_headers()
+        )
+
+    assert response.status_code == 200
+    assert response.content == b""
+    assert "Content-Type" not in response.headers
+    assert forward_webhook_mock.call_args.args == (BODY,)
+    assert forward_webhook_mock.call_args.kwargs["timeout_seconds"] == 10
+    assert forward_webhook_mock.call_args.kwargs["vmi_timestamp"] == str(SIGNED_AT)
+    events = {record.__dict__.get("event.name"): record for record in caplog.records}
+    assert "dpw_vmi.webhook.received" in events
+    assert events["dpw_vmi.webhook.response_returned"].__dict__["http.response.status_code"] == 200
+    generated_id = log_context_mock.call_args.args[0]
+    assert str(UUID(generated_id)) == generated_id
+    assert forward_webhook_mock.call_args.kwargs["webhook_request_id"] == generated_id
+    assert "X-IVaaS-Webhook-Request-Id" not in response.headers
+
+
+@pytest.mark.usefixtures("dpw_vmi_adapter")
+def test_webhook_returns_program_response(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    forward_webhook_mock: Mock,
+) -> None:
+    monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
+    forward_webhook_mock.return_value = ProgramResponse(
+        422,
+        b'{"error_code":"INVALID_REPORT"}',
+        "application/problem+json",
+    )
     response = client.post(
-        WEBHOOK_URL, data=BODY, content_type="application/json", headers=signed_headers()
+        WEBHOOK_URL,
+        data=BODY,
+        content_type="application/json",
+        headers={**signed_headers(), "X-VMI-Confirmation-Code": "confirmation-123"},
+    )
+
+    assert response.status_code == 422
+    assert response.content == b'{"error_code":"INVALID_REPORT"}'
+    assert response.headers["Content-Type"] == "application/problem+json"
+    assert forward_webhook_mock.call_args.kwargs["confirmation_code"] == "confirmation-123"
+
+
+@pytest.mark.usefixtures("dpw_vmi_adapter")
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"event_type":"TransmissionComplete"}',
+        b'{"report_metadata":{"confirmation_code":"legacy-contract"}}',
+    ],
+)
+def test_webhook_forwards_other_supported_event_shapes(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    forward_webhook_mock: Mock,
+    body: bytes,
+) -> None:
+    monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
+
+    response = client.post(
+        WEBHOOK_URL,
+        data=body,
+        content_type="application/json",
+        headers=signed_headers(body=body),
     )
 
     assert response.status_code == 200
-    assert response.json() == {"received": True}
+    assert forward_webhook_mock.call_args.args == (body,)
+
+
+@pytest.mark.usefixtures("dpw_vmi_adapter")
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"event_type":"FutureEvent"}',
+        b'{"event_type":"reportsubmission"}',
+        b'{"event_type":null}',
+        b'{"event_type":[]}',
+    ],
+)
+def test_webhook_ignores_unsupported_event_type(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    forward_webhook_mock: Mock,
+    body: bytes,
+) -> None:
+    monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
+
+    with caplog.at_level(logging.WARNING, logger="dpw_vmi_adapter.api"):
+        response = client.post(
+            WEBHOOK_URL,
+            data=body,
+            content_type="application/json",
+            headers=signed_headers(body=body),
+        )
+
+    assert response.status_code == 200
+    assert response.content == b""
+    assert "Content-Type" not in response.headers
+    ignored = next(
+        record
+        for record in caplog.records
+        if record.__dict__.get("event.name") == "dpw_vmi.webhook.unsupported_event_type"
+    )
+    assert ignored.__dict__["error.type"] == "unsupported_event_type"
+    forward_webhook_mock.assert_not_called()
+
+
+@pytest.mark.usefixtures("dpw_vmi_adapter")
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"not-json",
+        b"\xff",
+        b"[]",
+    ],
+)
+def test_webhook_rejects_body_that_is_not_a_json_object(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    forward_webhook_mock: Mock,
+    body: bytes,
+) -> None:
+    monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
+
+    response = client.post(
+        WEBHOOK_URL,
+        data=body,
+        content_type="application/json",
+        headers=signed_headers(body=body),
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error_code": "VALIDATION_ERROR",
+        "message": "Webhook body must be a JSON object.",
+    }
+    forward_webhook_mock.assert_not_called()
+
+
+@pytest.mark.usefixtures("dpw_vmi_adapter")
+def test_webhook_rejects_json_that_exceeds_parser_depth(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    forward_webhook_mock: Mock,
+) -> None:
+    body = b"{}"
+    monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
+
+    with monkeypatch.context() as parser:
+        parser.setattr("dpw_vmi_adapter.api.json.loads", Mock(side_effect=RecursionError))
+        response = client.post(
+            WEBHOOK_URL,
+            data=body,
+            content_type="application/json",
+            headers=signed_headers(body=body),
+        )
+
+    assert response.status_code == 400
+    assert response.json()["error_code"] == "VALIDATION_ERROR"
+    forward_webhook_mock.assert_not_called()
 
 
 @pytest.mark.usefixtures("dpw_vmi_adapter")
@@ -98,6 +274,7 @@ def test_webhook_rejects_invalid_headers(
     headers: dict[str, str],
     detail: str,
     reason: str,
+    forward_webhook_mock: Mock,
 ) -> None:
     monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
 
@@ -113,11 +290,14 @@ def test_webhook_rejects_invalid_headers(
     assert detail in failure.getMessage()
     assert BODY.decode() not in failure.getMessage()
     assert WEBHOOK_KEY not in failure.getMessage()
+    forward_webhook_mock.assert_not_called()
 
 
 @pytest.mark.usefixtures("dpw_vmi_adapter")
 def test_webhook_signature_covers_exact_body_bytes(
-    client: Client, monkeypatch: pytest.MonkeyPatch
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+    forward_webhook_mock: Mock,
 ) -> None:
     monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
     response = client.post(
@@ -129,6 +309,7 @@ def test_webhook_signature_covers_exact_body_bytes(
 
     assert response.status_code == 401
     assert response.json() == AUTHENTICATION_ERROR
+    forward_webhook_mock.assert_not_called()
 
 
 @pytest.mark.usefixtures("dpw_vmi_adapter")
@@ -145,6 +326,7 @@ def test_webhook_timestamp_window_is_configurable(
                         "webhook_path": WEBHOOK_PATH,
                         "webhook_api_key": WEBHOOK_KEY,
                         "webhook_timestamp_max_age_seconds": 600,
+                        "program_timeout_seconds": 10,
                     },
                 }
             }
