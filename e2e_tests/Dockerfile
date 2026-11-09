@@ -7,6 +7,11 @@ FROM ${UV_IMAGE} AS uv
 
 FROM ${PYTHON_IMAGE} AS base
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade \
+    zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
+  && rm -rf /var/lib/apt/lists/*
+
 FROM base AS builder
 
 COPY --from=uv /uv /bin/uv
