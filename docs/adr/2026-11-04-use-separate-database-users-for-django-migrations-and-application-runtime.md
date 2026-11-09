@@ -26,7 +26,7 @@ Use separate database users for Django migrations and application runtime, becau
 A migration user owns the schema and runs `migrate`. An application user has data access only and no DDL rights.
 
 * `+` each type of task runs with only the privileges it needs
-* `+` the application user has no DDL rights, which limits the blast radius of a compromised application or SQL injection
+* `+` the application user has no DDL rights, which limits the blast radius of a compromised application or code flaw
 * `-` the migration user owns the objects it creates, so the application user needs `GRANT`s and `ALTER DEFAULT PRIVILEGES` to access new tables
 
 ### Single user for migrations and application runtime
@@ -35,4 +35,4 @@ One user runs `migrate` and serves application traffic.
 
 * `+` one credential and one secret to manage
 * `+` no grant or default-privilege management, since the user owns everything it creates
-* `-` the application runtime holds DDL rights and table ownership, so a compromised application or SQL injection can drop or alter schema
+* `-` the application runtime holds DDL rights and table ownership, so a compromised application or code flaw can drop or alter schema
