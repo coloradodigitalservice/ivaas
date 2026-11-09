@@ -17,6 +17,7 @@ SYNC := $(UV) sync
 RUN_NO_SYNC := $(UV) run --no-sync
 LOCAL_RUN := $(RUN_NO_SYNC) $(ENV)
 MANAGE := $(LOCAL_RUN) python manage.py
+LOCAL_API_KEY_NAMES := DPW_VMI_WEBHOOK_API_KEY COBEES_VMI_WEBHOOK_API_KEY
 
 # To use nested, adapter-specific Makefile commands, add them here:
 include $(API_DIR)/packages/adapters/dpw-vmi/Makefile
@@ -151,7 +152,18 @@ django-secret-key: ## generate string for DJANGO_SECRET_KEY
 
 .PHONY: api-key
 api-key: ## print a 32-character UUIDv4 hex API key
-	$(RUN_NO_SYNC) python -c "import secrets, uuid; print(uuid.UUID(bytes=secrets.token_bytes(16), version=4).hex)"
+	@scripts/generate-api-key
+
+.PHONY: local-secrets
+local-secrets: ## add throwaway local-only secrets to .envs/.local/.secrets when absent
+	@secrets="$(API_DIR)/.envs/.local/.secrets"; \
+	umask 077; \
+	for name in $(LOCAL_API_KEY_NAMES); do \
+		grep -qs "^$${name}=" "$$secrets" && continue; \
+		key="$$(scripts/generate-api-key)" && [ -n "$$key" ] || exit 1; \
+		[ -n "$$(tail -c1 "$$secrets" 2>/dev/null)" ] && printf '\n' >> "$$secrets"; \
+		printf '%s=%s\n' "$$name" "$$key" >> "$$secrets"; \
+	done
 
 .PHONY: docker-base-image-update-check
 docker-base-image-update-check: ## check for available updates in base docker image

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 -c 'import secrets, uuid; print(uuid.UUID(bytes=secrets.token_bytes(16), version=4).hex)'
