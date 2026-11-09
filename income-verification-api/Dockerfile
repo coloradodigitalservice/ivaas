@@ -5,10 +5,10 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv@sha256:af22a52f5eafef3d78e551599d405c02df61919
 
 FROM ${PYTHON_IMAGE} AS base
 
-#RUN apt-get update \
-#  && apt-get install -y --no-install-recommends --only-upgrade \
-   # list dependencies to upgrade here
-#  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade \
+    zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
+  && rm -rf /var/lib/apt/lists/*
 
 FROM ${UV_IMAGE} AS uv
 
