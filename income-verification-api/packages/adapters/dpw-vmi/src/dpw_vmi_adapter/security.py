@@ -23,7 +23,7 @@ class DpwVmiAuthenticationError(Exception):
 
 
 def _reject(reason: str, detail: str) -> NoReturn:
-    logger.warning(
+    logger.error(
         "DPW VMI webhook header validation failed: %s",
         detail,
         extra={

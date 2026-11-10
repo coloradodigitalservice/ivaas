@@ -58,7 +58,7 @@ def _reject_non_json_constant(_: str) -> NoReturn:
 
 
 def _validation_error(request: HttpRequest, field: str, reason: str) -> HttpResponse:
-    logger.warning(
+    logger.error(
         "DPW VMI webhook body validation failed: %s: %s",
         field,
         reason,

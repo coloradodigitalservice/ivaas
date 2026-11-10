@@ -204,6 +204,7 @@ def test_webhook_ignores_unsupported_event_type(
         if record.__dict__.get("event.name") == "dpw_vmi.webhook.unsupported_event_type"
     )
     assert ignored.__dict__["error.type"] == "unsupported_event_type"
+    assert ignored.levelno == logging.WARNING
     forward_webhook_mock.assert_not_called()
 
 
@@ -308,7 +309,7 @@ def test_invalid_body_returns_field_error(
         if record.__dict__.get("event.name") == "dpw_vmi.webhook.body_validation_failed"
     )
     log = json.loads(JsonLogFormatter().format(failure))
-    assert log["level"] == "WARNING"
+    assert log["level"] == "ERROR"
     assert log["event.name"] == "dpw_vmi.webhook.body_validation_failed"
     assert log["http.response.status_code"] == 400
     assert field in log["message"]
@@ -360,6 +361,7 @@ def test_webhook_rejects_invalid_headers(
     assert response.status_code == 401
     assert response.json() == AUTHENTICATION_ERROR
     failure = next(record for record in caplog.records if record.name == "dpw_vmi_adapter.security")
+    assert failure.levelno == logging.ERROR
     assert failure.__dict__["auth.failure.reason"] == reason
     assert detail in failure.getMessage()
     assert BODY.decode() not in failure.getMessage()
