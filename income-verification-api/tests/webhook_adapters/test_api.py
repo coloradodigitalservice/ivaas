@@ -15,22 +15,25 @@ pytestmark = pytest.mark.usefixtures("configured_api_authentication", "example_w
 
 @pytest.fixture
 def example_webhook_adapter() -> Iterator[None]:
+    # To isolate the example webhook adapter for this test, install only non-adapter apps,
+    # then manually set up the example_webhook_adapter in isolation
+    installed_apps = [
+        app for app in settings.INSTALLED_APPS if app not in settings.WEBHOOK_ADAPTERS
+    ]
     with (
         override_settings(
             # Alternative to overriding ROOT_URLCONF is reloading config.urls to re-run its include
             # loop, but there are some gotchas with that approach
             ROOT_URLCONF="tests.webhook_adapters.urls",
             WEBHOOK_ADAPTERS={
-                **settings.WEBHOOK_ADAPTERS,
                 "example_webhook_adapter": {
                     "enabled": True,
                     "config": {"api_key": WEBHOOK_KEY},
                 },
             },
         ),
-        # Django rebuilds the app registry before applying sibling overrides.
         override_settings(
-            INSTALLED_APPS=[*settings.INSTALLED_APPS, "example_webhook_adapter"],
+            INSTALLED_APPS=[*installed_apps, "example_webhook_adapter"],
         ),
     ):
         yield

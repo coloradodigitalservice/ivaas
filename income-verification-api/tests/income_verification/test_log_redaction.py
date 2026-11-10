@@ -92,12 +92,14 @@ def test_redacts_named_arguments_and_preserves_context() -> None:
     record = _record("name %(firstName)s attempt %(attempt)d", arguments)
     correlation_id = "8c3d1e90-5a27-4b6f-9e14-2f7b0c9a5d31:APP-2026-004471"
     setattr(record, LogField.CORRELATION_ID.value, correlation_id)
+    setattr(record, LogField.WEBHOOK_REQUEST_ID.value, "webhook-request-id")
     setattr(record, LogField.APPLICATION_ID.value, "APP-123456789")
 
     output = json.loads(JsonLogFormatter().format(record))
 
     assert output["message"] == "name [REDACTED] attempt 2"
     assert output[LogField.CORRELATION_ID.value] == correlation_id
+    assert output[LogField.WEBHOOK_REQUEST_ID.value] == "webhook-request-id"
     assert output[LogField.APPLICATION_ID.value] == "APP-123456789"
     assert arguments == {"firstName": "SensitiveGivenName", "attempt": 2}
 

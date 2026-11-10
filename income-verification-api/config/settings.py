@@ -23,7 +23,7 @@ env = environ.Env()
 
 SECRET_KEY: str = env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS: list[str] = env.list("DJANGO_ALLOWED_HOSTS")
-DEBUG: bool = env.bool("DJANGO_DEBUG")
+DEBUG: bool = env.bool("DJANGO_DEBUG", default=False)
 
 # Program-facing API version
 #
@@ -48,7 +48,8 @@ API_AUTHENTICATION: Mapping[str, object] = {
 PROGRAMS: Mapping[str, Mapping[str, Mapping[str, object]]] = {
     "cobees": {
         "dpw_vmi": {
-            "webhook_api_key": env("COBEES_VMI_WEBHOOK_API_KEY", default=None),
+            "webhook_url": env("COBEES_VMI_WEBHOOK_URL", default=None),
+            "webhook_signing_key": env("COBEES_VMI_WEBHOOK_SIGNING_KEY", default=None),
         },
     },
 }
@@ -198,6 +199,7 @@ WEBHOOK_ADAPTERS: Mapping[str, Mapping[str, object]] = {
             "webhook_timestamp_max_age_seconds": env.int(
                 "DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS", default=300
             ),
+            "program_timeout_seconds": env.int("DPW_VMI_PROGRAM_TIMEOUT_SECONDS", default=30),
         },
     },
 }

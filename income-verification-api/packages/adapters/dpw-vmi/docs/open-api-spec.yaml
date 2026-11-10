@@ -28,9 +28,8 @@ info:
 
     - The forwarded body is DPW's JSON exactly as received. Its schema is DPW's: see the
       [*Webhooks Data Transmission Spec v1*](https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md).
-    - One link can produce several reports. Deduplicate `ReportSubmission` deliveries on
-      `X-VMI-Confirmation-Code`; see DPW's spec for retries and `TransmissionComplete`
-      idempotency.
+    - One link can produce several reports. Deduplicate `ReportSubmission` deliveries on the
+      body's confirmation code; see DPW's spec for retries and `TransmissionComplete` idempotency.
     - IVaaS forwards `ReportSubmission` and `TransmissionComplete` (the two webhooks below). For
       any other `event_type` it logs a warning and answers `200` without forwarding.
     - Report bodies carry personally identifiable information. Do not log them.
@@ -114,11 +113,14 @@ paths:
       description: |
         Modelled from [the DPW reference implementation](https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md)
 
-        IVaaS verifies the timestamp, the signature and the confirmation code, forwards the body
-        unchanged to the program's webhook, and answers VMI per the mapping on the
-        `reportSubmission` webhook. IVaaS is a contract 2 receiver in DPW's terms. For any
-        `event_type` other than `ReportSubmission` and `TransmissionComplete` it logs a warning
-        and answers `200` without forwarding. Error bodies use `DpwVmiError`.
+        IVaaS verifies the timestamp, signature, and the confirmation code, then forwards a supported event's body
+        unchanged to the program's webhook. The program's status, body and
+        `Content-Type` pass back to VMI unchanged except for the gateway failures described below.
+        IVaaS is a contract 2 receiver in DPW's terms. For any `event_type` other than
+        `ReportSubmission` and `TransmissionComplete` it logs a warning and answers `200` without
+        forwarding. IVaaS's explicit authentication and body-validation errors use
+        `DpwVmiError`; unexpected failures may use Django's default response, and program response
+        bodies pass through unchanged.
       security:
         - VmiSignature: []
       parameters:
@@ -135,46 +137,31 @@ paths:
       responses:
         "200":
           description: |
-            The program accepted the event, or IVaaS dropped an event type it does not handle.
+            The program returned `200`, or IVaaS ignored an event type it does not handle.
         "400":
           description: |
-            The body is not a JSON object, its confirmation code does not match
-            `X-VMI-Confirmation-Code`, or (🚧 phase 2) it lacks the routing attributes IVaaS
-            planted.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DpwVmiError"
+            The body is not a JSON object, or (🚧 phase 2) it lacks the routing attributes IVaaS
+            planted. A program's `400` response also passes through unchanged.
         "401":
           description: |
             Signature or timestamp verification failed, or a required header is missing. IVaaS
-            does not say which. The freshness window is five minutes by default.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DpwVmiError"
-        "422":
-          description: |
-            The program returned a `4xx` other than `429`, or (🚧 phase 2) no configured program
-            matches the routing attributes.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DpwVmiError"
-        "503":
-          description: |
-            The program was unreachable, timed out, or returned `429` or `5xx`. Durable delivery
-            is a planned follow-up.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DpwVmiError"
+            does not say which. The freshness window is five minutes by default. For an
+            authenticated webhook, a program's `401` passes through unchanged.
         "500":
-          description: IVaaS failed unexpectedly.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DpwVmiError"
+          description: The program returned `500` unchanged, or IVaaS failed unexpectedly.
+        "502":
+          description: |
+            The program returned `502` unchanged, or it returned a redirect. IVaaS refuses
+            redirects and returns an empty `502` for them.
+        "504":
+          description: |
+            The program returned `504` unchanged, or IVaaS did not receive a response because of
+            a timeout, connection, DNS or TLS failure and returns an empty `504`.
+        default:
+          description: |
+            Any program status other than `3xx` passes through unchanged with the program's body
+            and `Content-Type`. If the response body exceeds IVaaS's limit or cannot be read,
+            IVaaS preserves the status and returns an empty body.
 
 webhooks:
   reportSubmission:
@@ -186,7 +173,8 @@ webhooks:
         made, signed with the program's configured key and a fresh `X-IVaaS-Timestamp`. URL and
         key come from configuration, never from the report. `X-VMI-Timestamp` and
         `X-VMI-Confirmation-Code` pass through unchanged; `X-VMI-Signature` and `X-VMI-API-Key`
-        are never forwarded.
+        are never forwarded. IVaaS adds `X-IVaaS-Webhook-Request-Id` to correlate this delivery
+        attempt across IVaaS and program logs.
 
         ## Verifying the signature
 
@@ -199,20 +187,23 @@ webhooks:
 
         | Program response | What IVaaS tells VMI |
         |---|---|
-        | `2xx` | `200` |
-        | `429`, `5xx`, timeout, unreachable | `503` |
-        | other `4xx` | `422` |
-        | `3xx` | `422` (redirects are not followed; the configured URL is wrong) |
+        | Any status other than `3xx` | Same status, body and `Content-Type` |
+        | `3xx` | Empty `502`; redirects are not followed |
+        | No response because of timeout, connection, DNS or TLS failure | Empty `504` |
+        | Response body cannot be read or exceeds IVaaS's limit | Same status with an empty body |
 
         See DPW's spec for how VMI handles each status.
 
         VMI's 60-second deadline covers the whole round trip, VMI to IVaaS to the program and
-        back. IVaaS waits a shorter time for the program (TBD: 30 seconds) and maps a timeout to
-        `503`.
+        back. IVaaS defaults to a 30-second timeout for each socket operation with the program;
+        deployments can override it with `DPW_VMI_PROGRAM_TIMEOUT_SECONDS`. IVaaS returns `504`
+        if it receives no response. Because this is not a whole-request deadline, the total wait
+        can exceed VMI's deadline; programs must handle duplicate deliveries.
       security:
         - IvaasSignature: []
       parameters:
         - $ref: "#/components/parameters/IvaasTimestamp"
+        - $ref: "#/components/parameters/IvaasWebhookRequestId"
         - $ref: "#/components/parameters/VmiTimestampPassthrough"
         - $ref: "#/components/parameters/VmiConfirmationCode"
         - name: Correlation-Id
@@ -234,10 +225,12 @@ webhooks:
       responses:
         "2XX":
           description: The program accepted the report. Any `2xx` counts.
+        "3XX":
+          description: IVaaS refuses the redirect and returns an empty `502` to VMI.
         "4XX":
-          description: The program rejected the report. Mapped per the table above.
+          description: The program rejected the report. IVaaS returns the response unchanged.
         "5XX":
-          description: The program failed. Mapped per the table above.
+          description: The program failed. IVaaS returns the response unchanged.
 
   transmissionComplete:
     post:
@@ -249,6 +242,7 @@ webhooks:
         - IvaasSignature: []
       parameters:
         - $ref: "#/components/parameters/IvaasTimestamp"
+        - $ref: "#/components/parameters/IvaasWebhookRequestId"
         - $ref: "#/components/parameters/VmiTimestampPassthrough"
         - $ref: "#/components/parameters/VmiConfirmationCode"
       requestBody:
@@ -260,10 +254,12 @@ webhooks:
       responses:
         "2XX":
           description: The program accepted the notice. Any `2xx` counts.
+        "3XX":
+          description: IVaaS refuses the redirect and returns an empty `502` to VMI.
         "4XX":
-          description: The program rejected the notice. Mapped per `reportSubmission`'s table.
+          description: The program rejected the notice. IVaaS returns the response unchanged.
         "5XX":
-          description: The program failed. Mapped per `reportSubmission`'s table.
+          description: The program failed. IVaaS returns the response unchanged.
 
 components:
   securitySchemes:
@@ -313,6 +309,21 @@ components:
         format: int64
       example: 1764709881
 
+    IvaasWebhookRequestId:
+      name: X-IVaaS-Webhook-Request-Id
+      in: header
+      required: true
+      description: |
+        IVaaS-generated identifier for one webhook delivery attempt, used only to correlate IVaaS
+        and program logs. It is not part of `X-IVaaS-Signature`, changes when VMI retries, and
+        must not be used for authentication or deduplication. Detect duplicates as DPW specifies:
+        by confirmation code for `ReportSubmission`, and by confirmation code plus
+        `transmission_method` for `TransmissionComplete`.
+      schema:
+        type: string
+        format: uuid
+      example: 6f8c412e-a731-48f2-ac07-d1334dc2642d
+
     VmiTimestampPassthrough:
       name: X-VMI-Timestamp
       in: header
@@ -328,7 +339,7 @@ components:
     VmiConfirmationCode:
       name: X-VMI-Confirmation-Code
       in: header
-      required: true
+      required: false
       description: |
         IVaaS requires this header to equal `report_metadata.confirmation_code` in a
         `ReportSubmission` or `confirmation_code` in a `TransmissionComplete`.
@@ -352,8 +363,8 @@ components:
       description: |
         DPW defines this event in its
         [*Webhooks Data Transmission Spec v1*](https://github.com/Digital-Public-Works/dicit-webhook-api-ref-impl/blob/main/Webhooks%20Data%20Transmission%20Spec%20v1.md).
-        IVaaS forwards it unchanged after checking only that it is a JSON object whose
-        confirmation code matches the header.
+        IVaaS forwards it unchanged after confirming the body is a JSON object and recognizing
+        the event type.
 
         Top-level members of a `ReportSubmission`, as DPW defines them.
 
@@ -392,7 +403,7 @@ components:
           const: TransmissionComplete
         confirmation_code:
           type: string
-          description: The report this notice belongs to. Equals `X-VMI-Confirmation-Code`.
+          description: The report this notice belongs to.
         transmission_method:
           type: string
         uri:

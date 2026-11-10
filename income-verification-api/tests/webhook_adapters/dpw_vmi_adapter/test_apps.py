@@ -13,31 +13,36 @@ from config import settings as settings_module
 PROGRAMS = {
     "test-program": {
         "dpw_vmi": {
-            "webhook_api_key": "test-webhook-api-key",
+            "webhook_url": "https://program.example/webhook",
+            "webhook_signing_key": "test-webhook-signing-key",
         },
     },
 }
 
 
-def test_default_webhook_timestamp_max_age_is_300_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_webhook_timing_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS", raising=False)
+    monkeypatch.delenv("DPW_VMI_PROGRAM_TIMEOUT_SECONDS", raising=False)
     configuration = run_path(settings_module.__file__)["WEBHOOK_ADAPTERS"]["dpw_vmi_adapter"][
         "config"
     ]
     assert configuration["webhook_timestamp_max_age_seconds"] == 300
+    assert configuration["program_timeout_seconds"] == 30
 
 
 @pytest.mark.parametrize(
-    ("api_key", "max_age", "message"),
+    ("api_key", "max_age", "timeout", "message"),
     [
-        ("", 30, "API key"),
-        (None, 30, "API key"),
-        ("test-key", 0, "timestamp maximum age"),
-        ("test-key", "30", "timestamp maximum age"),
+        ("", 30, 10, "API key"),
+        (None, 30, 10, "API key"),
+        ("test-key", 0, 10, "timestamp maximum age"),
+        ("test-key", "30", 10, "timestamp maximum age"),
+        ("test-key", 30, 0, "program timeout"),
+        ("test-key", 30, "10", "program timeout"),
     ],
 )
 def test_invalid_webhook_configuration_fails_startup(
-    api_key: object, max_age: object, message: str
+    api_key: object, max_age: object, timeout: object, message: str
 ) -> None:
     app_config = DpwVmiAdapterConfig("dpw_vmi_adapter", import_module("dpw_vmi_adapter"))
     with (
@@ -49,6 +54,7 @@ def test_invalid_webhook_configuration_fails_startup(
                         "webhook_path": "/dpw-vmi/v1/income-report",
                         "webhook_api_key": api_key,
                         "webhook_timestamp_max_age_seconds": max_age,
+                        "program_timeout_seconds": timeout,
                     },
                 }
             },

@@ -22,6 +22,7 @@ from income_verification.log_redaction import redacted_message
 @dataclass(frozen=True, slots=True)
 class RequestLogContext:
     correlation_id: str | None = None
+    webhook_request_id: str | None = None
     client_id: str | None = None
     program_id: str | None = None
     application_id: str | None = None
@@ -55,6 +56,8 @@ class LogField(StrEnum):
     EXCEPTION_ORIGIN_FUNCTION = "exception.origin.function"
     EXCEPTION_ORIGIN_LINE = "exception.origin.line"
     CORRELATION_ID = "ivaas.correlation.id"
+    # Ephemeral ID for tracing one webhook request across network hops.
+    WEBHOOK_REQUEST_ID = "webhook_request_id"
     PROGRAM_ID = "ivaas.program.id"
     APPLICATION_ID = "ivaas.application.id"
     VERIFICATION_ID = "ivaas.verification.id"
@@ -80,6 +83,11 @@ def set_verification_log_context(application_id: str, verification_id: str) -> N
         application_id=application_id,
         verification_id=verification_id,
     )
+
+
+def set_webhook_request_id(webhook_request_id: str) -> None:
+    """Correlate logs produced while handling one inbound webhook request."""
+    _update_request_log_context(webhook_request_id=webhook_request_id)
 
 
 def set_client_log_context(client_id: str) -> None:
@@ -108,6 +116,12 @@ class RequestContextFilter(logging.Filter):
         context = _request_log_context.get()
         if context.correlation_id is not None:
             setattr(record, LogField.CORRELATION_ID.value, context.correlation_id)
+        if context.webhook_request_id is not None:
+            setattr(
+                record,
+                LogField.WEBHOOK_REQUEST_ID.value,
+                context.webhook_request_id,
+            )
         if context.client_id is not None:
             setattr(record, LogField.AUTH_CLIENT_ID.value, context.client_id)
         if context.program_id is not None:
