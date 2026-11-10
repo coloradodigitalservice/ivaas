@@ -109,6 +109,7 @@ def test_webhook_is_acknowledged(
     assert forward_webhook_mock.call_args.kwargs["vmi_timestamp"] == str(SIGNED_AT)
     events = {record.__dict__.get("event.name"): record for record in caplog.records}
     assert "dpw_vmi.webhook.received" in events
+    assert "ReportSubmission" in events["dpw_vmi.webhook.event_handling"].getMessage()
     assert events["dpw_vmi.webhook.response_returned"].__dict__["http.response.status_code"] == 200
     generated_id = log_context_mock.call_args.args[0]
     assert str(UUID(generated_id)) == generated_id
@@ -143,17 +144,22 @@ def test_webhook_returns_program_response(
 
 @pytest.mark.usefixtures("dpw_vmi_adapter")
 @pytest.mark.parametrize(
-    "body",
+    ("body", "event_type"),
     [
-        b'{"event_type":"TransmissionComplete","confirmation_code":"report-123"}',
-        b'{"report_metadata":{"confirmation_code":"report-123"}}',
+        (
+            b'{"event_type":"TransmissionComplete","confirmation_code":"report-123"}',
+            "TransmissionComplete",
+        ),
+        (b'{"report_metadata":{"confirmation_code":"report-123"}}', "ReportSubmission"),
     ],
 )
 def test_webhook_forwards_other_supported_event_shapes(
     client: Client,
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
     forward_webhook_mock: Mock,
     body: bytes,
+    event_type: str,
 ) -> None:
     monkeypatch.setattr("dpw_vmi_adapter.security.time.time", lambda: SIGNED_AT)
 
@@ -166,6 +172,12 @@ def test_webhook_forwards_other_supported_event_shapes(
 
     assert response.status_code == 200
     assert forward_webhook_mock.call_args.args == (body,)
+    handling = next(
+        record
+        for record in caplog.records
+        if record.__dict__.get("event.name") == "dpw_vmi.webhook.event_handling"
+    )
+    assert event_type in handling.getMessage()
 
 
 @pytest.mark.usefixtures("dpw_vmi_adapter")
@@ -205,6 +217,7 @@ def test_webhook_ignores_unsupported_event_type(
     )
     assert ignored.__dict__["error.type"] == "unsupported_event_type"
     assert ignored.levelno == logging.WARNING
+    assert str(json.loads(body)["event_type"]) in ignored.getMessage()
     forward_webhook_mock.assert_not_called()
 
 

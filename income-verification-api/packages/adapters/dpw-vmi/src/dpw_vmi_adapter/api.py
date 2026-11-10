@@ -125,13 +125,15 @@ def _handle_webhook(request: HttpRequest, *, webhook_request_id: str) -> HttpRes
     if not isinstance(body, dict):
         return _validation_error(request, "body", "Must be a JSON object.")
 
+    raw_event_type = body.get("event_type", DpwVmiEventType.REPORT_SUBMISSION)
     try:
-        event_type = DpwVmiEventType(body.get("event_type", DpwVmiEventType.REPORT_SUBMISSION))
+        event_type = DpwVmiEventType(raw_event_type)
     except ValueError, TypeError:
         event_type = None
     if event_type is None:
         logger.warning(
-            "Ignored unsupported DPW VMI webhook event type.",
+            "Ignored unsupported DPW VMI webhook event type: %s.",
+            raw_event_type,
             extra={
                 LogField.EVENT_NAME.value: "dpw_vmi.webhook.unsupported_event_type",
                 LogField.ERROR_TYPE.value: "unsupported_event_type",
@@ -145,6 +147,11 @@ def _handle_webhook(request: HttpRequest, *, webhook_request_id: str) -> HttpRes
     error = _validate_webhook_body(request, body, event_type)
     if error is not None:
         return error
+    logger.info(
+        "Handling DPW VMI webhook event type: %s.",
+        event_type,
+        extra={LogField.EVENT_NAME.value: "dpw_vmi.webhook.event_handling"},
+    )
     return _forward_to_program(request, webhook_request_id=webhook_request_id)
 
 
