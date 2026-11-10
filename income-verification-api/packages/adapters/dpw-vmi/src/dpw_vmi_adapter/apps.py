@@ -15,8 +15,7 @@ class DpwVmiAdapterConfig(AppConfig):
 
     Attributes:
         webhook_api_key: Secret used to verify inbound VMI signatures.
-        webhook_timestamp_max_age_seconds: Allowed difference between the VMI timestamp
-            and current time, in seconds.
+        webhook_timestamp_max_age_seconds: Maximum allowed age of a webhook timestamp.
         program_timeout_seconds: Outbound program request timeout in seconds.
         program: Sole program configured to receive forwarded VMI webhooks.
     """

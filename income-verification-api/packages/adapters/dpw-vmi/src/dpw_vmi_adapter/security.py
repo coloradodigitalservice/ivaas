@@ -11,9 +11,11 @@ from ninja.security import APIKeyHeader
 
 from dpw_vmi_adapter.apps import DpwVmiAdapterConfig
 from dpw_vmi_adapter.signing import verify
+from income_verification.request_context import LogField
 
 logger = logging.getLogger(__name__)
 _SIGNATURE_PATTERN = re.compile(r"[0-9a-f]{128}\Z")
+_FUTURE_TIMESTAMP_TOLERANCE_SECONDS = 5
 
 
 class DpwVmiAuthenticationError(Exception):
@@ -21,13 +23,13 @@ class DpwVmiAuthenticationError(Exception):
 
 
 def _reject(reason: str, detail: str) -> NoReturn:
-    logger.warning(
+    logger.error(
         "DPW VMI webhook header validation failed: %s",
         detail,
         extra={
-            "event.name": "dpw_vmi.webhook.header_validation_failed",
-            "auth.failure.reason": reason,
-            "http.response.status_code": 401,
+            LogField.EVENT_NAME.value: "dpw_vmi.webhook.header_validation_failed",
+            LogField.AUTH_FAILURE_REASON.value: reason,
+            LogField.HTTP_RESPONSE_STATUS_CODE.value: 401,
         },
     )
     raise DpwVmiAuthenticationError
@@ -46,15 +48,15 @@ class DpwVmiSignature(APIKeyHeader):
             _reject("missing_timestamp", "Missing X-VMI-Timestamp header.")
         if len(timestamp) > 20 or not timestamp.isascii() or not timestamp.isdigit():
             _reject("invalid_timestamp", "X-VMI-Timestamp must be Unix seconds.")
-        try:
-            signed_at = int(timestamp)
-        except ValueError:
-            _reject("invalid_timestamp", "X-VMI-Timestamp must be Unix seconds.")
+        signed_at = int(timestamp)
 
         if signature is None:
             _reject("missing_signature", "Missing X-VMI-Signature header.")
         if _SIGNATURE_PATTERN.fullmatch(signature) is None:
             _reject("invalid_signature", "X-VMI-Signature must be 128 lowercase hex characters.")
+        confirmation_code = request.headers.get("X-VMI-Confirmation-Code")
+        if not confirmation_code or not confirmation_code.strip():
+            _reject("missing_confirmation_code", "Missing X-VMI-Confirmation-Code header.")
         if not verify(
             request.body,
             key=configuration.webhook_api_key,
@@ -64,7 +66,7 @@ class DpwVmiSignature(APIKeyHeader):
             _reject("signature_mismatch", "X-VMI-Signature does not match the request.")
 
         age = time.time() - signed_at
-        if age < -configuration.webhook_timestamp_max_age_seconds:
+        if age < -_FUTURE_TIMESTAMP_TOLERANCE_SECONDS:
             _reject("future_timestamp", "X-VMI-Timestamp is too far in the future.")
         if age > configuration.webhook_timestamp_max_age_seconds:
             _reject("expired_timestamp", "X-VMI-Timestamp is too old.")

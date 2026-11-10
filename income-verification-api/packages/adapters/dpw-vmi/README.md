@@ -26,8 +26,9 @@ key is issued by DPW to IVaaS.
 Set `DPW_VMI_WEBHOOK_API_KEY` in `.envs/.local/.secrets` when the adapter is enabled.
 IVaaS checks the lowercase hex HMAC-SHA512 of `<X-VMI-Timestamp>:<raw body>`
 before processing a webhook. `DPW_VMI_WEBHOOK_TIMESTAMP_MAX_AGE_SECONDS` sets
-the allowed difference from IVaaS's clock in either direction (default 300 seconds;
-must be positive). Invalid headers, signatures, or timestamps return `401`
+how old a timestamp may be (default 300 seconds; must be positive). Timestamps
+up to 5 seconds in the future are also accepted to allow minor clock drift.
+Invalid headers, signatures, or timestamps return `401`
 with a generic `error_code` and `message`. The specific failure is logged
 without the key, signature, or body.
 

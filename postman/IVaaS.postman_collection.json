@@ -910,7 +910,7 @@
       "description": "One-time setup: select a Postman environment and add dpwVmiWebhookKey as a Secure variable. Set its local value to DPW_VMI_WEBHOOK_API_KEY for the selected environment.",
       "item": [
         {
-          "name": "Acknowledge webhook",
+          "name": "Acknowledge ReportSubmission webhook",
           "request": {
             "auth": {
               "type": "noauth"
@@ -921,14 +921,19 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "X-VMI-Confirmation-Code",
+                "value": "POSTMAN001",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"event_type\":\"ReportSubmission\"}"
+              "raw": "{\"event_type\":\"ReportSubmission\",\"report_metadata\":{\"confirmation_code\":\"POSTMAN001\",\"report_date_range\":{\"start_date\":\"2025-11-01\",\"end_date\":\"2026-02-01\"},\"consent_timestamp_utc\":\"2026-02-01T10:30:00Z\"},\"client_information\":{\"additional_jobs_to_report\":false},\"employment_records\":[]}"
             },
             "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
-            "description": "Signs the raw request body with the shared DPW VMI webhook key."
+            "description": "Signs the raw report body and checks its confirmation code against X-VMI-Confirmation-Code. Other report fields are validated by the program."
           },
           "event": [
             {
@@ -952,9 +957,142 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
-                  "pm.test('acknowledges the webhook', () => {",
-                  "  pm.expect(pm.response.json()).to.deep.equal({ received: true });",
+                  "pm.test('returns 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Acknowledge TransmissionComplete webhook",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "X-VMI-Confirmation-Code", "value": "POSTMAN001", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event_type\":\"TransmissionComplete\",\"confirmation_code\":\"POSTMAN001\",\"transmission_method\":\"sftp\",\"uri\":\"inbox/POSTMAN001.pdf\",\"completed_at\":\"2026-05-13T18:04:11Z\"}"
+            },
+            "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
+            "description": "Signs a TransmissionComplete event with its top-level confirmation_code."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = require('crypto-js');",
+                  "const key = pm.variables.get('dpwVmiWebhookKey');",
+                  "if (!key) throw new Error('Set dpwVmiWebhookKey in the selected Postman environment.');",
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const signedBody = `${timestamp}:${pm.request.body.raw}`;",
+                  "const signature = CryptoJS.HmacSHA512(signedBody, key).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Timestamp', value: timestamp });",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Signature', value: signature });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ignore unsupported webhook event",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "X-VMI-Confirmation-Code", "value": "POSTMAN001", "type": "text" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"event_type\":\"FutureEvent\"}" },
+            "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
+            "description": "An authenticated event type IVaaS does not handle is acknowledged without report-specific validation."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = require('crypto-js');",
+                  "const key = pm.variables.get('dpwVmiWebhookKey');",
+                  "if (!key) throw new Error('Set dpwVmiWebhookKey in the selected Postman environment.');",
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const signedBody = `${timestamp}:${pm.request.body.raw}`;",
+                  "const signature = CryptoJS.HmacSHA512(signedBody, key).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Timestamp', value: timestamp });",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Signature', value: signature });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject mismatched confirmation code",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "X-VMI-Confirmation-Code", "value": "DIFFERENT", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event_type\":\"ReportSubmission\",\"report_metadata\":{\"confirmation_code\":\"POSTMAN001\"}}"
+            },
+            "url": "{{baseUrl}}{{dpwVmiWebhookPath}}",
+            "description": "A signed report is rejected when report_metadata.confirmation_code differs from the header."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = require('crypto-js');",
+                  "const key = pm.variables.get('dpwVmiWebhookKey');",
+                  "if (!key) throw new Error('Set dpwVmiWebhookKey in the selected Postman environment.');",
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const signedBody = `${timestamp}:${pm.request.body.raw}`;",
+                  "const signature = CryptoJS.HmacSHA512(signedBody, key).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Timestamp', value: timestamp });",
+                  "pm.request.headers.upsert({ key: 'X-VMI-Signature', value: signature });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('identifies the confirmation-code mismatch', () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({",
+                  "    error_code: 'VALIDATION_ERROR',",
+                  "    message: 'The request body failed validation.',",
+                  "    errors: [{ field: 'report_metadata.confirmation_code', reason: 'Must match X-VMI-Confirmation-Code.' }]",
+                  "  });",
                   "});"
                 ]
               }
