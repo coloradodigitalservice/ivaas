@@ -11,6 +11,7 @@ from ninja.security import APIKeyHeader
 
 from dpw_vmi_adapter.apps import DpwVmiAdapterConfig
 from dpw_vmi_adapter.signing import verify
+from income_verification.request_context import LogField
 
 logger = logging.getLogger(__name__)
 _SIGNATURE_PATTERN = re.compile(r"[0-9a-f]{128}\Z")
@@ -26,9 +27,9 @@ def _reject(reason: str, detail: str) -> NoReturn:
         "DPW VMI webhook header validation failed: %s",
         detail,
         extra={
-            "event.name": "dpw_vmi.webhook.header_validation_failed",
-            "auth.failure.reason": reason,
-            "http.response.status_code": 401,
+            LogField.EVENT_NAME.value: "dpw_vmi.webhook.header_validation_failed",
+            LogField.AUTH_FAILURE_REASON.value: reason,
+            LogField.HTTP_RESPONSE_STATUS_CODE.value: 401,
         },
     )
     raise DpwVmiAuthenticationError
