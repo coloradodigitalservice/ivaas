@@ -1,0 +1,9 @@
+services:
+  program-webhook-mock:
+    image: python@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999
+    profiles: [tools]
+    command: ["python", "-u", "/mock/mock_webhook_receiver.py"]
+    volumes:
+      - ./scripts/mock_webhook_receiver.py:/mock/mock_webhook_receiver.py:ro
+    ports:
+      - "127.0.0.1:8900:8900"

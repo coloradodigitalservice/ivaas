@@ -13,3 +13,7 @@ vmi-transmission-complete: ## post a sample VMI TransmissionComplete webhook eve
 
 .PHONY: vmi-webhook-events
 vmi-webhook-events: vmi-report-submission vmi-transmission-complete ## post both sample VMI webhook events
+
+.PHONY: vmi-webhook-listener-mock
+vmi-webhook-listener-mock: ## run a local receiver for testing forwarded VMI webhooks
+	$(COMPOSE) up program-webhook-mock

@@ -35,3 +35,13 @@ without the key, signature, or body.
 
 The DPW VMI adapter declares its own [Makefile](./Makefile) for development and testing tasks, and is included in the
 root [Makefile](../../../../Makefile) for convenience.
+
+## Testing
+
+To smoke test the vmi-adapter locally, incoming webhook events can be simulated, which can be passed to a [mock receiver](./scripts/mock_webhook_receiver.py).
+
+1. Ensure that the [local .adapters](../../../config/settings.py) URL and Signing Key configurations for the desired program are set to the values expected by the [mock receiver](./scripts/mock_webhook_receiver.py) (`_WEBHOOK_RECEIVER_URL` & `_SIGNING_KEY`)
+2. Start IVaaS (`make run` or `make up`)
+3. Start the mock receiver (`make vmi-webhook-listener-mock`)
+4. Send webhook messages to IVaaS with the corresponding make recipes (e.g. `make vmi-report-submission`, `make vmi-transmission-complete`)
+5. Verify traffic and logs of IVaaS and the mock receiver are as expected
