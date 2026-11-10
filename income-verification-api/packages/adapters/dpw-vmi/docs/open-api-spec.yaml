@@ -341,8 +341,8 @@ components:
       in: header
       required: false
       description: |
-        VMI's confirmation code, forwarded unchanged when present. Matching it against the body is
-        not yet enforced in this branch.
+        IVaaS requires this header to equal `report_metadata.confirmation_code` in a
+        `ReportSubmission` or `confirmation_code` in a `TransmissionComplete`.
       schema:
         type: string
       example: LALDH00100001
