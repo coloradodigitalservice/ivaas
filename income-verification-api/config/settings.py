@@ -23,7 +23,7 @@ env = environ.Env()
 
 SECRET_KEY: str = env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS: list[str] = env.list("DJANGO_ALLOWED_HOSTS")
-DEBUG: bool = env.bool("DJANGO_DEBUG")
+DEBUG: bool = env.bool("DJANGO_DEBUG", default=False)
 
 # Program-facing API version
 #
