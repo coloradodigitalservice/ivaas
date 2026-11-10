@@ -156,9 +156,12 @@ def _log_program_response_received(
     }
     if error_type is not None:
         extra["error.type"] = error_type
-    log = (
-        logger.info if error_type is None and 200 <= response.status_code < 300 else logger.warning
-    )
+    if error_type is not None or 400 <= response.status_code < 500:
+        log = logger.error
+    elif 200 <= response.status_code < 300:
+        log = logger.info
+    else:
+        log = logger.warning
     log(
         "DPW VMI program webhook response received.",
         extra=extra,
@@ -174,7 +177,7 @@ def _log_send_failure(
     error_type: str,
     exc_info: bool = False,
 ) -> ProgramResponse:
-    logger.warning(
+    logger.error(
         "Failed to send DPW VMI webhook to program.",
         extra={
             "event.name": "dpw_vmi.program_webhook.send_failed",

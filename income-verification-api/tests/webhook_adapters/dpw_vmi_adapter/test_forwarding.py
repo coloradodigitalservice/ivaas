@@ -133,11 +133,13 @@ def test_forward_webhook_sends_exact_body_and_signed_headers(
         events["dpw_vmi.program_webhook.response_received"].__dict__["http.response.status_code"]
         == 207
     )
+    assert events["dpw_vmi.program_webhook.response_received"].levelno == logging.INFO
 
 
 @pytest.mark.parametrize("status_code", [400, 401, 413, 422, 429, 500, 503, 504])
 def test_forward_webhook_returns_program_http_error(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
     status_code: int,
 ) -> None:
     headers = Message()
@@ -165,9 +167,19 @@ def test_forward_webhook_returns_program_http_error(
         b'{"error_code":"PROGRAM_ERROR"}',
         "application/problem+json",
     )
+    response_received = next(
+        record
+        for record in caplog.records
+        if record.__dict__.get("event.name") == "dpw_vmi.program_webhook.response_received"
+    )
+    expected_level = logging.ERROR if 400 <= status_code < 500 else logging.WARNING
+    assert response_received.levelno == expected_level
 
 
-def test_forward_webhook_rejects_program_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_forward_webhook_rejects_program_redirect(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     assert any(
         isinstance(handler, forwarding._NoRedirect)
         for handler in vars(forwarding._opener)["handlers"]
@@ -186,6 +198,12 @@ def test_forward_webhook_rejects_program_redirect(monkeypatch: pytest.MonkeyPatc
 
     assert result == ProgramResponse(502, b"", None)
     assert handler.requests == [PROGRAM.webhook_url]
+    response_received = next(
+        record
+        for record in caplog.records
+        if record.__dict__.get("event.name") == "dpw_vmi.program_webhook.response_received"
+    )
+    assert response_received.levelno == logging.ERROR
 
 
 @pytest.mark.parametrize(
@@ -194,6 +212,7 @@ def test_forward_webhook_rejects_program_redirect(monkeypatch: pytest.MonkeyPatc
 )
 def test_forward_webhook_returns_gateway_timeout_for_network_failure(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
     error: Exception,
 ) -> None:
     monkeypatch.setattr(forwarding._opener, "open", Mock(side_effect=error))
@@ -208,6 +227,12 @@ def test_forward_webhook_returns_gateway_timeout_for_network_failure(
     )
 
     assert result == ProgramResponse(504, b"", None)
+    send_failed = next(
+        record
+        for record in caplog.records
+        if record.__dict__.get("event.name") == "dpw_vmi.program_webhook.send_failed"
+    )
+    assert send_failed.levelno == logging.ERROR
 
 
 def test_forward_webhook_keeps_status_when_program_response_is_too_large(
