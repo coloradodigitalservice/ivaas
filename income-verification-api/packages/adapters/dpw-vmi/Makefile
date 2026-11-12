@@ -16,4 +16,4 @@ vmi-webhook-events: vmi-report-submission vmi-transmission-complete ## post both
 
 .PHONY: vmi-webhook-listener-mock
 vmi-webhook-listener-mock: ## run a local receiver for testing forwarded VMI webhooks
-	$(COMPOSE) up program-webhook-mock
+	$(COMPOSE) up program-webhook-mock -d
