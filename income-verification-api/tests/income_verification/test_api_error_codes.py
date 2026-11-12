@@ -9,6 +9,7 @@ from income_verification.api_error_codes import (
     ErrorDefinition,
     RequestValidationErrorDefinition,
 )
+from income_verification.routes import ERROR_RESPONSE_MODELS
 
 
 def test_request_validation_errors_use_the_locked_bad_request_definition() -> None:
@@ -87,3 +88,7 @@ def test_field_error_codes_are_derived_from_error_definitions() -> None:
         for code in FIELD_ERROR_CODES.values()
     )
     assert FIELD_ERROR_CODES["ssn"] is ErrorCode.INVALID_SSN_FORMAT
+
+
+def test_every_error_status_has_a_declared_route_response() -> None:
+    assert {definition.status_code for definition in ERRORS.values()} == set(ERROR_RESPONSE_MODELS)

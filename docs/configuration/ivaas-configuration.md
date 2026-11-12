@@ -179,7 +179,7 @@ Set to `None` to disable the breaker for the adapter. Otherwise provide:
 Every failed attempt and every breaker trip is logged with the adapter's name and the underlying cause.
 
 > [!NOTE]
-> The worst-case time a single request can spend on one adapter is roughly `max_attempts` times the adapter's timeout, plus the backoffs in between. Size `max_attempts` and the adapter's timeout together with that ceiling in mind.
+> The worst-case time a single request can spend on one adapter is roughly `max_attempts` multiplied by the maximum time the adapter's routine takes, plus the backoffs in between. Size `max_attempts` and the adapter's performance together with that ceiling in mind.
 
 ### Webhook adapters
 

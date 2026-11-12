@@ -57,7 +57,14 @@ class AdapterEngine:
                     LogField.SOURCE_ID.value: source_id,
                 },
             )
-            return [SourceResult(source_id=source_id, status=error.status)]
+            return [
+                SourceResult(
+                    source_id=source_id,
+                    status=error.status,
+                    retrieved_at=None,
+                    raw_income=None,
+                )
+            ]
         logger.info(
             "adapter '%s' invocation completed successfully",
             name,

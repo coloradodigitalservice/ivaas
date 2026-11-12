@@ -5,7 +5,10 @@ info:
   version: 0.0.1-draft
   summary: Colorado's program-facing income verification as a service (IVaaS) API.
   description: |
-    **STATUS: SKELETON / DRAFT / PRE-DECISIONAL**: Details needing refinement marked with "TBD"
+    **STATUS: DRAFT / DEPRECATED:**
+    * Prefer the generated spec at /api/openapi.json in each environment.
+    * Until retired, any changes to this spec must be accompanied by application changes that will produce equivalent changes to the generated specs.
+    * Details needing refinement marked with "TBD".
 
     This specification describes *Colorado's* deployment of the Income Verification
     service.
@@ -393,15 +396,17 @@ components:
           description: When this service obtained the data. An instant.
         rawIncome:
           description: |
-            The raw income this source reported, with PII removed.
+            The raw income this source reported, as returned by the adapter.
 
-            Present only when `status` is `ok`.
+            Shape and contents are adapter-specific; IVaaS passes them through unchanged.
+
+            Null unless `status` is `OK`.
           $ref: "#/components/schemas/RawIncome"
 
     RawIncome:
       type: object
       description: |
-        The source's PII-stripped payload, passed through as a free-form object.
+        The adapter-specific payload, passed through unchanged as a free-form object.
 
     Date:
       type: string
